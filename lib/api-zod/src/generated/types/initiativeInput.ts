@@ -15,6 +15,7 @@ export interface InitiativeInput {
   executiveSponsor?: string;
   category: string;
   status?: string;
+  executiveSummary?: string;
   problemStatement: string;
   currentProcess: string;
   desiredOutcome: string;

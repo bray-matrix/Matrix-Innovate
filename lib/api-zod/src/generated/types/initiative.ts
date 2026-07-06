@@ -17,6 +17,8 @@ export interface Initiative {
   executiveSponsor?: string | null;
   category: string;
   status: string;
+  /** @nullable */
+  executiveSummary: string | null;
   problemStatement: string;
   currentProcess: string;
   desiredOutcome: string;

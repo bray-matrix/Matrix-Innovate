@@ -5,6 +5,7 @@ import {
   integer,
   doublePrecision,
   timestamp,
+  jsonb,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -18,6 +19,9 @@ export const initiativesTable = pgTable("initiatives", {
   executiveSponsor: text("executive_sponsor"),
   category: text("category").notNull(),
   status: text("status").notNull().default("Idea"),
+  // Optional user-authored override; when null the UI composes a summary
+  // from title/category/department automatically.
+  executiveSummary: text("executive_summary"),
   problemStatement: text("problem_statement").notNull().default(""),
   currentProcess: text("current_process").notNull().default(""),
   desiredOutcome: text("desired_outcome").notNull().default(""),
@@ -69,6 +73,9 @@ export const initiativeVersionsTable = pgTable("initiative_versions", {
   version: text("version").notNull(),
   changedBy: text("changed_by").notNull().default("System"),
   summary: text("summary").notNull().default(""),
+  // Full field snapshot of the initiative state AFTER this version's change.
+  // Nullable because rows written before v0.1.7 have no snapshot.
+  snapshot: jsonb("snapshot").$type<Record<string, unknown>>(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

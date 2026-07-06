@@ -190,6 +190,66 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /initiatives/{id}/recalculate:
+    post:
+      operationId: recalculateInitiative
+      tags: [initiatives]
+      summary: Recalculate scoring, AI readiness, and priority from stored fields
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Initiative after recalculation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Initiative"
+        "400":
+          description: Invalid id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /initiatives/{id}/compare:
+    get:
+      operationId: compareInitiativeVersions
+      tags: [initiatives]
+      summary: Compare the current version with the previous version
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Side-by-side field comparison of current vs previous version
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionComparison"
+        "400":
+          description: Invalid id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /dashboard/summary:
     get:
       operationId: getDashboardSummary
@@ -253,6 +313,7 @@ components:
         - submitterName
         - category
         - status
+        - executiveSummary
         - problemStatement
         - currentProcess
         - desiredOutcome
@@ -302,6 +363,8 @@ components:
           type: string
         status:
           type: string
+        executiveSummary:
+          type: ["string", "null"]
         problemStatement:
           type: string
         currentProcess:
@@ -395,6 +458,8 @@ components:
           type: string
         status:
           type: string
+        executiveSummary:
+          type: string
         problemStatement:
           type: string
         currentProcess:
@@ -443,6 +508,8 @@ components:
         category:
           type: string
         status:
+          type: string
+        executiveSummary:
           type: string
         problemStatement:
           type: string
@@ -524,6 +591,48 @@ components:
           type: string
         createdAt:
           type: string
+    FieldComparison:
+      type: object
+      required:
+        - field
+        - label
+        - previous
+        - current
+        - changed
+      properties:
+        field:
+          type: string
+        label:
+          type: string
+        previous:
+          type: string
+        current:
+          type: string
+        changed:
+          type: boolean
+    VersionComparison:
+      type: object
+      required:
+        - available
+        - currentVersion
+        - previousVersion
+        - reason
+        - fields
+      properties:
+        available:
+          type: boolean
+          description: False when there is no previous version snapshot to compare against
+        currentVersion:
+          type: string
+        previousVersion:
+          type: ["string", "null"]
+        reason:
+          type: ["string", "null"]
+          description: Human-readable explanation when comparison is unavailable
+        fields:
+          type: array
+          items:
+            $ref: "#/components/schemas/FieldComparison"
     DashboardSummary:
       type: object
       required:

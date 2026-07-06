@@ -24,6 +24,8 @@ export interface Initiative {
   executiveSponsor?: string | null;
   category: string;
   status: string;
+  /** @nullable */
+  executiveSummary: string | null;
   problemStatement: string;
   currentProcess: string;
   desiredOutcome: string;
@@ -72,6 +74,7 @@ export interface InitiativeInput {
   executiveSponsor?: string;
   category: string;
   status?: string;
+  executiveSummary?: string;
   problemStatement: string;
   currentProcess: string;
   desiredOutcome: string;
@@ -98,6 +101,7 @@ export interface InitiativeUpdate {
   executiveSponsor?: string;
   category?: string;
   status?: string;
+  executiveSummary?: string;
   problemStatement?: string;
   currentProcess?: string;
   desiredOutcome?: string;
@@ -138,6 +142,28 @@ export interface InitiativeVersion {
   changedBy: string;
   summary: string;
   createdAt: string;
+}
+
+export interface FieldComparison {
+  field: string;
+  label: string;
+  previous: string;
+  current: string;
+  changed: boolean;
+}
+
+export interface VersionComparison {
+  /** False when there is no previous version snapshot to compare against */
+  available: boolean;
+  currentVersion: string;
+  /** @nullable */
+  previousVersion: string | null;
+  /**
+     * Human-readable explanation when comparison is unavailable
+     * @nullable
+     */
+  reason: string | null;
+  fields: FieldComparison[];
 }
 
 export interface StatusCount {

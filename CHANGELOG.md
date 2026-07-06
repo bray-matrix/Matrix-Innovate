@@ -5,6 +5,34 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and the
 project adheres to semantic versioning (patch = fixes/edits, minor = new
 features, major = breaking or milestone changes).
 
+## [0.1.7] — 2026-07-06
+
+### Added
+
+- **Initiative Workspace** — the Initiative Detail page now supports inline
+  editing behind an Edit Mode toggle. Editable inline: Executive Summary,
+  Opportunity Canvas fields (Problem, Current Process, Desired Outcome, AI
+  Opportunity), Business Value estimates, Prototype Goal, Success Metrics,
+  Risks (Compliance / Technical Complexity / Data Readiness), Business Owner,
+  and Executive Sponsor. Saving creates a new Initiative Version.
+- **Executive Summary override** — the summary was previously always
+  auto-composed from title/category/department. It is now stored per
+  initiative when a user edits it; leaving it blank falls back to the
+  auto-generated summary (new nullable `executive_summary` column).
+- **Recalculate** button — reruns the Scoring Engine, the AI Readiness
+  calculation, and refreshes the Initiative Intelligence recommendations from
+  the currently stored fields, without repeating the interview. Derived
+  components (revenue potential, cost savings, AI readiness, complexity and
+  risk penalties) are recomputed deterministically; human-judgment components
+  (business value, strategic alignment, prototype confidence, customer
+  impact) are preserved. New endpoint `POST /api/initiatives/{id}/recalculate`.
+- **Version comparison** — every save now stores a full field snapshot on the
+  version history entry (new `snapshot` column). A "Compare with Previous"
+  dialog shows a side-by-side comparison of the current vs previous version
+  with changed fields highlighted. New endpoint
+  `GET /api/initiatives/{id}/compare`. Versions recorded before v0.1.7 have
+  no snapshot and report the comparison as unavailable.
+
 ## [0.1.6] — 2026-07-06
 
 ### Added

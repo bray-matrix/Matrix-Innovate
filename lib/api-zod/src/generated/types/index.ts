@@ -9,6 +9,7 @@
 export * from './dashboardSummary';
 export * from './document';
 export * from './error';
+export * from './fieldComparison';
 export * from './healthStatus';
 export * from './initiative';
 export * from './initiativeInput';
@@ -20,3 +21,4 @@ export * from './scoringWeight';
 export * from './settings';
 export * from './similarInitiative';
 export * from './statusCount';
+export * from './versionComparison';

@@ -29,6 +29,7 @@ export const ListInitiativesResponseItem = zod.object({
   "executiveSponsor": zod.string().nullish(),
   "category": zod.string(),
   "status": zod.string(),
+  "executiveSummary": zod.string().nullable(),
   "problemStatement": zod.string(),
   "currentProcess": zod.string(),
   "desiredOutcome": zod.string(),
@@ -79,6 +80,7 @@ export const CreateInitiativeBody = zod.object({
   "executiveSponsor": zod.string().optional(),
   "category": zod.string(),
   "status": zod.string().optional(),
+  "executiveSummary": zod.string().optional(),
   "problemStatement": zod.string(),
   "currentProcess": zod.string(),
   "desiredOutcome": zod.string(),
@@ -106,6 +108,7 @@ export const CreateInitiativeResponse = zod.object({
   "executiveSponsor": zod.string().nullish(),
   "category": zod.string(),
   "status": zod.string(),
+  "executiveSummary": zod.string().nullable(),
   "problemStatement": zod.string(),
   "currentProcess": zod.string(),
   "desiredOutcome": zod.string(),
@@ -157,6 +160,7 @@ export const GetInitiativeResponse = zod.object({
   "executiveSponsor": zod.string().nullish(),
   "category": zod.string(),
   "status": zod.string(),
+  "executiveSummary": zod.string().nullable(),
   "problemStatement": zod.string(),
   "currentProcess": zod.string(),
   "desiredOutcome": zod.string(),
@@ -207,6 +211,7 @@ export const UpdateInitiativeBody = zod.object({
   "executiveSponsor": zod.string().optional(),
   "category": zod.string().optional(),
   "status": zod.string().optional(),
+  "executiveSummary": zod.string().optional(),
   "problemStatement": zod.string().optional(),
   "currentProcess": zod.string().optional(),
   "desiredOutcome": zod.string().optional(),
@@ -247,6 +252,7 @@ export const UpdateInitiativeResponse = zod.object({
   "executiveSponsor": zod.string().nullish(),
   "category": zod.string(),
   "status": zod.string(),
+  "executiveSummary": zod.string().nullable(),
   "problemStatement": zod.string(),
   "currentProcess": zod.string(),
   "desiredOutcome": zod.string(),
@@ -346,6 +352,80 @@ export const GetInitiativeRecommendationsResponse = zod.object({
 
 
 /**
+ * @summary Recalculate scoring, AI readiness, and priority from stored fields
+ */
+export const RecalculateInitiativeParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const RecalculateInitiativeResponse = zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "department": zod.string(),
+  "submitterName": zod.string(),
+  "businessOwner": zod.string().nullish(),
+  "executiveSponsor": zod.string().nullish(),
+  "category": zod.string(),
+  "status": zod.string(),
+  "executiveSummary": zod.string().nullable(),
+  "problemStatement": zod.string(),
+  "currentProcess": zod.string(),
+  "desiredOutcome": zod.string(),
+  "aiConcept": zod.string(),
+  "prototypeGoal": zod.string(),
+  "successMetric": zod.string(),
+  "estimatedHoursSavedMonthly": zod.number(),
+  "estimatedRevenueOpportunity": zod.number(),
+  "estimatedCostSavings": zod.number(),
+  "customerImpact": zod.string(),
+  "complianceRisk": zod.string(),
+  "technicalComplexity": zod.string(),
+  "aiReadiness": zod.string(),
+  "businessValue": zod.number(),
+  "revenuePotential": zod.number(),
+  "costSavingsScore": zod.number(),
+  "customerImpactScore": zod.number(),
+  "strategicAlignment": zod.number(),
+  "aiReadinessScore": zod.number(),
+  "prototypeConfidence": zod.number(),
+  "technicalComplexityPenalty": zod.number(),
+  "riskPenalty": zod.number(),
+  "score": zod.number(),
+  "priority": zod.string(),
+  "version": zod.string(),
+  "assignedTeam": zod.string().nullable(),
+  "currentPhase": zod.string().nullable(),
+  "prototypeDay": zod.number().nullable(),
+  "lastReviewedAt": zod.string().nullable(),
+  "nextReviewAt": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+
+
+/**
+ * @summary Compare the current version with the previous version
+ */
+export const CompareInitiativeVersionsParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const CompareInitiativeVersionsResponse = zod.object({
+  "available": zod.boolean().describe('False when there is no previous version snapshot to compare against'),
+  "currentVersion": zod.string(),
+  "previousVersion": zod.string().nullable(),
+  "reason": zod.string().nullable().describe('Human-readable explanation when comparison is unavailable'),
+  "fields": zod.array(zod.object({
+  "field": zod.string(),
+  "label": zod.string(),
+  "previous": zod.string(),
+  "current": zod.string(),
+  "changed": zod.boolean()
+}))
+})
+
+
+/**
  * @summary Get dashboard aggregate metrics
  */
 export const GetDashboardSummaryResponse = zod.object({
@@ -368,6 +448,7 @@ export const GetDashboardSummaryResponse = zod.object({
   "executiveSponsor": zod.string().nullish(),
   "category": zod.string(),
   "status": zod.string(),
+  "executiveSummary": zod.string().nullable(),
   "problemStatement": zod.string(),
   "currentProcess": zod.string(),
   "desiredOutcome": zod.string(),

@@ -5,7 +5,11 @@ import {
   CreateInitiativeBody,
   UpdateInitiativeBody,
 } from "@workspace/api-zod";
-import { calculateScore, derivePriority } from "../lib/scoring";
+import {
+  calculateScore,
+  derivePriority,
+  recalculateComponents,
+} from "../lib/scoring";
 import { bumpVersion, determineBumpKind, DEFAULT_VERSION } from "../lib/versioning";
 import { getRecommendationProvider } from "../lib/intelligence";
 
@@ -25,9 +29,60 @@ function serialize(row: typeof initiativesTable.$inferSelect) {
 
 function serializeVersion(row: typeof initiativeVersionsTable.$inferSelect) {
   return {
-    ...row,
+    id: row.id,
+    initiativeId: row.initiativeId,
+    version: row.version,
+    changedBy: row.changedBy,
+    summary: row.summary,
     createdAt: row.createdAt.toISOString(),
   };
+}
+
+// Fields captured in each version snapshot and used for side-by-side
+// comparison. Order here controls display order in the comparison UI.
+const SNAPSHOT_FIELDS = [
+  "title",
+  "department",
+  "submitterName",
+  "businessOwner",
+  "executiveSponsor",
+  "category",
+  "status",
+  "executiveSummary",
+  "problemStatement",
+  "currentProcess",
+  "desiredOutcome",
+  "aiConcept",
+  "prototypeGoal",
+  "successMetric",
+  "estimatedHoursSavedMonthly",
+  "estimatedRevenueOpportunity",
+  "estimatedCostSavings",
+  "customerImpact",
+  "complianceRisk",
+  "technicalComplexity",
+  "aiReadiness",
+  "score",
+  "priority",
+  "assignedTeam",
+  "currentPhase",
+  "prototypeDay",
+] as const;
+
+function buildSnapshot(
+  row: typeof initiativesTable.$inferSelect,
+): Record<string, unknown> {
+  const snapshot: Record<string, unknown> = {};
+  for (const field of SNAPSHOT_FIELDS) {
+    snapshot[field] = row[field];
+  }
+  return snapshot;
+}
+
+function formatSnapshotValue(value: unknown): string {
+  if (value === null || value === undefined) return "—";
+  const text = String(value).trim();
+  return text === "" ? "—" : text;
 }
 
 router.get("/initiatives", async (_req, res) => {
@@ -61,6 +116,11 @@ router.post("/initiatives", async (req, res) => {
         submitterName: data.submitterName,
         businessOwner: data.businessOwner ?? null,
         executiveSponsor: data.executiveSponsor ?? null,
+        executiveSummary:
+          data.executiveSummary === undefined ||
+          data.executiveSummary.trim() === ""
+            ? null
+            : data.executiveSummary,
         category: data.category,
         status,
         problemStatement: data.problemStatement,
@@ -91,6 +151,7 @@ router.post("/initiatives", async (req, res) => {
       version: DEFAULT_VERSION,
       changedBy: data.submitterName || "System",
       summary: "Initiative created",
+      snapshot: buildSnapshot(created),
     });
 
     return created;
@@ -134,6 +195,157 @@ router.get("/initiatives/:id/recommendations", async (req, res) => {
     allInitiatives,
   });
   res.json(recommendations);
+});
+
+router.post("/initiatives/:id/recalculate", async (req, res) => {
+  const id = Number(req.params.id);
+  if (Number.isNaN(id)) {
+    res.status(400).json({ error: "Invalid id" });
+    return;
+  }
+  const [existing] = await db
+    .select()
+    .from(initiativesTable)
+    .where(eq(initiativesTable.id, id));
+  if (!existing) {
+    res.status(404).json({ error: "Initiative not found" });
+    return;
+  }
+
+  const components = recalculateComponents(
+    {
+      estimatedRevenueOpportunity: existing.estimatedRevenueOpportunity,
+      estimatedCostSavings: existing.estimatedCostSavings,
+      estimatedHoursSavedMonthly: existing.estimatedHoursSavedMonthly,
+      aiReadiness: existing.aiReadiness,
+      technicalComplexity: existing.technicalComplexity,
+      complianceRisk: existing.complianceRisk,
+    },
+    {
+      businessValue: existing.businessValue,
+      revenuePotential: existing.revenuePotential,
+      costSavingsScore: existing.costSavingsScore,
+      customerImpactScore: existing.customerImpactScore,
+      strategicAlignment: existing.strategicAlignment,
+      aiReadinessScore: existing.aiReadinessScore,
+      prototypeConfidence: existing.prototypeConfidence,
+      technicalComplexityPenalty: existing.technicalComplexityPenalty,
+      riskPenalty: existing.riskPenalty,
+    },
+  );
+  const score = calculateScore(components);
+  const priority = derivePriority(score);
+
+  const changedNothing =
+    components.revenuePotential === existing.revenuePotential &&
+    components.costSavingsScore === existing.costSavingsScore &&
+    components.aiReadinessScore === existing.aiReadinessScore &&
+    components.technicalComplexityPenalty ===
+      existing.technicalComplexityPenalty &&
+    components.riskPenalty === existing.riskPenalty &&
+    score === existing.score &&
+    priority === existing.priority;
+
+  if (changedNothing) {
+    res.json(serialize(existing));
+    return;
+  }
+
+  const newVersion = bumpVersion(existing.version, "patch");
+  const row = await db.transaction(async (tx) => {
+    const [updated] = await tx
+      .update(initiativesTable)
+      .set({
+        ...components,
+        score,
+        priority,
+        version: newVersion,
+        updatedAt: new Date(),
+      })
+      .where(eq(initiativesTable.id, id))
+      .returning();
+
+    await tx.insert(initiativeVersionsTable).values({
+      initiativeId: id,
+      version: newVersion,
+      changedBy: existing.submitterName || "System",
+      summary: `Recalculated scoring and AI readiness (score ${existing.score} to ${score})`,
+      snapshot: buildSnapshot(updated),
+    });
+
+    return updated;
+  });
+
+  res.json(serialize(row));
+});
+
+router.get("/initiatives/:id/compare", async (req, res) => {
+  const id = Number(req.params.id);
+  if (Number.isNaN(id)) {
+    res.status(400).json({ error: "Invalid id" });
+    return;
+  }
+  const [initiative] = await db
+    .select()
+    .from(initiativesTable)
+    .where(eq(initiativesTable.id, id));
+  if (!initiative) {
+    res.status(404).json({ error: "Initiative not found" });
+    return;
+  }
+
+  const versions = await db
+    .select()
+    .from(initiativeVersionsTable)
+    .where(eq(initiativeVersionsTable.initiativeId, id))
+    .orderBy(desc(initiativeVersionsTable.createdAt), desc(initiativeVersionsTable.id))
+    .limit(2);
+
+  if (versions.length < 2) {
+    res.json({
+      available: false,
+      currentVersion: initiative.version,
+      previousVersion: null,
+      reason: "There is no previous version to compare against yet.",
+      fields: [],
+    });
+    return;
+  }
+
+  const previous = versions[1];
+  if (!previous.snapshot) {
+    res.json({
+      available: false,
+      currentVersion: initiative.version,
+      previousVersion: previous.version,
+      reason:
+        "The previous version predates snapshot support, so a field comparison is not available.",
+      fields: [],
+    });
+    return;
+  }
+
+  const currentSnapshot = buildSnapshot(initiative);
+  const previousSnapshot = previous.snapshot as Record<string, unknown>;
+  const fields = SNAPSHOT_FIELDS.map((field) => {
+    const previousValue = formatSnapshotValue(previousSnapshot[field]);
+    const currentValue = formatSnapshotValue(currentSnapshot[field]);
+    return {
+      field,
+      label: FIELD_LABELS[field] ?? field,
+      previous: previousValue,
+      current: currentValue,
+      changed: previousValue !== currentValue,
+    };
+  });
+
+  res.json({
+    available: true,
+    currentVersion: initiative.version,
+    previousVersion: previous.version,
+    reason: null,
+    fields,
+  });
 });
 
 router.get("/initiatives/:id", async (req, res) => {
@@ -206,6 +418,17 @@ router.patch("/initiatives/:id", async (req, res) => {
     if (data[field] !== undefined && data[field] !== existing[field]) {
       (updates as Record<string, unknown>)[field] = data[field];
       changed.push(field);
+    }
+  }
+
+  // Executive summary override: empty string clears the override (falls back
+  // to the auto-generated summary), so normalize before change detection.
+  if (data.executiveSummary !== undefined) {
+    const normalized =
+      data.executiveSummary.trim() === "" ? null : data.executiveSummary;
+    if (normalized !== existing.executiveSummary) {
+      updates.executiveSummary = normalized;
+      changed.push("executiveSummary");
     }
   }
 
@@ -321,6 +544,7 @@ router.patch("/initiatives/:id", async (req, res) => {
       version: newVersion,
       changedBy: data.updatedBy?.trim() || existing.submitterName || "System",
       summary,
+      snapshot: buildSnapshot(updated),
     });
 
     return updated;
@@ -337,6 +561,7 @@ const FIELD_LABELS: Record<string, string> = {
   executiveSponsor: "Executive Sponsor",
   category: "Category",
   status: "Status",
+  executiveSummary: "Executive Summary",
   problemStatement: "Problem Statement",
   currentProcess: "Current Process",
   desiredOutcome: "Desired Outcome",
@@ -353,6 +578,7 @@ const FIELD_LABELS: Record<string, string> = {
   estimatedRevenueOpportunity: "Revenue Opportunity",
   estimatedCostSavings: "Cost Savings",
   prototypeDay: "Prototype Day",
+  priority: "Priority",
   lastReviewedAt: "Last Reviewed",
   nextReviewAt: "Next Review",
   score: "Score",

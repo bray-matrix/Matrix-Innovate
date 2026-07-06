@@ -29,7 +29,8 @@ import type {
   InitiativeRecommendations,
   InitiativeUpdate,
   InitiativeVersion,
-  Settings
+  Settings,
+  VersionComparison
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -645,6 +646,153 @@ export function useGetInitiativeRecommendations<TData = Awaited<ReturnType<typeo
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetInitiativeRecommendationsQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getRecalculateInitiativeUrl = (id: number,) => {
+
+
+
+
+  return `/api/initiatives/${id}/recalculate`
+}
+
+/**
+ * @summary Recalculate scoring, AI readiness, and priority from stored fields
+ */
+export const recalculateInitiative = async (id: number, options?: RequestInit): Promise<Initiative> => {
+
+  return customFetch<Initiative>(getRecalculateInitiativeUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getRecalculateInitiativeMutationOptions = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recalculateInitiative>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof recalculateInitiative>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['recalculateInitiative'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof recalculateInitiative>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  recalculateInitiative(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RecalculateInitiativeMutationResult = NonNullable<Awaited<ReturnType<typeof recalculateInitiative>>>
+
+    export type RecalculateInitiativeMutationError = ErrorType<Error>
+
+    /**
+ * @summary Recalculate scoring, AI readiness, and priority from stored fields
+ */
+export const useRecalculateInitiative = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recalculateInitiative>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof recalculateInitiative>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getRecalculateInitiativeMutationOptions(options));
+    }
+
+export const getCompareInitiativeVersionsUrl = (id: number,) => {
+
+
+
+
+  return `/api/initiatives/${id}/compare`
+}
+
+/**
+ * @summary Compare the current version with the previous version
+ */
+export const compareInitiativeVersions = async (id: number, options?: RequestInit): Promise<VersionComparison> => {
+
+  return customFetch<VersionComparison>(getCompareInitiativeVersionsUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getCompareInitiativeVersionsQueryKey = (id: number,) => {
+    return [
+    `/api/initiatives/${id}/compare`
+    ] as const;
+    }
+
+
+export const getCompareInitiativeVersionsQueryOptions = <TData = Awaited<ReturnType<typeof compareInitiativeVersions>>, TError = ErrorType<Error>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof compareInitiativeVersions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getCompareInitiativeVersionsQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof compareInitiativeVersions>>> = ({ signal }) => compareInitiativeVersions(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof compareInitiativeVersions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type CompareInitiativeVersionsQueryResult = NonNullable<Awaited<ReturnType<typeof compareInitiativeVersions>>>
+export type CompareInitiativeVersionsQueryError = ErrorType<Error>
+
+
+/**
+ * @summary Compare the current version with the previous version
+ */
+
+export function useCompareInitiativeVersions<TData = Awaited<ReturnType<typeof compareInitiativeVersions>>, TError = ErrorType<Error>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof compareInitiativeVersions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getCompareInitiativeVersionsQueryOptions(id,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
