@@ -41,7 +41,7 @@ Matrix employees can: view a dashboard of pipeline metrics, submit a new AI init
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+- Show the app version number at the bottom-left of the blue sidebar menu (requested after v0.1.4; apply with the next change).
 
 ## Gotchas
 
