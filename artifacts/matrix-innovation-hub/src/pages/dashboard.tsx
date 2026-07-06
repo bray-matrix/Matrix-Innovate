@@ -1,14 +1,67 @@
+import { useMemo } from "react";
 import { useGetDashboardSummary } from "@workspace/api-client-react";
+import type { Initiative } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { type ColumnDef } from "@tanstack/react-table";
+import { DataTable } from "@/components/data-table";
 import { StatusBadge, PriorityBadge } from "@/components/badges";
 import { Lightbulb, Clock, FlaskConical, Rocket, CheckCircle2, TrendingUp, PlusCircle } from "lucide-react";
 
 export default function Dashboard() {
   const { data, isLoading } = useGetDashboardSummary();
+  const [, setLocation] = useLocation();
+
+  const recentColumns = useMemo<ColumnDef<Initiative, unknown>[]>(
+    () => [
+      {
+        id: "title",
+        accessorKey: "title",
+        header: "Title",
+        size: 280,
+        meta: { title: "Title" },
+        cell: ({ row }) => (
+          <span className="font-medium text-primary">{row.original.title}</span>
+        ),
+      },
+      {
+        id: "department",
+        accessorKey: "department",
+        header: "Department",
+        size: 160,
+        meta: { title: "Department" },
+      },
+      {
+        id: "status",
+        accessorKey: "status",
+        header: "Status",
+        size: 120,
+        meta: { title: "Status" },
+        cell: ({ row }) => <StatusBadge status={row.original.status} />,
+      },
+      {
+        id: "score",
+        accessorKey: "score",
+        header: "Score",
+        size: 100,
+        meta: { title: "Score", align: "right" },
+        cell: ({ row }) => (
+          <span className="font-mono">{row.original.score}</span>
+        ),
+      },
+      {
+        id: "priority",
+        accessorKey: "priority",
+        header: "Priority",
+        size: 110,
+        meta: { title: "Priority" },
+        cell: ({ row }) => <PriorityBadge priority={row.original.priority} />,
+      },
+    ],
+    [],
+  );
 
   if (isLoading) {
     return (
@@ -71,42 +124,15 @@ export default function Dashboard() {
           </Link>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Department</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Score</TableHead>
-                  <TableHead>Priority</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {data.recentInitiatives.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                      No initiatives found.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  data.recentInitiatives.map((init) => (
-                    <TableRow key={init.id} className="cursor-pointer hover:bg-muted/50 transition-colors">
-                      <TableCell>
-                        <Link href={`/initiatives/${init.id}`} className="font-medium hover:underline text-primary">
-                          {init.title}
-                        </Link>
-                      </TableCell>
-                      <TableCell>{init.department}</TableCell>
-                      <TableCell><StatusBadge status={init.status} /></TableCell>
-                      <TableCell>{init.score}</TableCell>
-                      <TableCell><PriorityBadge priority={init.priority} /></TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
+          <DataTable
+            columns={recentColumns}
+            data={data.recentInitiatives}
+            onRowClick={(row) => setLocation(`/initiatives/${row.id}`)}
+            searchPlaceholder="Search recent..."
+            exportFileName="recent-initiatives"
+            initialPageSize={10}
+            emptyMessage="No initiatives found."
+          />
         </CardContent>
       </Card>
     </div>

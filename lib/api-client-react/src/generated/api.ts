@@ -27,6 +27,7 @@ import type {
   Initiative,
   InitiativeInput,
   InitiativeUpdate,
+  InitiativeVersion,
   Settings
 } from './api.schemas';
 
@@ -499,6 +500,83 @@ export const useDeleteInitiative = <TError = ErrorType<Error>,
       > => {
       return useMutation(getDeleteInitiativeMutationOptions(options));
     }
+
+export const getListInitiativeVersionsUrl = (id: number,) => {
+
+
+
+
+  return `/api/initiatives/${id}/versions`
+}
+
+/**
+ * @summary List version history for an initiative
+ */
+export const listInitiativeVersions = async (id: number, options?: RequestInit): Promise<InitiativeVersion[]> => {
+
+  return customFetch<InitiativeVersion[]>(getListInitiativeVersionsUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListInitiativeVersionsQueryKey = (id: number,) => {
+    return [
+    `/api/initiatives/${id}/versions`
+    ] as const;
+    }
+
+
+export const getListInitiativeVersionsQueryOptions = <TData = Awaited<ReturnType<typeof listInitiativeVersions>>, TError = ErrorType<unknown>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listInitiativeVersions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListInitiativeVersionsQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listInitiativeVersions>>> = ({ signal }) => listInitiativeVersions(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listInitiativeVersions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListInitiativeVersionsQueryResult = NonNullable<Awaited<ReturnType<typeof listInitiativeVersions>>>
+export type ListInitiativeVersionsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List version history for an initiative
+ */
+
+export function useListInitiativeVersions<TData = Awaited<ReturnType<typeof listInitiativeVersions>>, TError = ErrorType<unknown>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listInitiativeVersions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListInitiativeVersionsQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetDashboardSummaryUrl = () => {
 

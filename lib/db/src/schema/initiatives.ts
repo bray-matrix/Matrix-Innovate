@@ -50,8 +50,26 @@ export const initiativesTable = pgTable("initiatives", {
   riskPenalty: integer("risk_penalty").notNull().default(0),
   score: integer("score").notNull().default(0),
   priority: text("priority").notNull().default("Low"),
+  version: text("version").notNull().default("v0.1.0"),
+  assignedTeam: text("assigned_team"),
+  currentPhase: text("current_phase"),
+  prototypeDay: integer("prototype_day"),
+  lastReviewedAt: timestamp("last_reviewed_at"),
+  nextReviewAt: timestamp("next_review_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// Append-only audit trail of every version an initiative has passed through.
+export const initiativeVersionsTable = pgTable("initiative_versions", {
+  id: serial("id").primaryKey(),
+  initiativeId: integer("initiative_id")
+    .notNull()
+    .references(() => initiativesTable.id, { onDelete: "cascade" }),
+  version: text("version").notNull(),
+  changedBy: text("changed_by").notNull().default("System"),
+  summary: text("summary").notNull().default(""),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
 export const insertInitiativeSchema = createInsertSchema(initiativesTable).omit({
@@ -62,3 +80,4 @@ export const insertInitiativeSchema = createInsertSchema(initiativesTable).omit(
 
 export type InsertInitiative = z.infer<typeof insertInitiativeSchema>;
 export type Initiative = typeof initiativesTable.$inferSelect;
+export type InitiativeVersion = typeof initiativeVersionsTable.$inferSelect;

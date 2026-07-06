@@ -28,4 +28,7 @@ export interface InitiativeInput {
   complianceRisk?: string;
   technicalComplexity?: string;
   aiReadiness?: string;
+  assignedTeam?: string;
+  currentPhase?: string;
+  prototypeDay?: number;
 }

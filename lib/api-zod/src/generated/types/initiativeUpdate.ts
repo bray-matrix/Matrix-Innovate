@@ -36,4 +36,13 @@ export interface InitiativeUpdate {
   prototypeConfidence?: number;
   technicalComplexityPenalty?: number;
   riskPenalty?: number;
+  assignedTeam?: string;
+  currentPhase?: string;
+  prototypeDay?: number;
+  /** @nullable */
+  lastReviewedAt?: string | null;
+  /** @nullable */
+  nextReviewAt?: string | null;
+  updatedBy?: string;
+  changeSummary?: string;
 }

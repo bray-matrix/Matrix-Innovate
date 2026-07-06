@@ -135,6 +135,26 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /initiatives/{id}/versions:
+    get:
+      operationId: listInitiativeVersions
+      tags: [initiatives]
+      summary: List version history for an initiative
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Version history entries, newest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/InitiativeVersion"
   /dashboard/summary:
     get:
       operationId: getDashboardSummary
@@ -222,6 +242,12 @@ components:
         - riskPenalty
         - score
         - priority
+        - version
+        - assignedTeam
+        - currentPhase
+        - prototypeDay
+        - lastReviewedAt
+        - nextReviewAt
         - createdAt
         - updatedAt
       properties:
@@ -289,6 +315,18 @@ components:
           type: integer
         priority:
           type: string
+        version:
+          type: string
+        assignedTeam:
+          type: ["string", "null"]
+        currentPhase:
+          type: ["string", "null"]
+        prototypeDay:
+          type: ["integer", "null"]
+        lastReviewedAt:
+          type: ["string", "null"]
+        nextReviewAt:
+          type: ["string", "null"]
         createdAt:
           type: string
         updatedAt:
@@ -348,6 +386,12 @@ components:
           type: string
         aiReadiness:
           type: string
+        assignedTeam:
+          type: string
+        currentPhase:
+          type: string
+        prototypeDay:
+          type: integer
     InitiativeUpdate:
       type: object
       properties:
@@ -409,6 +453,42 @@ components:
           type: integer
         riskPenalty:
           type: integer
+        assignedTeam:
+          type: string
+        currentPhase:
+          type: string
+        prototypeDay:
+          type: integer
+        lastReviewedAt:
+          type: ["string", "null"]
+        nextReviewAt:
+          type: ["string", "null"]
+        updatedBy:
+          type: string
+        changeSummary:
+          type: string
+    InitiativeVersion:
+      type: object
+      required:
+        - id
+        - initiativeId
+        - version
+        - changedBy
+        - summary
+        - createdAt
+      properties:
+        id:
+          type: integer
+        initiativeId:
+          type: integer
+        version:
+          type: string
+        changedBy:
+          type: string
+        summary:
+          type: string
+        createdAt:
+          type: string
     DashboardSummary:
       type: object
       required:

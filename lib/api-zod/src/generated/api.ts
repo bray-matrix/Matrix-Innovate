@@ -53,6 +53,12 @@ export const ListInitiativesResponseItem = zod.object({
   "riskPenalty": zod.number(),
   "score": zod.number(),
   "priority": zod.string(),
+  "version": zod.string(),
+  "assignedTeam": zod.string().nullable(),
+  "currentPhase": zod.string().nullable(),
+  "prototypeDay": zod.number().nullable(),
+  "lastReviewedAt": zod.string().nullable(),
+  "nextReviewAt": zod.string().nullable(),
   "createdAt": zod.string(),
   "updatedAt": zod.string()
 })
@@ -85,7 +91,10 @@ export const CreateInitiativeBody = zod.object({
   "customerImpact": zod.string().optional(),
   "complianceRisk": zod.string().optional(),
   "technicalComplexity": zod.string().optional(),
-  "aiReadiness": zod.string().optional()
+  "aiReadiness": zod.string().optional(),
+  "assignedTeam": zod.string().optional(),
+  "currentPhase": zod.string().optional(),
+  "prototypeDay": zod.number().optional()
 })
 
 export const CreateInitiativeResponse = zod.object({
@@ -121,6 +130,12 @@ export const CreateInitiativeResponse = zod.object({
   "riskPenalty": zod.number(),
   "score": zod.number(),
   "priority": zod.string(),
+  "version": zod.string(),
+  "assignedTeam": zod.string().nullable(),
+  "currentPhase": zod.string().nullable(),
+  "prototypeDay": zod.number().nullable(),
+  "lastReviewedAt": zod.string().nullable(),
+  "nextReviewAt": zod.string().nullable(),
   "createdAt": zod.string(),
   "updatedAt": zod.string()
 })
@@ -166,6 +181,12 @@ export const GetInitiativeResponse = zod.object({
   "riskPenalty": zod.number(),
   "score": zod.number(),
   "priority": zod.string(),
+  "version": zod.string(),
+  "assignedTeam": zod.string().nullable(),
+  "currentPhase": zod.string().nullable(),
+  "prototypeDay": zod.number().nullable(),
+  "lastReviewedAt": zod.string().nullable(),
+  "nextReviewAt": zod.string().nullable(),
   "createdAt": zod.string(),
   "updatedAt": zod.string()
 })
@@ -207,7 +228,14 @@ export const UpdateInitiativeBody = zod.object({
   "aiReadinessScore": zod.number().optional(),
   "prototypeConfidence": zod.number().optional(),
   "technicalComplexityPenalty": zod.number().optional(),
-  "riskPenalty": zod.number().optional()
+  "riskPenalty": zod.number().optional(),
+  "assignedTeam": zod.string().optional(),
+  "currentPhase": zod.string().optional(),
+  "prototypeDay": zod.number().optional(),
+  "lastReviewedAt": zod.string().nullish(),
+  "nextReviewAt": zod.string().nullish(),
+  "updatedBy": zod.string().optional(),
+  "changeSummary": zod.string().optional()
 })
 
 export const UpdateInitiativeResponse = zod.object({
@@ -243,6 +271,12 @@ export const UpdateInitiativeResponse = zod.object({
   "riskPenalty": zod.number(),
   "score": zod.number(),
   "priority": zod.string(),
+  "version": zod.string(),
+  "assignedTeam": zod.string().nullable(),
+  "currentPhase": zod.string().nullable(),
+  "prototypeDay": zod.number().nullable(),
+  "lastReviewedAt": zod.string().nullable(),
+  "nextReviewAt": zod.string().nullable(),
   "createdAt": zod.string(),
   "updatedAt": zod.string()
 })
@@ -256,6 +290,24 @@ export const DeleteInitiativeParams = zod.object({
 })
 
 export const DeleteInitiativeResponse = zod.void()
+
+
+/**
+ * @summary List version history for an initiative
+ */
+export const ListInitiativeVersionsParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const ListInitiativeVersionsResponseItem = zod.object({
+  "id": zod.number(),
+  "initiativeId": zod.number(),
+  "version": zod.string(),
+  "changedBy": zod.string(),
+  "summary": zod.string(),
+  "createdAt": zod.string()
+})
+export const ListInitiativeVersionsResponse = zod.array(ListInitiativeVersionsResponseItem)
 
 
 /**
@@ -305,6 +357,12 @@ export const GetDashboardSummaryResponse = zod.object({
   "riskPenalty": zod.number(),
   "score": zod.number(),
   "priority": zod.string(),
+  "version": zod.string(),
+  "assignedTeam": zod.string().nullable(),
+  "currentPhase": zod.string().nullable(),
+  "prototypeDay": zod.number().nullable(),
+  "lastReviewedAt": zod.string().nullable(),
+  "nextReviewAt": zod.string().nullable(),
   "createdAt": zod.string(),
   "updatedAt": zod.string()
 }))

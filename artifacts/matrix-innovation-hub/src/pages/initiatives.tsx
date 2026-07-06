@@ -1,20 +1,203 @@
-import { useState } from "react";
-import { useListInitiatives, useGetSettings } from "@workspace/api-client-react";
-import { Link } from "wouter";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useMemo } from "react";
+import { useListInitiatives } from "@workspace/api-client-react";
+import type { Initiative } from "@workspace/api-client-react";
+import { useLocation } from "wouter";
+import { type ColumnDef } from "@tanstack/react-table";
+import { DataTable } from "@/components/data-table";
 import { StatusBadge, PriorityBadge } from "@/components/badges";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search } from "lucide-react";
+import { format } from "date-fns";
+
+function formatDate(value: string | null | undefined): string {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "—";
+  return format(d, "MMM d, yyyy");
+}
+
+const PROTOTYPE_SPRINT_DAYS = 14;
+
+function prototypeDayLabel(day: number | null | undefined): string {
+  if (day === null || day === undefined) return "—";
+  return `Day ${day} of ${PROTOTYPE_SPRINT_DAYS}`;
+}
 
 export default function InitiativeList() {
   const { data: initiatives, isLoading } = useListInitiatives();
-  const { data: settings } = useGetSettings();
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [deptFilter, setDeptFilter] = useState("all");
+  const [, setLocation] = useLocation();
+
+  const columns = useMemo<ColumnDef<Initiative, unknown>[]>(
+    () => [
+      {
+        id: "id",
+        accessorKey: "id",
+        header: "ID",
+        size: 90,
+        meta: { title: "Initiative ID" },
+        cell: ({ row }) => (
+          <span className="font-mono text-xs text-muted-foreground">
+            INI-{String(row.original.id).padStart(4, "0")}
+          </span>
+        ),
+      },
+      {
+        id: "title",
+        accessorKey: "title",
+        header: "Title",
+        size: 260,
+        meta: { title: "Title" },
+        cell: ({ row }) => (
+          <span className="font-medium text-primary">{row.original.title}</span>
+        ),
+      },
+      {
+        id: "version",
+        accessorKey: "version",
+        header: "Version",
+        size: 100,
+        meta: { title: "Version" },
+        cell: ({ row }) => (
+          <span className="font-mono text-xs">{row.original.version}</span>
+        ),
+      },
+      {
+        id: "status",
+        accessorKey: "status",
+        header: "Status",
+        size: 120,
+        meta: { title: "Status" },
+        cell: ({ row }) => <StatusBadge status={row.original.status} />,
+      },
+      {
+        id: "priority",
+        accessorKey: "priority",
+        header: "Priority",
+        size: 110,
+        meta: { title: "Priority" },
+        cell: ({ row }) => <PriorityBadge priority={row.original.priority} />,
+      },
+      {
+        id: "score",
+        accessorKey: "score",
+        header: "Innovation Score",
+        size: 130,
+        meta: { title: "Innovation Score", align: "right" },
+        cell: ({ row }) => (
+          <span className="font-mono">{row.original.score}</span>
+        ),
+      },
+      {
+        id: "aiReadiness",
+        accessorKey: "aiReadiness",
+        header: "AI Readiness",
+        size: 130,
+        meta: { title: "AI Readiness" },
+        cell: ({ row }) => row.original.aiReadiness || "—",
+      },
+      {
+        id: "department",
+        accessorKey: "department",
+        header: "Department",
+        size: 150,
+        meta: { title: "Department" },
+      },
+      {
+        id: "category",
+        accessorKey: "category",
+        header: "Category",
+        size: 150,
+        meta: { title: "Category" },
+      },
+      {
+        id: "businessOwner",
+        accessorKey: "businessOwner",
+        header: "Business Owner",
+        size: 160,
+        meta: { title: "Business Owner" },
+        cell: ({ row }) => row.original.businessOwner || "—",
+      },
+      {
+        id: "executiveSponsor",
+        accessorKey: "executiveSponsor",
+        header: "Executive Sponsor",
+        size: 170,
+        meta: { title: "Executive Sponsor" },
+        cell: ({ row }) => row.original.executiveSponsor || "—",
+      },
+      {
+        id: "assignedTeam",
+        accessorKey: "assignedTeam",
+        header: "Assigned Team",
+        size: 150,
+        meta: { title: "Assigned Team" },
+        cell: ({ row }) => row.original.assignedTeam || "—",
+      },
+      {
+        id: "currentPhase",
+        accessorKey: "currentPhase",
+        header: "Current Phase",
+        size: 140,
+        meta: { title: "Current Phase" },
+        cell: ({ row }) => row.original.currentPhase || "—",
+      },
+      {
+        id: "prototypeDay",
+        accessorKey: "prototypeDay",
+        header: "Prototype Day",
+        size: 140,
+        meta: {
+          title: "Prototype Day",
+          exportValue: (row) => prototypeDayLabel(row.prototypeDay),
+        },
+        cell: ({ row }) => prototypeDayLabel(row.original.prototypeDay),
+      },
+      {
+        id: "createdAt",
+        accessorKey: "createdAt",
+        header: "Created Date",
+        size: 130,
+        meta: {
+          title: "Created Date",
+          exportValue: (row) => formatDate(row.createdAt),
+        },
+        cell: ({ row }) => formatDate(row.original.createdAt),
+      },
+      {
+        id: "updatedAt",
+        accessorKey: "updatedAt",
+        header: "Last Updated",
+        size: 130,
+        meta: {
+          title: "Last Updated",
+          exportValue: (row) => formatDate(row.updatedAt),
+        },
+        cell: ({ row }) => formatDate(row.original.updatedAt),
+      },
+      {
+        id: "lastReviewedAt",
+        accessorKey: "lastReviewedAt",
+        header: "Last Reviewed",
+        size: 130,
+        meta: {
+          title: "Last Reviewed",
+          exportValue: (row) => formatDate(row.lastReviewedAt),
+        },
+        cell: ({ row }) => formatDate(row.original.lastReviewedAt),
+      },
+      {
+        id: "nextReviewAt",
+        accessorKey: "nextReviewAt",
+        header: "Next Review Date",
+        size: 140,
+        meta: {
+          title: "Next Review Date",
+          exportValue: (row) => formatDate(row.nextReviewAt),
+        },
+        cell: ({ row }) => formatDate(row.original.nextReviewAt),
+      },
+    ],
+    [],
+  );
 
   if (isLoading) {
     return (
@@ -25,101 +208,32 @@ export default function InitiativeList() {
     );
   }
 
-  const filteredInitiatives = initiatives?.filter(init => {
-    const matchesSearch = init.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          init.submitterName.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === "all" || init.status === statusFilter;
-    const matchesDept = deptFilter === "all" || init.department === deptFilter;
-    return matchesSearch && matchesStatus && matchesDept;
-  }) || [];
-
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold tracking-tight">Initiatives</h2>
-        <p className="text-muted-foreground">Manage and track all innovation initiatives.</p>
+        <p className="text-muted-foreground">
+          Manage and track all innovation initiatives.
+        </p>
       </div>
 
-      <Card>
-        <CardHeader className="flex flex-col sm:flex-row gap-4 justify-between space-y-0 pb-4">
-          <CardTitle className="text-lg">All Initiatives</CardTitle>
-          <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
-            <div className="relative w-full sm:w-64">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search..."
-                className="pl-9"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            
-            {settings && (
-              <>
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-full sm:w-40">
-                    <SelectValue placeholder="Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Statuses</SelectItem>
-                    {settings.statuses.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                
-                <Select value={deptFilter} onValueChange={setDeptFilter}>
-                  <SelectTrigger className="w-full sm:w-40">
-                    <SelectValue placeholder="Department" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Departments</SelectItem>
-                    {settings.departments.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="rounded-md border overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Department</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Score</TableHead>
-                  <TableHead>Priority</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredInitiatives.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                      No initiatives found matching filters.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredInitiatives.map(init => (
-                    <TableRow key={init.id} className="cursor-pointer hover:bg-muted/50">
-                      <TableCell className="font-medium max-w-xs truncate">
-                        <Link href={`/initiatives/${init.id}`} className="hover:underline text-primary">
-                          {init.title}
-                        </Link>
-                      </TableCell>
-                      <TableCell>{init.department}</TableCell>
-                      <TableCell className="text-muted-foreground">{init.category}</TableCell>
-                      <TableCell><StatusBadge status={init.status} /></TableCell>
-                      <TableCell className="font-mono">{init.score}</TableCell>
-                      <TableCell><PriorityBadge priority={init.priority} /></TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
+      <DataTable
+        columns={columns}
+        data={initiatives ?? []}
+        onRowClick={(row) => setLocation(`/initiatives/${row.id}`)}
+        searchPlaceholder="Search initiatives..."
+        exportFileName="initiatives"
+        initialPageSize={25}
+        emptyMessage="No initiatives found."
+        initialColumnVisibility={{
+          businessOwner: false,
+          executiveSponsor: false,
+          assignedTeam: false,
+          currentPhase: false,
+          lastReviewedAt: false,
+          nextReviewAt: false,
+        }}
+      />
     </div>
   );
 }

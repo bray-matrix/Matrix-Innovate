@@ -13,6 +13,7 @@ export * from './healthStatus';
 export * from './initiative';
 export * from './initiativeInput';
 export * from './initiativeUpdate';
+export * from './initiativeVersion';
 export * from './scoringWeight';
 export * from './settings';
 export * from './statusCount';

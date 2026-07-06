@@ -41,6 +41,17 @@ export interface Initiative {
   riskPenalty: number;
   score: number;
   priority: string;
+  version: string;
+  /** @nullable */
+  assignedTeam: string | null;
+  /** @nullable */
+  currentPhase: string | null;
+  /** @nullable */
+  prototypeDay: number | null;
+  /** @nullable */
+  lastReviewedAt: string | null;
+  /** @nullable */
+  nextReviewAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
