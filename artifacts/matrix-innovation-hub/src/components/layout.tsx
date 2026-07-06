@@ -2,6 +2,7 @@ import { Link, useLocation } from "wouter";
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuItem,
@@ -9,10 +10,12 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
+import { useGetSettings } from "@workspace/api-client-react";
 import { LayoutDashboard, PlusCircle, List, KanbanSquare, FileText, Settings, Rocket, Sparkles } from "lucide-react";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
+  const { data: settings } = useGetSettings();
 
   const navItems = [
     { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -48,6 +51,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               ))}
             </SidebarMenu>
           </SidebarContent>
+          <SidebarFooter className="border-t px-4 py-3">
+            <div className="text-xs text-sidebar-foreground/70">
+              <div className="font-medium">Matrix Innovation Hub</div>
+              <div className="font-mono mt-0.5">
+                {settings?.applicationVersion ?? ""}
+              </div>
+            </div>
+          </SidebarFooter>
         </Sidebar>
 
         <main className="flex-1 flex flex-col min-w-0">
