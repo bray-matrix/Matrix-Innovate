@@ -41,7 +41,7 @@ const SETTINGS = {
     { name: "Technical Complexity Penalty", weight: -10 },
     { name: "Risk Penalty", weight: -10 },
   ],
-  applicationVersion: "v0.1.1",
+  applicationVersion: "v0.1.3",
 };
 
 router.get("/settings", (_req, res) => {

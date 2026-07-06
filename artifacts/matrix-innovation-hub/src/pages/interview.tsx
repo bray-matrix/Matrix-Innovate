@@ -9,14 +9,17 @@ import {
   getGetDashboardSummaryQueryKey,
 } from "@workspace/api-client-react";
 import {
-  AIInterviewService,
-  INTERVIEW_QUESTIONS,
   computeScore,
   derivePriority,
   type InterviewDraft,
+  type InterviewQuestion,
   type ScoringComponents,
   type InitiativeDraftFields,
 } from "@/services/aiInterviewService";
+import {
+  interviewEngine,
+  type CategoryDetection,
+} from "@/services/interviewEngine";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,10 +44,10 @@ import {
   Loader2,
   Send,
   CheckCircle2,
-  Calculator,
+  Tag,
 } from "lucide-react";
 
-const DRAFT_KEY = "matrix-interview-draft-v1";
+const DRAFT_KEY = "matrix-interview-draft-v2";
 
 interface ChatMessage {
   role: "ai" | "user";
@@ -53,7 +56,18 @@ interface ChatMessage {
 
 type Phase = "chat" | "processing" | "review";
 
+type AnswerMap = Record<string, string>;
+
 const LEVELS = ["Low", "Medium", "High"] as const;
+
+function buildAnswerMap(
+  plan: InterviewQuestion[],
+  byId: AnswerMap,
+): AnswerMap {
+  const map: AnswerMap = {};
+  for (const q of plan) map[q.id] = byId[q.id] ?? "";
+  return map;
+}
 
 export default function AIInnovationInterview() {
   const [, setLocation] = useLocation();
@@ -65,13 +79,16 @@ export default function AIInnovationInterview() {
 
   const [phase, setPhase] = useState<Phase>("chat");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [answers, setAnswers] = useState<string[]>(
-    Array(INTERVIEW_QUESTIONS.length).fill(""),
+  // Answers keyed by question id so the plan can grow/change adaptively.
+  const [answers, setAnswers] = useState<AnswerMap>({});
+  const [plan, setPlan] = useState<InterviewQuestion[]>(() =>
+    interviewEngine.planQuestions({}),
   );
   const [currentIndex, setCurrentIndex] = useState(0);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [draft, setDraft] = useState<InterviewDraft | null>(null);
+  const [detection, setDetection] = useState<CategoryDetection | null>(null);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const startedRef = useRef(false);
@@ -99,31 +116,36 @@ export default function AIInnovationInterview() {
       const saved = localStorage.getItem(DRAFT_KEY);
       if (saved) {
         const parsed = JSON.parse(saved) as {
-          answers?: string[];
+          answers?: AnswerMap;
           currentIndex?: number;
         };
-        if (parsed.answers && Array.isArray(parsed.answers)) {
+        if (parsed.answers && typeof parsed.answers === "object") {
           resumed = true;
-          const savedAnswers = INTERVIEW_QUESTIONS.map(
-            (_, i) => parsed.answers?.[i] ?? "",
-          );
+          const savedAnswers = parsed.answers;
+          const resumedPlan = interviewEngine.planQuestions(savedAnswers);
           const idx = Math.min(
-            parsed.currentIndex ?? 0,
-            INTERVIEW_QUESTIONS.length - 1,
+            Math.max(0, parsed.currentIndex ?? 0),
+            resumedPlan.length - 1,
           );
           setAnswers(savedAnswers);
+          setPlan(resumedPlan);
           setCurrentIndex(idx);
+          if ((savedAnswers.idea ?? "").trim().length > 0) {
+            setDetection(interviewEngine.classify(savedAnswers));
+          }
+
           const restored: ChatMessage[] = [
-            { role: "ai", text: AIInterviewService.getIntro() },
+            { role: "ai", text: interviewEngine.getIntro() },
           ];
           for (let i = 0; i < idx; i++) {
-            restored.push({ role: "ai", text: INTERVIEW_QUESTIONS[i].prompt });
-            if (savedAnswers[i])
-              restored.push({ role: "user", text: savedAnswers[i] });
+            const q = resumedPlan[i];
+            restored.push({ role: "ai", text: q.prompt });
+            const ans = savedAnswers[q.id];
+            if (ans) restored.push({ role: "user", text: ans });
           }
-          restored.push({ role: "ai", text: INTERVIEW_QUESTIONS[idx].prompt });
+          restored.push({ role: "ai", text: resumedPlan[idx].prompt });
           setMessages(restored);
-          setInput(savedAnswers[idx] ?? "");
+          setInput(savedAnswers[resumedPlan[idx].id] ?? "");
           toast({
             title: "Draft resumed",
             description: "We picked up where you left off.",
@@ -135,25 +157,24 @@ export default function AIInnovationInterview() {
     }
 
     if (!resumed) {
-      setMessages([{ role: "ai", text: AIInterviewService.getIntro() }]);
+      setMessages([{ role: "ai", text: interviewEngine.getIntro() }]);
       setIsTyping(true);
       const t = setTimeout(() => {
-        setMessages((prev) => [
-          ...prev,
-          { role: "ai", text: INTERVIEW_QUESTIONS[0].prompt },
-        ]);
+        setMessages((prev) => [...prev, { role: "ai", text: plan[0].prompt }]);
         setIsTyping(false);
       }, 900);
       return () => clearTimeout(t);
     }
     return undefined;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [toast]);
 
-  const totalQuestions = INTERVIEW_QUESTIONS.length;
+  const totalQuestions = plan.length;
   const isLastQuestion = currentIndex === totalQuestions - 1;
-  const canSubmitAnswer = input.trim().length > 0 || currentIndex === totalQuestions - 1;
+  const currentQuestion = plan[currentIndex];
+  const canSubmitAnswer = input.trim().length > 0 || isLastQuestion;
 
-  const persistDraft = (nextAnswers: string[], nextIndex: number) => {
+  const persistDraft = (nextAnswers: AnswerMap, nextIndex: number) => {
     try {
       localStorage.setItem(
         DRAFT_KEY,
@@ -167,11 +188,9 @@ export default function AIInnovationInterview() {
   const handleNext = async () => {
     if (isTyping) return;
     const trimmed = input.trim();
-    // The final "anything else" question is optional.
     if (!trimmed && !isLastQuestion) return;
 
-    const nextAnswers = [...answers];
-    nextAnswers[currentIndex] = trimmed;
+    const nextAnswers: AnswerMap = { ...answers, [currentQuestion.id]: trimmed };
     setAnswers(nextAnswers);
 
     setMessages((prev) => [
@@ -180,54 +199,67 @@ export default function AIInnovationInterview() {
     ]);
     setInput("");
 
-    if (isLastQuestion) {
+    // Re-plan and re-classify: the detected category (and therefore the
+    // follow-up questions) can change as new answers come in.
+    const newDetection = interviewEngine.classify(nextAnswers);
+    setDetection(newDetection);
+    const newPlan = interviewEngine.planQuestions(nextAnswers);
+    setPlan(newPlan);
+
+    const nextIndex = currentIndex + 1;
+    if (nextIndex >= newPlan.length) {
       persistDraft(nextAnswers, currentIndex);
-      await runProcessing(nextAnswers);
+      await runProcessing(nextAnswers, newPlan);
       return;
     }
 
-    const nextIndex = currentIndex + 1;
     persistDraft(nextAnswers, nextIndex);
     setIsTyping(true);
 
-    const ack = await AIInterviewService.respond(currentIndex);
+    const ack = await interviewEngine.acknowledge(currentIndex);
     setMessages((prev) => [...prev, { role: "ai", text: ack }]);
     await new Promise((r) => setTimeout(r, 450));
-    setMessages((prev) => [
-      ...prev,
-      { role: "ai", text: INTERVIEW_QUESTIONS[nextIndex].prompt },
-    ]);
+    const nextQuestion = newPlan[nextIndex];
+    setMessages((prev) => [...prev, { role: "ai", text: nextQuestion.prompt }]);
     setIsTyping(false);
     setCurrentIndex(nextIndex);
-    setInput(nextAnswers[nextIndex] ?? "");
+    setInput(nextAnswers[nextQuestion.id] ?? "");
   };
 
   const handleBack = () => {
     if (isTyping || currentIndex === 0) return;
-    // Save whatever is currently typed for this question, then step back.
-    const nextAnswers = [...answers];
-    nextAnswers[currentIndex] = input.trim();
+    const nextAnswers: AnswerMap = {
+      ...answers,
+      [currentQuestion.id]: input.trim(),
+    };
     setAnswers(nextAnswers);
 
-    const prevIndex = currentIndex - 1;
-    // Rebuild the transcript up to and including the previous question.
+    const rebuiltPlan = interviewEngine.planQuestions(nextAnswers);
+    setPlan(rebuiltPlan);
+    setDetection(interviewEngine.classify(nextAnswers));
+
+    const prevIndex = Math.min(currentIndex - 1, rebuiltPlan.length - 1);
     const rebuilt: ChatMessage[] = [
-      { role: "ai", text: AIInterviewService.getIntro() },
+      { role: "ai", text: interviewEngine.getIntro() },
     ];
     for (let i = 0; i < prevIndex; i++) {
-      rebuilt.push({ role: "ai", text: INTERVIEW_QUESTIONS[i].prompt });
-      if (nextAnswers[i]) rebuilt.push({ role: "user", text: nextAnswers[i] });
+      const q = rebuiltPlan[i];
+      rebuilt.push({ role: "ai", text: q.prompt });
+      const ans = nextAnswers[q.id];
+      if (ans) rebuilt.push({ role: "user", text: ans });
     }
-    rebuilt.push({ role: "ai", text: INTERVIEW_QUESTIONS[prevIndex].prompt });
+    rebuilt.push({ role: "ai", text: rebuiltPlan[prevIndex].prompt });
     setMessages(rebuilt);
     setCurrentIndex(prevIndex);
-    setInput(nextAnswers[prevIndex] ?? "");
+    setInput(nextAnswers[rebuiltPlan[prevIndex].id] ?? "");
     persistDraft(nextAnswers, prevIndex);
   };
 
   const handleSaveDraft = () => {
-    const nextAnswers = [...answers];
-    nextAnswers[currentIndex] = input.trim();
+    const nextAnswers: AnswerMap = {
+      ...answers,
+      [currentQuestion.id]: input.trim(),
+    };
     setAnswers(nextAnswers);
     persistDraft(nextAnswers, currentIndex);
     toast({
@@ -236,24 +268,28 @@ export default function AIInnovationInterview() {
     });
   };
 
-  const runProcessing = async (finalAnswers: string[]) => {
+  const runProcessing = async (
+    finalAnswers: AnswerMap,
+    finalPlan: InterviewQuestion[],
+  ) => {
     setPhase("processing");
-    const answerMap: Record<string, string> = {};
-    INTERVIEW_QUESTIONS.forEach((q, i) => {
-      answerMap[q.id] = finalAnswers[i] ?? "";
-    });
-    const result = await AIInterviewService.generateDraft(answerMap);
+    const answerMap = buildAnswerMap(finalPlan, finalAnswers);
+    const result = await interviewEngine.generateDraft(answerMap, finalPlan);
     setDraft(result);
     setPhase("review");
   };
 
   const handleFinish = async () => {
     if (isTyping) return;
-    const nextAnswers = [...answers];
-    nextAnswers[currentIndex] = input.trim();
+    const nextAnswers: AnswerMap = {
+      ...answers,
+      [currentQuestion.id]: input.trim(),
+    };
     setAnswers(nextAnswers);
+    const finalPlan = interviewEngine.planQuestions(nextAnswers);
+    setPlan(finalPlan);
     persistDraft(nextAnswers, currentIndex);
-    await runProcessing(nextAnswers);
+    await runProcessing(nextAnswers, finalPlan);
   };
 
   const resumeInterview = () => {
@@ -297,7 +333,6 @@ export default function AIInnovationInterview() {
                       setLocation(`/initiatives/${created.id}`);
                     },
                     onError: () => {
-                      // Initiative exists but scoring failed — still navigate.
                       queryClient.invalidateQueries({
                         queryKey: getListInitiativesQueryKey(),
                       });
@@ -348,8 +383,7 @@ export default function AIInnovationInterview() {
   }
 
   // -------- Chat interview --------
-  const answeredCount = messages.filter((m) => m.role === "user").length;
-  const progressValue = ((currentIndex + (isLastQuestion ? 0 : 0)) / totalQuestions) * 100;
+  const progressValue = (currentIndex / totalQuestions) * 100;
 
   return (
     <div className="max-w-3xl mx-auto flex flex-col h-[calc(100dvh-8rem)]">
@@ -360,16 +394,24 @@ export default function AIInnovationInterview() {
             AI Innovation Interview
           </h2>
           <p className="text-muted-foreground text-sm">
-            A guided conversation that turns your idea into a scored initiative.
+            A guided conversation that adapts to your idea and turns it into a
+            scored initiative.
           </p>
         </div>
         <div className="text-right min-w-[9rem]">
           <div className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">
-            Question {Math.min(currentIndex + 1, totalQuestions)} of {totalQuestions}
+            Question {Math.min(currentIndex + 1, totalQuestions)} of{" "}
+            {totalQuestions}
           </div>
           <Progress value={progressValue} className="h-2 mt-2 w-36" />
         </div>
       </div>
+
+      {detection && (
+        <div className="mb-4 shrink-0">
+          <DetectedTypeBadge label={detection.label} />
+        </div>
+      )}
 
       <Card className="flex-1 flex flex-col overflow-hidden">
         <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4">
@@ -380,9 +422,9 @@ export default function AIInnovationInterview() {
         </div>
 
         <div className="border-t bg-muted/20 p-4 space-y-3 shrink-0">
-          {!isLastQuestion && (
+          {!isLastQuestion && currentQuestion?.hint && (
             <p className="text-xs text-muted-foreground px-1">
-              {INTERVIEW_QUESTIONS[currentIndex]?.hint}
+              {currentQuestion.hint}
             </p>
           )}
           <Textarea
@@ -395,7 +437,7 @@ export default function AIInnovationInterview() {
                 else handleNext();
               }
             }}
-            placeholder={INTERVIEW_QUESTIONS[currentIndex]?.placeholder}
+            placeholder={currentQuestion?.placeholder}
             className="min-h-[80px] resize-none bg-background"
             disabled={isTyping}
           />
@@ -442,6 +484,22 @@ export default function AIInnovationInterview() {
           </div>
         </div>
       </Card>
+    </div>
+  );
+}
+
+function DetectedTypeBadge({ label }: { label: string }) {
+  return (
+    <div className="inline-flex items-center gap-3 rounded-lg border bg-card px-4 py-2 shadow-sm">
+      <div className="h-9 w-9 rounded-md bg-secondary/15 flex items-center justify-center">
+        <Tag className="h-5 w-5 text-secondary" />
+      </div>
+      <div>
+        <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          Detected Initiative Type
+        </div>
+        <div className="text-sm font-bold text-primary">{label}</div>
+      </div>
     </div>
   );
 }
@@ -568,6 +626,8 @@ function ReviewDraft({
           <ArrowLeft className="mr-2 h-4 w-4" /> Back to Interview
         </Button>
       </div>
+
+      <DetectedTypeBadge label={draft.detectedCategoryLabel} />
 
       <Card className="bg-primary text-primary-foreground border-primary">
         <CardHeader className="pb-2">
@@ -752,64 +812,133 @@ function ReviewDraft({
               </div>
             </CardContent>
           </Card>
+        </div>
+
+        <div className="space-y-6">
+          <Card className="sticky top-4">
+            <CardHeader>
+              <CardTitle className="text-lg">Innovation Score</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="text-center">
+                <div className="text-5xl font-mono font-bold">{liveScore}</div>
+                <div
+                  className={`mt-2 inline-block px-3 py-1 rounded-full text-xs font-semibold ${
+                    livePriority === "Critical"
+                      ? "bg-destructive text-destructive-foreground"
+                      : livePriority === "High"
+                        ? "bg-secondary text-secondary-foreground"
+                        : livePriority === "Medium"
+                          ? "bg-accent text-accent-foreground"
+                          : "bg-muted text-muted-foreground"
+                  }`}
+                >
+                  {livePriority} priority
+                </div>
+              </div>
+
+              <div className="space-y-3 pt-2">
+                {positiveFields.map((f) => (
+                  <div key={f.key} className="space-y-1">
+                    <div className="flex items-center justify-between text-xs">
+                      <Label className="text-xs">{f.label}</Label>
+                      <span className="text-muted-foreground">
+                        max {f.max}
+                      </span>
+                    </div>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={f.max}
+                      value={scoring[f.key]}
+                      onChange={(e) => setScore(f.key, e.target.value)}
+                      className="h-8"
+                    />
+                  </div>
+                ))}
+                <div className="space-y-1">
+                  <Label className="text-xs">
+                    Technical Complexity Penalty
+                  </Label>
+                  <Input
+                    type="number"
+                    min={-10}
+                    max={0}
+                    value={scoring.technicalComplexityPenalty}
+                    onChange={(e) =>
+                      setScore("technicalComplexityPenalty", e.target.value)
+                    }
+                    className="h-8"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Risk Penalty</Label>
+                  <Input
+                    type="number"
+                    min={-10}
+                    max={0}
+                    value={scoring.riskPenalty}
+                    onChange={(e) => setScore("riskPenalty", e.target.value)}
+                    className="h-8"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Value Estimate & Risk</CardTitle>
+              <CardTitle className="text-lg">Impact & Readiness</CardTitle>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label>Hours Saved / Month</Label>
-                <Input
-                  type="number"
-                  value={fields.estimatedHoursSavedMonthly}
-                  onChange={(e) =>
-                    setField(
-                      "estimatedHoursSavedMonthly",
-                      parseInt(e.target.value, 10) || 0,
-                    )
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Revenue Opportunity ($)</Label>
-                <Input
-                  type="number"
-                  value={fields.estimatedRevenueOpportunity}
-                  onChange={(e) =>
-                    setField(
-                      "estimatedRevenueOpportunity",
-                      parseInt(e.target.value, 10) || 0,
-                    )
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Cost Savings ($)</Label>
-                <Input
-                  type="number"
-                  value={fields.estimatedCostSavings}
-                  onChange={(e) =>
-                    setField(
-                      "estimatedCostSavings",
-                      parseInt(e.target.value, 10) || 0,
-                    )
-                  }
-                />
-              </div>
-              {(
-                [
-                  ["customerImpact", "Customer Impact"],
-                  ["complianceRisk", "Compliance Risk"],
-                  ["technicalComplexity", "Technical Complexity"],
-                  ["aiReadiness", "AI Readiness"],
-                ] as const
-              ).map(([key, label]) => (
-                <div className="space-y-2" key={key}>
-                  <Label>{label}</Label>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label className="text-xs">Hours Saved / mo</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={fields.estimatedHoursSavedMonthly}
+                    onChange={(e) =>
+                      setField(
+                        "estimatedHoursSavedMonthly",
+                        Number(e.target.value) || 0,
+                      )
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs">Revenue Opp. ($)</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={fields.estimatedRevenueOpportunity}
+                    onChange={(e) =>
+                      setField(
+                        "estimatedRevenueOpportunity",
+                        Number(e.target.value) || 0,
+                      )
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs">Cost Savings ($)</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={fields.estimatedCostSavings}
+                    onChange={(e) =>
+                      setField(
+                        "estimatedCostSavings",
+                        Number(e.target.value) || 0,
+                      )
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs">Customer Impact</Label>
                   <Select
-                    value={fields[key]}
-                    onValueChange={(v) => setField(key, v)}
+                    value={fields.customerImpact}
+                    onValueChange={(v) => setField("customerImpact", v)}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -823,108 +952,85 @@ function ReviewDraft({
                     </SelectContent>
                   </Select>
                 </div>
-              ))}
+                <div className="space-y-2">
+                  <Label className="text-xs">Compliance Risk</Label>
+                  <Select
+                    value={fields.complianceRisk}
+                    onValueChange={(v) => setField("complianceRisk", v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {levels.map((l) => (
+                        <SelectItem key={l} value={l}>
+                          {l}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs">Technical Complexity</Label>
+                  <Select
+                    value={fields.technicalComplexity}
+                    onValueChange={(v) => setField("technicalComplexity", v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {levels.map((l) => (
+                        <SelectItem key={l} value={l}>
+                          {l}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs">AI Readiness</Label>
+                  <Select
+                    value={fields.aiReadiness}
+                    onValueChange={(v) => setField("aiReadiness", v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {levels.map((l) => (
+                        <SelectItem key={l} value={l}>
+                          {l}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>
+      </div>
 
-        <div className="space-y-6">
-          <Card className="sticky top-6">
-            <CardHeader className="bg-primary text-primary-foreground rounded-t-xl">
-              <CardTitle className="flex items-center text-base">
-                <Calculator className="mr-2 h-5 w-5" /> Innovation Score
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-5 space-y-5">
-              <div>
-                <div className="text-xs uppercase tracking-wider font-semibold text-muted-foreground mb-1">
-                  Initial Score
-                </div>
-                <div className="text-5xl font-mono font-bold">{liveScore}</div>
-                <div
-                  className={`text-lg font-bold mt-1 ${
-                    livePriority === "Critical"
-                      ? "text-red-600"
-                      : livePriority === "High"
-                        ? "text-orange-500"
-                        : livePriority === "Medium"
-                          ? "text-blue-500"
-                          : "text-slate-500"
-                  }`}
-                >
-                  {livePriority} priority
-                </div>
-              </div>
+      {error && (
+        <p className="text-sm text-destructive font-medium">{error}</p>
+      )}
 
-              <div className="space-y-3 pt-2 border-t">
-                <p className="text-xs text-muted-foreground">
-                  Suggested by the interview — adjust any driver to refine.
-                </p>
-                {positiveFields.map((f) => (
-                  <div key={f.key} className="grid grid-cols-2 items-center gap-2">
-                    <Label className="text-xs">
-                      {f.label} <span className="text-muted-foreground">(0-{f.max})</span>
-                    </Label>
-                    <Input
-                      type="number"
-                      min={0}
-                      max={f.max}
-                      className="h-8"
-                      value={scoring[f.key]}
-                      onChange={(e) => setScore(f.key, e.target.value)}
-                    />
-                  </div>
-                ))}
-                <div className="grid grid-cols-2 items-center gap-2">
-                  <Label className="text-xs text-destructive">
-                    Tech Complexity <span className="opacity-70">(0 to -10)</span>
-                  </Label>
-                  <Input
-                    type="number"
-                    min={-10}
-                    max={0}
-                    className="h-8"
-                    value={scoring.technicalComplexityPenalty}
-                    onChange={(e) =>
-                      setScore("technicalComplexityPenalty", e.target.value)
-                    }
-                  />
-                </div>
-                <div className="grid grid-cols-2 items-center gap-2">
-                  <Label className="text-xs text-destructive">
-                    Risk Penalty <span className="opacity-70">(0 to -10)</span>
-                  </Label>
-                  <Input
-                    type="number"
-                    min={-10}
-                    max={0}
-                    className="h-8"
-                    value={scoring.riskPenalty}
-                    onChange={(e) => setScore("riskPenalty", e.target.value)}
-                  />
-                </div>
-              </div>
-
-              {error && (
-                <p className="text-sm text-destructive font-medium">{error}</p>
-              )}
-
-              <Button
-                className="w-full"
-                size="lg"
-                onClick={handleSave}
-                disabled={saving}
-              >
-                {saving ? (
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                ) : (
-                  <Save className="mr-2 h-5 w-5" />
-                )}
-                Save Initiative
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
+      <div className="flex items-center justify-end gap-3">
+        <Button variant="outline" onClick={onBack} disabled={saving}>
+          Cancel
+        </Button>
+        <Button onClick={handleSave} disabled={saving}>
+          {saving ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...
+            </>
+          ) : (
+            <>
+              <Save className="mr-2 h-4 w-4" /> Save Initiative
+            </>
+          )}
+        </Button>
       </div>
     </div>
   );
