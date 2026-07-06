@@ -1,0 +1,1 @@
+- [Scoring penalty sign convention](scoring-penalty-sign.md) — penalties are negative magnitudes (0..-10); server must clamp to [-max,0] and ADD, not subtract, or penalties are silently dropped.

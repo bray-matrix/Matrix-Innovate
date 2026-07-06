@@ -9,13 +9,14 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { LayoutDashboard, PlusCircle, List, KanbanSquare, FileText, Settings, Rocket } from "lucide-react";
+import { LayoutDashboard, PlusCircle, List, KanbanSquare, FileText, Settings, Rocket, Sparkles } from "lucide-react";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
 
   const navItems = [
     { href: "/", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/interview", label: "AI Innovation Interview", icon: Sparkles },
     { href: "/submit", label: "Submit Initiative", icon: PlusCircle },
     { href: "/initiatives", label: "Initiatives", icon: List },
     { href: "/kanban", label: "Kanban", icon: KanbanSquare },

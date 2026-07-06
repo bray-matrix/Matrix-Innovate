@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppLayout } from "@/components/layout";
 import Dashboard from "@/pages/dashboard";
+import AIInnovationInterview from "@/pages/interview";
 import SubmitInitiative from "@/pages/submit";
 import InitiativeList from "@/pages/initiatives";
 import InitiativeDetail from "@/pages/initiative-detail";
@@ -20,6 +21,7 @@ function Router() {
     <AppLayout>
       <Switch>
         <Route path="/" component={Dashboard} />
+        <Route path="/interview" component={AIInnovationInterview} />
         <Route path="/submit" component={SubmitInitiative} />
         <Route path="/initiatives" component={InitiativeList} />
         <Route path="/initiatives/:id" component={InitiativeDetail} />

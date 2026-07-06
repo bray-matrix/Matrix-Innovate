@@ -1,5 +1,3 @@
-import { useState } from "wouter"; // wouter useLocation hook isn't imported from wouter usually like this, wait it's useLocation.
-// Actually, let's fix imports properly
 import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
