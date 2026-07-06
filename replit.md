@@ -1,6 +1,6 @@
-# [Project name]
+# Matrix Innovation Hub
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+An internal web application (v0.1.0) for Matrix employees to submit AI innovation ideas, auto-structure them into an AI Opportunity Canvas, score them on a 100-point model, and move them through a lightweight innovation pipeline (Idea → Review → Approved → Prototype → Pilot → Production → Closed/Declined).
 
 ## Run & Operate
 
@@ -22,15 +22,22 @@ _Replace the heading above with the project's name, and this line with one sente
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- Frontend: `artifacts/matrix-innovation-hub/src/` (React + Vite, wouter routing, TanStack Query)
+- API contract (source of truth): `lib/api-spec/openapi.yaml` → codegen into `lib/api-client-react` (hooks) and `lib/api-zod` (schemas)
+- DB schema (source of truth): `lib/db/src/schema/initiatives.ts`
+- API routes: `artifacts/api-server/src/routes/` (initiatives, dashboard, documents, settings)
+- Scoring logic: `artifacts/api-server/src/lib/scoring.ts`
+- Theme/colors: `artifacts/matrix-innovation-hub/src/index.css`
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- Uses Replit's built-in PostgreSQL + Drizzle (not Supabase). Only `initiatives` is a real table; documents and admin settings are static server-side config.
+- Score and priority are computed server-side in `scoring.ts` on create/update — the frontend sends raw scoring components, never the final score, so the model stays authoritative in one place.
+- The AI Opportunity Canvas is composed client-side from initiative fields via a `generateOpportunityCanvas()` helper (placeholder for future OpenAI wiring — no AI calls yet, per MVP scope).
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+Matrix employees can: view a dashboard of pipeline metrics, submit a new AI initiative through a guided multi-section form, view an auto-generated AI Opportunity Canvas per initiative, score initiatives on a 100-point model, browse/filter the initiative list, move initiatives across a Kanban board by status, view governance documents, and review admin configuration.
 
 ## User preferences
 

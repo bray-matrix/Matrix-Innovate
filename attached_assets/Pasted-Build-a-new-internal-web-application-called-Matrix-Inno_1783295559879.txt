@@ -1,0 +1,246 @@
+Build a new internal web application called Matrix Innovation Hub.
+
+Goal:
+Create v0.1.0 of an internal Matrix Innovation Hub application used to collect, evaluate, score and manage AI innovation initiatives.
+
+Use:
+- React
+- TypeScript
+- TailwindCSS
+- Supabase for database/auth if available
+- Clean Matrix-style UI using navy, light blue, gold, white and black
+- Responsive layout
+- Simple functional MVP over polish
+
+Application version:
+v0.1.0
+
+Primary purpose:
+Allow Matrix employees to submit AI ideas, have those ideas structured into an AI Opportunity Canvas, score them and move them through a lightweight innovation pipeline.
+
+Core pages:
+1. Dashboard
+2. Submit Initiative
+3. Initiative List
+4. Initiative Detail
+5. Score Initiative
+6. Kanban Board
+7. Document Library
+8. Admin Settings
+
+Navigation:
+Left sidebar with:
+- Dashboard
+- Submit Initiative
+- Initiatives
+- Kanban
+- Documents
+- Admin
+
+Statuses:
+- Idea
+- Review
+- Approved
+- Prototype
+- Pilot
+- Production
+- Closed
+- Declined
+
+Initiative fields:
+- id
+- title
+- department
+- submitterName
+- businessOwner
+- executiveSponsor
+- category
+- status
+- problemStatement
+- currentProcess
+- desiredOutcome
+- aiConcept
+- prototypeGoal
+- successMetric
+- estimatedHoursSavedMonthly
+- estimatedRevenueOpportunity
+- estimatedCostSavings
+- customerImpact
+- complianceRisk
+- technicalComplexity
+- aiReadiness
+- score
+- priority
+- createdAt
+- updatedAt
+
+Categories:
+- Revenue Growth
+- Operational Efficiency
+- Customer Experience
+- Internal Productivity
+- Compliance and Security
+- Experimental
+
+Dashboard:
+Show cards for:
+- Total Initiatives
+- Awaiting Review
+- Active Prototypes
+- In Pilot
+- Production
+- Average Score
+
+Also show:
+- Recent Initiatives table
+- Quick Submit button
+- Prototype Rule banner: "Every prototype must prove value within two weeks."
+
+Submit Initiative page:
+Create a guided intake form that feels conversational, but for v0.1.0 it can be a structured form.
+
+Sections:
+1. Basic Information
+2. Business Problem
+3. Current Process
+4. Desired Future State
+5. AI Concept
+6. Value Estimate
+7. Prototype Goal
+8. Risks and Dependencies
+
+After submit:
+- Save the initiative
+- Calculate initial score
+- Route user to Initiative Detail page
+
+AI Opportunity Canvas:
+On each Initiative Detail page, display a generated canvas with these sections:
+- Executive Summary
+- Problem
+- Current Process
+- Desired Outcome
+- AI Opportunity
+- Expected Value
+- Prototype Goal
+- Success Metric
+- Risks
+- Recommended Next Step
+
+For v0.1.0, generate the canvas from form values without calling OpenAI yet. Leave a clear placeholder function called generateOpportunityCanvas() so OpenAI can be added later.
+
+Scoring model:
+Use a 100-point scoring model:
+- Business Value: 25
+- Revenue Potential: 15
+- Cost Savings: 15
+- Customer Impact: 15
+- Strategic Alignment: 10
+- AI Readiness: 10
+- Prototype Confidence: 10
+
+Also subtract:
+- Technical Complexity penalty: 0 to -10
+- Risk penalty: 0 to -10
+
+Priority:
+- 80+ = Critical
+- 65–79 = High
+- 50–64 = Medium
+- Below 50 = Low
+
+Score Initiative page:
+Allow editing numeric scoring fields and recalculating total score.
+
+Kanban:
+Create columns:
+- Idea
+- Review
+- Approved
+- Prototype
+- Pilot
+- Production
+- Closed
+- Declined
+
+Cards show:
+- title
+- department
+- score
+- priority
+- owner
+
+Allow changing status from dropdown on each card. Drag/drop is optional for v0.1.0.
+
+Document Library:
+Create placeholder entries for:
+1 - Matrix Innovation Hub Charter
+2 - AI Opportunity Playbook
+3 - AI Innovation Office Operating Manual
+4 - AI Project Lifecycle
+5 - Innovation Scoring and Prioritization Guide
+6 - Functional Specification
+
+Each document card should show:
+- document title
+- version v1.0
+- owner: CIO / AI Innovation Office
+- status: Published
+- placeholder download button
+
+Admin Settings:
+Simple page with editable-looking configuration sections:
+- Departments
+- Categories
+- Statuses
+- Scoring Weights
+- Application Version
+
+Seed sample data:
+Create at least five sample initiatives:
+1. USPS report reconciliation automation
+2. AI production job status assistant
+3. Customer portal AI support assistant
+4. Automated document classification
+5. AI onboarding project risk review
+
+UI style:
+Professional corporate internal application.
+Use Matrix-inspired colors:
+- Navy: #002D72
+- Light Blue: #00A3E0
+- Gold: #FFC72C
+- Black: #231F20
+- White: #FFFFFF
+
+Design:
+- Clean cards
+- Lots of white space
+- Strong header
+- Simple dashboard
+- Clear status badges
+- Executive-friendly layout
+
+Important MVP rules:
+Do not overbuild.
+Do not add Jira integration.
+Do not add Microsoft integration.
+Do not add email notifications.
+Do not add advanced charts.
+Do not add real AI API calls yet.
+Do not create complex permissions yet.
+
+Build this as a working prototype first.
+
+Success criteria:
+A user can:
+1. Open the app
+2. View the dashboard
+3. Submit a new initiative
+4. See the AI Opportunity Canvas
+5. Score the initiative
+6. View it in the initiative list
+7. Move it through the Kanban workflow
+8. See the governance documents listed in the document library
+
+After building, show me how to run it and what files were created.

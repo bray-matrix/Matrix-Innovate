@@ -10,6 +10,14 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: initiatives
+    description: Innovation initiative operations
+  - name: dashboard
+    description: Dashboard aggregate operations
+  - name: documents
+    description: Document library operations
+  - name: settings
+    description: Admin settings operations
 paths:
   /healthz:
     get:
@@ -24,6 +32,147 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /initiatives:
+    get:
+      operationId: listInitiatives
+      tags: [initiatives]
+      summary: List all initiatives
+      responses:
+        "200":
+          description: A list of initiatives
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Initiative"
+    post:
+      operationId: createInitiative
+      tags: [initiatives]
+      summary: Create a new initiative
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InitiativeInput"
+      responses:
+        "201":
+          description: Created initiative
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Initiative"
+  /initiatives/{id}:
+    get:
+      operationId: getInitiative
+      tags: [initiatives]
+      summary: Get a single initiative
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: The initiative
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Initiative"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    patch:
+      operationId: updateInitiative
+      tags: [initiatives]
+      summary: Update an initiative
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InitiativeUpdate"
+      responses:
+        "200":
+          description: Updated initiative
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Initiative"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      operationId: deleteInitiative
+      tags: [initiatives]
+      summary: Delete an initiative
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Get dashboard aggregate metrics
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+  /documents:
+    get:
+      operationId: listDocuments
+      tags: [documents]
+      summary: List governance documents
+      responses:
+        "200":
+          description: A list of documents
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Document"
+  /settings:
+    get:
+      operationId: getSettings
+      tags: [settings]
+      summary: Get admin configuration settings
+      responses:
+        "200":
+          description: Settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Settings"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +182,328 @@ components:
           type: string
       required:
         - status
-
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+    Initiative:
+      type: object
+      required:
+        - id
+        - title
+        - department
+        - submitterName
+        - category
+        - status
+        - problemStatement
+        - currentProcess
+        - desiredOutcome
+        - aiConcept
+        - prototypeGoal
+        - successMetric
+        - estimatedHoursSavedMonthly
+        - estimatedRevenueOpportunity
+        - estimatedCostSavings
+        - customerImpact
+        - complianceRisk
+        - technicalComplexity
+        - aiReadiness
+        - businessValue
+        - revenuePotential
+        - costSavingsScore
+        - customerImpactScore
+        - strategicAlignment
+        - aiReadinessScore
+        - prototypeConfidence
+        - technicalComplexityPenalty
+        - riskPenalty
+        - score
+        - priority
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        department:
+          type: string
+        submitterName:
+          type: string
+        businessOwner:
+          type: ["string", "null"]
+        executiveSponsor:
+          type: ["string", "null"]
+        category:
+          type: string
+        status:
+          type: string
+        problemStatement:
+          type: string
+        currentProcess:
+          type: string
+        desiredOutcome:
+          type: string
+        aiConcept:
+          type: string
+        prototypeGoal:
+          type: string
+        successMetric:
+          type: string
+        estimatedHoursSavedMonthly:
+          type: number
+        estimatedRevenueOpportunity:
+          type: number
+        estimatedCostSavings:
+          type: number
+        customerImpact:
+          type: string
+        complianceRisk:
+          type: string
+        technicalComplexity:
+          type: string
+        aiReadiness:
+          type: string
+        businessValue:
+          type: integer
+        revenuePotential:
+          type: integer
+        costSavingsScore:
+          type: integer
+        customerImpactScore:
+          type: integer
+        strategicAlignment:
+          type: integer
+        aiReadinessScore:
+          type: integer
+        prototypeConfidence:
+          type: integer
+        technicalComplexityPenalty:
+          type: integer
+        riskPenalty:
+          type: integer
+        score:
+          type: integer
+        priority:
+          type: string
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+    InitiativeInput:
+      type: object
+      required:
+        - title
+        - department
+        - submitterName
+        - category
+        - problemStatement
+        - currentProcess
+        - desiredOutcome
+        - aiConcept
+        - prototypeGoal
+        - successMetric
+      properties:
+        title:
+          type: string
+          minLength: 1
+        department:
+          type: string
+        submitterName:
+          type: string
+        businessOwner:
+          type: string
+        executiveSponsor:
+          type: string
+        category:
+          type: string
+        status:
+          type: string
+        problemStatement:
+          type: string
+        currentProcess:
+          type: string
+        desiredOutcome:
+          type: string
+        aiConcept:
+          type: string
+        prototypeGoal:
+          type: string
+        successMetric:
+          type: string
+        estimatedHoursSavedMonthly:
+          type: number
+        estimatedRevenueOpportunity:
+          type: number
+        estimatedCostSavings:
+          type: number
+        customerImpact:
+          type: string
+        complianceRisk:
+          type: string
+        technicalComplexity:
+          type: string
+        aiReadiness:
+          type: string
+    InitiativeUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+        department:
+          type: string
+        submitterName:
+          type: string
+        businessOwner:
+          type: string
+        executiveSponsor:
+          type: string
+        category:
+          type: string
+        status:
+          type: string
+        problemStatement:
+          type: string
+        currentProcess:
+          type: string
+        desiredOutcome:
+          type: string
+        aiConcept:
+          type: string
+        prototypeGoal:
+          type: string
+        successMetric:
+          type: string
+        estimatedHoursSavedMonthly:
+          type: number
+        estimatedRevenueOpportunity:
+          type: number
+        estimatedCostSavings:
+          type: number
+        customerImpact:
+          type: string
+        complianceRisk:
+          type: string
+        technicalComplexity:
+          type: string
+        aiReadiness:
+          type: string
+        businessValue:
+          type: integer
+        revenuePotential:
+          type: integer
+        costSavingsScore:
+          type: integer
+        customerImpactScore:
+          type: integer
+        strategicAlignment:
+          type: integer
+        aiReadinessScore:
+          type: integer
+        prototypeConfidence:
+          type: integer
+        technicalComplexityPenalty:
+          type: integer
+        riskPenalty:
+          type: integer
+    DashboardSummary:
+      type: object
+      required:
+        - totalInitiatives
+        - awaitingReview
+        - activePrototypes
+        - inPilot
+        - inProduction
+        - averageScore
+        - statusCounts
+        - recentInitiatives
+      properties:
+        totalInitiatives:
+          type: integer
+        awaitingReview:
+          type: integer
+        activePrototypes:
+          type: integer
+        inPilot:
+          type: integer
+        inProduction:
+          type: integer
+        averageScore:
+          type: number
+        statusCounts:
+          type: array
+          items:
+            $ref: "#/components/schemas/StatusCount"
+        recentInitiatives:
+          type: array
+          items:
+            $ref: "#/components/schemas/Initiative"
+    StatusCount:
+      type: object
+      required:
+        - status
+        - count
+      properties:
+        status:
+          type: string
+        count:
+          type: integer
+    Document:
+      type: object
+      required:
+        - id
+        - title
+        - version
+        - owner
+        - status
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        version:
+          type: string
+        owner:
+          type: string
+        status:
+          type: string
+    Settings:
+      type: object
+      required:
+        - departments
+        - categories
+        - statuses
+        - scoringWeights
+        - applicationVersion
+      properties:
+        departments:
+          type: array
+          items:
+            type: string
+        categories:
+          type: array
+          items:
+            type: string
+        statuses:
+          type: array
+          items:
+            type: string
+        scoringWeights:
+          type: array
+          items:
+            $ref: "#/components/schemas/ScoringWeight"
+        applicationVersion:
+          type: string
+    ScoringWeight:
+      type: object
+      required:
+        - name
+        - weight
+      properties:
+        name:
+          type: string
+        weight:
+          type: integer
