@@ -1,6 +1,6 @@
 # Matrix Innovation Hub
 
-An internal web application (v0.1.5) for Matrix employees to submit AI innovation ideas — either through a conversational AI Innovation Interview or a classic form — auto-structure them into an AI Opportunity Canvas, score them on a 100-point model, and move them through a lightweight innovation pipeline (Idea → Review → Approved → Prototype → Pilot → Production → Closed/Declined).
+An internal web application (v0.1.6) for Matrix employees to submit AI innovation ideas — either through a conversational AI Innovation Interview or a classic form — auto-structure them into an AI Opportunity Canvas, score them on a 100-point model, and move them through a lightweight innovation pipeline (Idea → Review → Approved → Prototype → Pilot → Production → Closed/Declined).
 
 ## Run & Operate
 
@@ -27,6 +27,8 @@ An internal web application (v0.1.5) for Matrix employees to submit AI innovatio
 - DB schema (source of truth): `lib/db/src/schema/initiatives.ts`
 - API routes: `artifacts/api-server/src/routes/` (initiatives, dashboard, documents, settings)
 - Scoring logic: `artifacts/api-server/src/lib/scoring.ts`
+- Initiative Intelligence Engine (rule-based recommendations behind a swappable `RecommendationProvider` abstraction): `artifacts/api-server/src/lib/intelligence/`
+- Internal changelog: `CHANGELOG.md` (update on every version bump)
 - Theme/colors: `artifacts/matrix-innovation-hub/src/index.css`
 
 ## Architecture decisions

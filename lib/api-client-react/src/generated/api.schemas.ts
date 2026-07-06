@@ -177,3 +177,43 @@ export interface Settings {
   applicationVersion: string;
 }
 
+export interface SimilarInitiative {
+  id: number;
+  title: string;
+  department: string;
+  category: string;
+  status: string;
+  score: number;
+  /** Similarity score from 0 to 100 */
+  similarityScore: number;
+  reasons: string[];
+}
+
+export type InitiativeRecommendationsComplexity = typeof InitiativeRecommendationsComplexity[keyof typeof InitiativeRecommendationsComplexity];
+
+
+export const InitiativeRecommendationsComplexity = {
+  Low: 'Low',
+  Medium: 'Medium',
+  High: 'High',
+} as const;
+
+export interface InitiativeRecommendations {
+  initiativeId: number;
+  /** Identifier of the recommendation provider that produced this result */
+  engine: string;
+  generatedAt: string;
+  similarInitiatives: SimilarInitiative[];
+  prototypeScope: string;
+  complexity: InitiativeRecommendationsComplexity;
+  complexityFactors: string[];
+  estimatedPrototypeDurationDays: number;
+  teamRoles: string[];
+  risks: string[];
+  expectedBusinessValue: string;
+  expectedAnnualValue: number;
+  /** Confidence in the recommendations from 0 to 100 */
+  confidenceScore: number;
+  nextAction: string;
+}
+

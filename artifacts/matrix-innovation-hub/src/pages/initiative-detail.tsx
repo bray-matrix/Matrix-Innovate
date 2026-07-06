@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/select";
 import { DataTable } from "@/components/data-table";
 import { StatusBadge, PriorityBadge } from "@/components/badges";
+import { InitiativeIntelligence } from "@/components/initiative-intelligence";
 import { format } from "date-fns";
 import { toast } from "@/hooks/use-toast";
 import {
@@ -492,6 +493,9 @@ export default function InitiativeDetail() {
           </Card>
         </div>
       </div>
+
+      {/* Initiative Intelligence */}
+      <InitiativeIntelligence initiativeId={id} />
 
       {/* Tracking & Governance */}
       <div className="space-y-4">

@@ -7,6 +7,7 @@ import {
 } from "@workspace/api-zod";
 import { calculateScore, derivePriority } from "../lib/scoring";
 import { bumpVersion, determineBumpKind, DEFAULT_VERSION } from "../lib/versioning";
+import { getRecommendationProvider } from "../lib/intelligence";
 
 const router: IRouter = Router();
 
@@ -110,6 +111,29 @@ router.get("/initiatives/:id/versions", async (req, res) => {
     .where(eq(initiativeVersionsTable.initiativeId, id))
     .orderBy(desc(initiativeVersionsTable.createdAt));
   res.json(rows.map(serializeVersion));
+});
+
+router.get("/initiatives/:id/recommendations", async (req, res) => {
+  const id = Number(req.params.id);
+  if (Number.isNaN(id)) {
+    res.status(400).json({ error: "Invalid id" });
+    return;
+  }
+  const [initiative] = await db
+    .select()
+    .from(initiativesTable)
+    .where(eq(initiativesTable.id, id));
+  if (!initiative) {
+    res.status(404).json({ error: "Initiative not found" });
+    return;
+  }
+  const allInitiatives = await db.select().from(initiativesTable);
+  const provider = getRecommendationProvider();
+  const recommendations = await provider.generateRecommendations({
+    initiative,
+    allInitiatives,
+  });
+  res.json(recommendations);
 });
 
 router.get("/initiatives/:id", async (req, res) => {
