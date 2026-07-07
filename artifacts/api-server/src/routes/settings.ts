@@ -1,9 +1,11 @@
 import { Router, type IRouter } from "express";
-import { getAIProvider, listAIProviders } from "../lib/ai";
+import { db, providerTestEventsTable } from "@workspace/db";
+import { desc } from "drizzle-orm";
+import { getAIProvider, listAIProviders, runProviderTest } from "../lib/ai";
 
 const router: IRouter = Router();
 
-export const APPLICATION_VERSION = "v0.2.0";
+export const APPLICATION_VERSION = "v0.2.1";
 
 const SETTINGS = {
   departments: [
@@ -47,8 +49,28 @@ const SETTINGS = {
   applicationVersion: APPLICATION_VERSION,
 };
 
-router.get("/settings", (_req, res) => {
+function serializeTestEvent(
+  row: typeof providerTestEventsTable.$inferSelect,
+) {
+  return {
+    id: row.id,
+    providerId: row.providerId,
+    providerName: row.providerLabel,
+    passed: row.passed,
+    status: row.passed ? "Passed" : "Failed",
+    capabilities: row.capabilities,
+    errorMessage: row.errorMessage,
+    createdAt: row.createdAt.toISOString(),
+  };
+}
+
+router.get("/settings", async (_req, res) => {
   const active = getAIProvider();
+  const [latestTest] = await db
+    .select()
+    .from(providerTestEventsTable)
+    .orderBy(desc(providerTestEventsTable.createdAt))
+    .limit(1);
   res.json({
     ...SETTINGS,
     aiProvider: {
@@ -60,14 +82,40 @@ router.get("/settings", (_req, res) => {
         status: p.status,
         notes: p.notes,
       })),
-      // No provider connectivity test has been run yet — placeholders do not
-      // require API keys and the rule engine needs no connectivity.
-      lastProviderTest: null,
+      lastProviderTest: latestTest
+        ? latestTest.createdAt.toISOString()
+        : null,
       providerNotes:
         "The active provider is selected via the AI_PROVIDER environment variable. " +
         "Only the rule-based engine is active; vendor providers are registered placeholders and require no API keys yet.",
     },
   });
+});
+
+// Runs the readiness test against the ACTIVE provider using synthetic sample
+// data only, then stores the run in the provider test history.
+router.post("/settings/ai-provider/test", async (_req, res) => {
+  const provider = getAIProvider();
+  const result = await runProviderTest(provider);
+  const [row] = await db
+    .insert(providerTestEventsTable)
+    .values({
+      providerId: result.providerId,
+      providerLabel: result.providerLabel,
+      passed: result.passed,
+      capabilities: result.capabilities,
+      errorMessage: result.errorMessage,
+    })
+    .returning();
+  res.json(serializeTestEvent(row));
+});
+
+router.get("/settings/ai-provider/tests", async (_req, res) => {
+  const rows = await db
+    .select()
+    .from(providerTestEventsTable)
+    .orderBy(desc(providerTestEventsTable.createdAt));
+  res.json(rows.map(serializeTestEvent));
 });
 
 export default router;

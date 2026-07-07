@@ -571,6 +571,45 @@ export const GetSettingsResponse = zod.object({
 
 
 /**
+ * @summary Run a readiness test against the active AI provider using sample data
+ */
+export const TestAiProviderResponse = zod.object({
+  "id": zod.number(),
+  "providerId": zod.string(),
+  "providerName": zod.string(),
+  "passed": zod.boolean(),
+  "status": zod.enum(['Passed', 'Failed']),
+  "capabilities": zod.array(zod.object({
+  "capability": zod.string().describe('AIProvider method tested, e.g. \"classifyInitiative\"'),
+  "passed": zod.boolean(),
+  "message": zod.string().describe('Short outcome summary, or the failure detail')
+})),
+  "errorMessage": zod.string().nullable(),
+  "createdAt": zod.string().describe('ISO timestamp of when the test ran')
+})
+
+
+/**
+ * @summary List AI provider test history, newest first
+ */
+export const ListAiProviderTestsResponseItem = zod.object({
+  "id": zod.number(),
+  "providerId": zod.string(),
+  "providerName": zod.string(),
+  "passed": zod.boolean(),
+  "status": zod.enum(['Passed', 'Failed']),
+  "capabilities": zod.array(zod.object({
+  "capability": zod.string().describe('AIProvider method tested, e.g. \"classifyInitiative\"'),
+  "passed": zod.boolean(),
+  "message": zod.string().describe('Short outcome summary, or the failure detail')
+})),
+  "errorMessage": zod.string().nullable(),
+  "createdAt": zod.string().describe('ISO timestamp of when the test ran')
+})
+export const ListAiProviderTestsResponse = zod.array(ListAiProviderTestsResponseItem)
+
+
+/**
  * @summary List validation records, newest first
  */
 export const ListValidationsResponseItem = zod.object({

@@ -237,6 +237,34 @@ export interface Settings {
   aiProvider?: AIProviderConfig;
 }
 
+export interface ProviderTestCapabilityResult {
+  /** AIProvider method tested, e.g. "classifyInitiative" */
+  capability: string;
+  passed: boolean;
+  /** Short outcome summary, or the failure detail */
+  message: string;
+}
+
+export type ProviderTestEventStatus = typeof ProviderTestEventStatus[keyof typeof ProviderTestEventStatus];
+
+
+export const ProviderTestEventStatus = {
+  Passed: 'Passed',
+  Failed: 'Failed',
+} as const;
+
+export interface ProviderTestEvent {
+  id: number;
+  providerId: string;
+  providerName: string;
+  passed: boolean;
+  status: ProviderTestEventStatus;
+  capabilities: ProviderTestCapabilityResult[];
+  errorMessage: string | null;
+  /** ISO timestamp of when the test ran */
+  createdAt: string;
+}
+
 export type ValidationRecordStatus = typeof ValidationRecordStatus[keyof typeof ValidationRecordStatus];
 
 

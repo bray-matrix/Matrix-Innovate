@@ -8,6 +8,7 @@ import {
 } from "./placeholderProviders";
 
 export * from "./types";
+export * from "./testRunner";
 export { RuleBasedAIProvider } from "./ruleBasedProvider";
 export {
   OpenAIProvider,

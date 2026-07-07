@@ -30,6 +30,7 @@ import type {
   InitiativeRecommendations,
   InitiativeUpdate,
   InitiativeVersion,
+  ProviderTestEvent,
   RecalculationResult,
   Settings,
   ValidationCreate,
@@ -1108,6 +1109,153 @@ export function useGetSettings<TData = Awaited<ReturnType<typeof getSettings>>, 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetSettingsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getTestAiProviderUrl = () => {
+
+
+
+
+  return `/api/settings/ai-provider/test`
+}
+
+/**
+ * @summary Run a readiness test against the active AI provider using sample data
+ */
+export const testAiProvider = async ( options?: RequestInit): Promise<ProviderTestEvent> => {
+
+  return customFetch<ProviderTestEvent>(getTestAiProviderUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getTestAiProviderMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof testAiProvider>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof testAiProvider>>, TError,void, TContext> => {
+
+const mutationKey = ['testAiProvider'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof testAiProvider>>, void> = () => {
+
+
+          return  testAiProvider(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type TestAiProviderMutationResult = NonNullable<Awaited<ReturnType<typeof testAiProvider>>>
+
+    export type TestAiProviderMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Run a readiness test against the active AI provider using sample data
+ */
+export const useTestAiProvider = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof testAiProvider>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof testAiProvider>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getTestAiProviderMutationOptions(options));
+    }
+
+export const getListAiProviderTestsUrl = () => {
+
+
+
+
+  return `/api/settings/ai-provider/tests`
+}
+
+/**
+ * @summary List AI provider test history, newest first
+ */
+export const listAiProviderTests = async ( options?: RequestInit): Promise<ProviderTestEvent[]> => {
+
+  return customFetch<ProviderTestEvent[]>(getListAiProviderTestsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAiProviderTestsQueryKey = () => {
+    return [
+    `/api/settings/ai-provider/tests`
+    ] as const;
+    }
+
+
+export const getListAiProviderTestsQueryOptions = <TData = Awaited<ReturnType<typeof listAiProviderTests>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAiProviderTests>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAiProviderTestsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAiProviderTests>>> = ({ signal }) => listAiProviderTests({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAiProviderTests>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAiProviderTestsQueryResult = NonNullable<Awaited<ReturnType<typeof listAiProviderTests>>>
+export type ListAiProviderTestsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List AI provider test history, newest first
+ */
+
+export function useListAiProviderTests<TData = Awaited<ReturnType<typeof listAiProviderTests>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAiProviderTests>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAiProviderTestsQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

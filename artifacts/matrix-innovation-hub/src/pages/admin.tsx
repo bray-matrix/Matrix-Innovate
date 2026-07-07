@@ -1,10 +1,150 @@
-import { useGetSettings } from "@workspace/api-client-react";
+import {
+  useGetSettings,
+  getGetSettingsQueryKey,
+  useTestAiProvider,
+  useListAiProviderTests,
+  getListAiProviderTestsQueryKey,
+} from "@workspace/api-client-react";
+import type { ProviderTestEvent } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { format } from "date-fns";
+import { CheckCircle2, XCircle, FlaskConical, Loader2 } from "lucide-react";
+
+function formatTestTime(value: string): string {
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "—";
+  return format(d, "MMM d, yyyy p");
+}
+
+function TestStatusBadge({ passed }: { passed: boolean }) {
+  return passed ? (
+    <Badge className="bg-green-100 text-green-800 border border-green-300 hover:bg-green-100">
+      Passed
+    </Badge>
+  ) : (
+    <Badge className="bg-red-100 text-red-700 border border-red-300 hover:bg-red-100">
+      Failed
+    </Badge>
+  );
+}
+
+function ProviderTestResultCard({ result }: { result: ProviderTestEvent }) {
+  return (
+    <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          {result.passed ? (
+            <CheckCircle2 className="h-5 w-5 text-green-600" />
+          ) : (
+            <XCircle className="h-5 w-5 text-red-600" />
+          )}
+          <span className="font-semibold text-sm">{result.providerName}</span>
+          <TestStatusBadge passed={result.passed} />
+        </div>
+        <span className="text-xs text-muted-foreground">
+          {formatTestTime(result.createdAt)}
+        </span>
+      </div>
+      {result.errorMessage && (
+        <p className="text-sm text-red-700">{result.errorMessage}</p>
+      )}
+      <div>
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+          Capabilities Tested
+        </p>
+        <div className="space-y-1.5">
+          {result.capabilities.map(cap => (
+            <div key={cap.capability} className="flex items-start gap-2 text-sm">
+              {cap.passed ? (
+                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-600" />
+              ) : (
+                <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
+              )}
+              <span className="font-mono text-xs mt-0.5 shrink-0">{cap.capability}()</span>
+              <span className="text-xs text-muted-foreground">{cap.message}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ProviderTestHistory() {
+  const { data, isLoading, isError } = useListAiProviderTests({
+    query: { queryKey: getListAiProviderTestsQueryKey() },
+  });
+
+  if (isLoading) return <Skeleton className="h-24" />;
+  if (isError) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        Unable to load provider test history.
+      </p>
+    );
+  }
+  if (!data || data.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        No provider tests recorded yet. Run "Test Provider" above to record the
+        first readiness test.
+      </p>
+    );
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
+            <th className="py-2 pr-4 font-medium">Tested At</th>
+            <th className="py-2 pr-4 font-medium">Provider</th>
+            <th className="py-2 pr-4 font-medium">Result</th>
+            <th className="py-2 pr-4 font-medium">Capabilities</th>
+            <th className="py-2 font-medium">Error</th>
+          </tr>
+        </thead>
+        <tbody>
+          {data.map(event => {
+            const passedCount = event.capabilities.filter(c => c.passed).length;
+            return (
+              <tr key={event.id} className="border-b last:border-0 align-top">
+                <td className="py-2 pr-4 whitespace-nowrap">{formatTestTime(event.createdAt)}</td>
+                <td className="py-2 pr-4">{event.providerName}</td>
+                <td className="py-2 pr-4"><TestStatusBadge passed={event.passed} /></td>
+                <td className="py-2 pr-4 font-mono text-xs whitespace-nowrap">
+                  {passedCount}/{event.capabilities.length} passed
+                </td>
+                <td className="py-2 text-xs text-muted-foreground">
+                  {event.errorMessage ?? "—"}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
 
 export default function Admin() {
   const { data: settings, isLoading } = useGetSettings();
+  const queryClient = useQueryClient();
+  const [latestResult, setLatestResult] = useState<ProviderTestEvent | null>(null);
+  const testMutation = useTestAiProvider({
+    mutation: {
+      onSuccess: (result) => {
+        setLatestResult(result);
+        queryClient.invalidateQueries({ queryKey: getListAiProviderTestsQueryKey() });
+        queryClient.invalidateQueries({ queryKey: getGetSettingsQueryKey() });
+      },
+    },
+  });
 
   if (isLoading) {
     return (
@@ -95,10 +235,25 @@ export default function Admin() {
         {settings.aiProvider && (
           <Card className="md:col-span-2">
             <CardHeader>
-              <CardTitle>AI Provider Configuration</CardTitle>
-              <CardDescription>
-                All generated intelligence flows through a provider abstraction. Read-only view — no API keys are stored or shown here.
-              </CardDescription>
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="space-y-1.5">
+                  <CardTitle>AI Provider Configuration</CardTitle>
+                  <CardDescription>
+                    All generated intelligence flows through a provider abstraction. No API keys are stored or shown here.
+                  </CardDescription>
+                </div>
+                <Button
+                  onClick={() => testMutation.mutate()}
+                  disabled={testMutation.isPending}
+                >
+                  {testMutation.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <FlaskConical className="mr-2 h-4 w-4" />
+                  )}
+                  Test Provider
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="space-y-5">
               <div className="grid gap-4 sm:grid-cols-3">
@@ -139,6 +294,14 @@ export default function Admin() {
                 </div>
               </div>
 
+              {testMutation.isError && (
+                <p className="text-sm text-red-700">
+                  The provider test could not be run. Check that the API server
+                  is reachable and try again.
+                </p>
+              )}
+              {latestResult && <ProviderTestResultCard result={latestResult} />}
+
               <div>
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Notes</p>
                 <p className="text-sm text-muted-foreground">{settings.aiProvider.providerNotes}</p>
@@ -146,6 +309,18 @@ export default function Admin() {
             </CardContent>
           </Card>
         )}
+
+        <Card className="md:col-span-2">
+          <CardHeader>
+            <CardTitle>Provider Test History</CardTitle>
+            <CardDescription>
+              Every readiness test run against a provider, newest first.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ProviderTestHistory />
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

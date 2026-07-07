@@ -322,6 +322,32 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Settings"
+  /settings/ai-provider/test:
+    post:
+      operationId: testAiProvider
+      tags: [settings]
+      summary: Run a readiness test against the active AI provider using sample data
+      responses:
+        "200":
+          description: The stored test result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProviderTestEvent"
+  /settings/ai-provider/tests:
+    get:
+      operationId: listAiProviderTests
+      tags: [settings]
+      summary: List AI provider test history, newest first
+      responses:
+        "200":
+          description: A list of provider test events
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProviderTestEvent"
   /validations:
     get:
       operationId: listValidations
@@ -939,6 +965,54 @@ components:
           description: ISO timestamp of the last provider connectivity test, or null if never run
         providerNotes:
           type: string
+    ProviderTestCapabilityResult:
+      type: object
+      required:
+        - capability
+        - passed
+        - message
+      properties:
+        capability:
+          type: string
+          description: AIProvider method tested, e.g. "classifyInitiative"
+        passed:
+          type: boolean
+        message:
+          type: string
+          description: Short outcome summary, or the failure detail
+    ProviderTestEvent:
+      type: object
+      required:
+        - id
+        - providerId
+        - providerName
+        - passed
+        - status
+        - capabilities
+        - errorMessage
+        - createdAt
+      properties:
+        id:
+          type: integer
+        providerId:
+          type: string
+        providerName:
+          type: string
+        passed:
+          type: boolean
+        status:
+          type: string
+          enum: [Passed, Failed]
+        capabilities:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProviderTestCapabilityResult"
+        errorMessage:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          description: ISO timestamp of when the test ran
     AIProviderInfo:
       type: object
       required:

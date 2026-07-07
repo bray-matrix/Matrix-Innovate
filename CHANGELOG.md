@@ -5,6 +5,36 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and the
 project adheres to semantic versioning (patch = fixes/edits, minor = new
 features, major = breaking or milestone changes).
 
+## [0.2.1] — 2026-07-07
+
+AI Provider validation and readiness testing — proving the abstraction layer
+works end to end before any real OpenAI or Claude integration. No changes to
+user-facing initiative workflows.
+
+### Added
+
+- **Test Provider button** — Admin > AI Provider Configuration now has a
+  "Test Provider" button that runs a safe internal readiness test of the
+  active provider against synthetic sample initiative data (never real
+  initiatives). Results show the provider name, pass/fail status, timestamp,
+  every capability tested with its outcome, and the error message if a
+  capability failed.
+- **Capability coverage** — the test exercises classifyInitiative,
+  generateExecutiveSummary, generateOpportunityCanvas,
+  generateRecommendations, estimateComplexity, recommendPrototypeScope, and
+  explainScoreChange. The rule-based engine passes all seven; placeholder
+  providers fail cleanly with "Provider is registered but not configured."
+- **Provider Test History** — every test run is stored in a new
+  `provider_test_events` table and shown in a new history table in Admin
+  (newest first, with capability pass counts and error details).
+- **API** — `POST /api/settings/ai-provider/test` runs and stores a test;
+  `GET /api/settings/ai-provider/tests` returns the history.
+
+### Changed
+
+- "Last Provider Test" in Admin now reflects the most recent stored test run
+  instead of always showing "Never run".
+
 ## [0.2.0] — 2026-07-07
 
 Architecture sprint: AI Provider Abstraction Layer. No user-facing behavior
