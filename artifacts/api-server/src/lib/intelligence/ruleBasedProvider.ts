@@ -9,6 +9,7 @@ import type {
 } from "./types";
 
 const ENGINE_NAME = "rules-v1";
+const ENGINE_LABEL = "Rule Engine v1";
 const PROTOTYPE_SPRINT_DAYS = 14;
 const SIMILARITY_THRESHOLD = 30;
 const MAX_SIMILAR = 3;
@@ -319,6 +320,7 @@ export class RuleBasedRecommendationProvider implements RecommendationProvider {
     return {
       initiativeId: initiative.id,
       engine: this.name,
+      sourceLabel: ENGINE_LABEL,
       generatedAt: new Date().toISOString(),
       similarInitiatives: this.findSimilarInitiatives(context),
       prototypeScope: this.recommendPrototypeScope(initiative),

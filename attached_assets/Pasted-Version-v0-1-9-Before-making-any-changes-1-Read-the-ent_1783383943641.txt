@@ -1,0 +1,102 @@
+Version: v0.1.9
+
+Before making any changes:
+
+1. Read the entire existing codebase.
+2. Preserve all existing functionality.
+3. Do not remove features unless explicitly instructed.
+4. Build on top of the existing architecture.
+5. Follow semantic versioning.
+6. Update the internal CHANGELOG.
+7. If a requested feature conflicts with the existing design, explain why before changing it.
+
+Objective:
+Improve transparency, explainability, and user confidence in all calculated values.
+
+Requirements:
+
+1. Recalculate Transparency
+
+When the user clicks "Recalculate":
+
+- Compare the previous score to the newly calculated score.
+- If nothing changed, display:
+
+"No changes detected. Innovation Score remains unchanged."
+
+- If the score changes, display a detailed explanation showing exactly why.
+
+Example:
+
+Innovation Score
+Previous: 68
+New: 40
+
+Changes Detected
+
+Revenue Opportunity
+15 → 0
+Reason: Revenue opportunity field is blank.
+
+Compliance Risk
+-5 → -10
+Reason: Compliance risk is High.
+
+Business Value
+No Change
+
+Prototype Confidence
+No Change
+
+Net Score Change
+-28
+
+2. Calculation Audit
+
+Store every recalculation event with:
+
+- Timestamp
+- User
+- Previous Score
+- New Score
+- Individual scoring component changes
+- Reason for every change
+
+Expose this as a new "Calculation History" tab on the Initiative Workspace.
+
+3. Explainability
+
+Every calculated field should have an information icon.
+
+Selecting the icon explains:
+
+- How the value is calculated.
+- Which inputs affect it.
+- Which values are user-entered.
+- Which values are system-generated.
+
+4. Recommendation Confidence
+
+For every recommendation in the Initiative Intelligence section, display:
+
+- Confidence
+- Source
+
+Example:
+
+Source:
+Rule Engine v1
+
+Future AI providers should be able to replace the source with:
+
+OpenAI GPT-5.5
+Claude Sonnet
+Azure OpenAI
+
+without changing the UI.
+
+5. Preserve all existing workflows.
+
+Do not modify the Dashboard, Interview, Validation, or Version History except where necessary to support calculation transparency.
+
+Update the application version to v0.1.9.

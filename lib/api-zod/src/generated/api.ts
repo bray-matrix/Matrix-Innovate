@@ -327,6 +327,7 @@ export const GetInitiativeRecommendationsParams = zod.object({
 export const GetInitiativeRecommendationsResponse = zod.object({
   "initiativeId": zod.number(),
   "engine": zod.string().describe('Identifier of the recommendation provider that produced this result'),
+  "sourceLabel": zod.string().describe('Human-readable provider name shown as the recommendation source, e.g. \"Rule Engine v1\"'),
   "generatedAt": zod.coerce.date(),
   "similarInitiatives": zod.array(zod.object({
   "id": zod.number(),
@@ -359,6 +360,7 @@ export const RecalculateInitiativeParams = zod.object({
 })
 
 export const RecalculateInitiativeResponse = zod.object({
+  "initiative": zod.object({
   "id": zod.number(),
   "title": zod.string(),
   "department": zod.string(),
@@ -400,7 +402,49 @@ export const RecalculateInitiativeResponse = zod.object({
   "nextReviewAt": zod.string().nullable(),
   "createdAt": zod.string(),
   "updatedAt": zod.string()
+}),
+  "changed": zod.boolean().describe('Whether the recalculation changed any component, score, or priority'),
+  "previousScore": zod.number(),
+  "newScore": zod.number(),
+  "netScoreChange": zod.number(),
+  "previousPriority": zod.string(),
+  "newPriority": zod.string(),
+  "changes": zod.array(zod.object({
+  "component": zod.string().describe('Machine key of the scoring component, e.g. revenuePotential'),
+  "label": zod.string().describe('Display label, e.g. Revenue Opportunity'),
+  "previous": zod.number(),
+  "next": zod.number(),
+  "reason": zod.string().describe('Why the component now has this value')
+})),
+  "unchangedComponents": zod.array(zod.string()).describe('Display labels of components that did not change')
 })
+
+
+/**
+ * @summary List the recalculation audit history for an initiative
+ */
+export const ListCalculationEventsParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const ListCalculationEventsResponseItem = zod.object({
+  "id": zod.number(),
+  "initiativeId": zod.number(),
+  "changedBy": zod.string(),
+  "previousScore": zod.number(),
+  "newScore": zod.number(),
+  "previousPriority": zod.string(),
+  "newPriority": zod.string(),
+  "changes": zod.array(zod.object({
+  "component": zod.string().describe('Machine key of the scoring component, e.g. revenuePotential'),
+  "label": zod.string().describe('Display label, e.g. Revenue Opportunity'),
+  "previous": zod.number(),
+  "next": zod.number(),
+  "reason": zod.string().describe('Why the component now has this value')
+})),
+  "createdAt": zod.coerce.date()
+})
+export const ListCalculationEventsResponse = zod.array(ListCalculationEventsResponseItem)
 
 
 /**

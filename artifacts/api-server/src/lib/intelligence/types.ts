@@ -23,6 +23,10 @@ export interface ComplexityEstimate {
 export interface InitiativeRecommendationsResult {
   initiativeId: number;
   engine: string;
+  // Human-readable provider name shown as the recommendation source in the
+  // UI (e.g. "Rule Engine v1", "OpenAI GPT-5.5"). Future providers only need
+  // to change this label — the UI stays the same.
+  sourceLabel: string;
   generatedAt: string;
   similarInitiatives: SimilarInitiativeResult[];
   prototypeScope: string;

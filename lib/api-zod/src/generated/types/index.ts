@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './calculationEvent';
 export * from './dashboardSummary';
 export * from './document';
 export * from './error';
@@ -17,6 +18,8 @@ export * from './initiativeRecommendations';
 export * from './initiativeRecommendationsComplexity';
 export * from './initiativeUpdate';
 export * from './initiativeVersion';
+export * from './recalculationResult';
+export * from './scoringComponentChange';
 export * from './scoringWeight';
 export * from './settings';
 export * from './similarInitiative';

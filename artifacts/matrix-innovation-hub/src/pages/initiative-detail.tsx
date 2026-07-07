@@ -14,6 +14,7 @@ import {
   getListInitiativeVersionsQueryKey,
   getGetInitiativeRecommendationsQueryKey,
   getCompareInitiativeVersionsQueryKey,
+  getListCalculationEventsQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { type ColumnDef } from "@tanstack/react-table";
@@ -39,9 +40,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DataTable } from "@/components/data-table";
 import { StatusBadge, PriorityBadge } from "@/components/badges";
 import { InitiativeIntelligence } from "@/components/initiative-intelligence";
+import { InfoHint } from "@/components/info-hint";
+import {
+  RecalculationResultDialog,
+  CalculationHistory,
+} from "@/components/calculation-transparency";
 import { format } from "date-fns";
 import { toast } from "@/hooks/use-toast";
 import {
@@ -60,6 +67,7 @@ import type {
   Initiative,
   InitiativeUpdate,
   InitiativeVersion,
+  RecalculationResult,
 } from "@workspace/api-client-react";
 
 const PROTOTYPE_SPRINT_DAYS = 14;
@@ -286,6 +294,9 @@ export default function InitiativeDetail() {
   const [editMode, setEditMode] = useState(false);
   const [draft, setDraft] = useState<EditDraft | null>(null);
   const [compareOpen, setCompareOpen] = useState(false);
+  const [recalcResult, setRecalcResult] = useState<RecalculationResult | null>(
+    null,
+  );
 
   const [tracking, setTracking] = useState({
     assignedTeam: "",
@@ -366,6 +377,9 @@ export default function InitiativeDetail() {
     });
     queryClient.invalidateQueries({
       queryKey: getGetInitiativeRecommendationsQueryKey(id),
+    });
+    queryClient.invalidateQueries({
+      queryKey: getListCalculationEventsQueryKey(id),
     });
     queryClient.invalidateQueries({
       queryKey: getCompareInitiativeVersionsQueryKey(id),
@@ -514,18 +528,16 @@ export default function InitiativeDetail() {
     recalculateInitiative.mutate(
       { id },
       {
-        onSuccess: (updated) => {
+        onSuccess: (result) => {
           invalidateAll();
-          if (updated.score === initiative.score) {
+          if (!result.changed) {
             toast({
               title: "Recalculation Complete",
-              description: `No changes — score remains ${updated.score}/100 (${updated.priority}).`,
+              description:
+                "No changes detected. Innovation Score remains unchanged.",
             });
           } else {
-            toast({
-              title: "Recalculation Complete",
-              description: `Score updated from ${initiative.score} to ${updated.score}/100 (${updated.priority} priority).`,
-            });
+            setRecalcResult(result);
           }
         },
         onError: () => {
@@ -771,14 +783,40 @@ export default function InitiativeDetail() {
           </div>
           <div className="flex items-center gap-3">
             <div className="text-right">
-              <div className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">
+              <div className="flex items-center justify-end gap-1 text-xs text-muted-foreground uppercase tracking-wider font-semibold">
                 Priority
+                <InfoHint
+                  title="Priority"
+                  howCalculated="Derived automatically from the Innovation Score: 80+ is Critical, 65–79 is High, 50–64 is Medium, and below 50 is Low. Priority is recomputed whenever the score changes."
+                  inputs={["Innovation Score (0–100)"]}
+                  systemGenerated={["Priority level", "Innovation Score"]}
+                />
               </div>
               <PriorityBadge priority={initiative.priority} />
             </div>
             <div className="text-right ml-2">
-              <div className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">
+              <div className="flex items-center justify-end gap-1 text-xs text-muted-foreground uppercase tracking-wider font-semibold">
                 Score
+                <InfoHint
+                  title="Innovation Score"
+                  howCalculated="A 100-point model computed server-side: Business Value (max 25), Revenue Opportunity (max 15), Cost Savings (max 15), Customer Impact (max 15), Strategic Alignment (max 10), AI/Data Readiness (max 10), and Prototype Confidence (max 10), minus penalties for Technical Complexity (up to −8) and Compliance Risk (up to −8). The result is clamped to 0–100."
+                  inputs={[
+                    "Business value, customer impact, strategic alignment ratings",
+                    "Estimated revenue opportunity and cost savings",
+                    "AI/Data readiness level (High/Medium/Low)",
+                    "Prototype confidence rating",
+                    "Technical complexity and compliance risk levels",
+                  ]}
+                  userEntered={[
+                    "Scoring ratings and estimates from the scoring form",
+                    "Readiness, complexity, and risk levels",
+                  ]}
+                  systemGenerated={[
+                    "Component point conversions",
+                    "Penalty deductions",
+                    "Final 0–100 score",
+                  ]}
+                />
               </div>
               <div className="text-xl font-bold font-mono">
                 {initiative.score}
@@ -917,8 +955,21 @@ export default function InitiativeDetail() {
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm uppercase tracking-wider text-muted-foreground">
+              <CardTitle className="flex items-center gap-1.5 text-sm uppercase tracking-wider text-muted-foreground">
                 Expected Value
+                <InfoHint
+                  title="Expected Value"
+                  howCalculated="Composed automatically from the estimates entered on the initiative: monthly hours saved, revenue opportunity, and cost savings. The sentence itself is generated by the system; the numbers come from the submitter."
+                  inputs={[
+                    "Estimated hours saved per month",
+                    "Estimated revenue opportunity ($)",
+                    "Estimated cost savings ($)",
+                  ]}
+                  userEntered={[
+                    "All three estimates (hours, revenue, cost savings)",
+                  ]}
+                  systemGenerated={["The composed summary sentence"]}
+                />
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -1041,8 +1092,18 @@ export default function InitiativeDetail() {
 
           <Card className="col-span-1 md:col-span-2 lg:col-span-3">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm uppercase tracking-wider text-muted-foreground">
+              <CardTitle className="flex items-center gap-1.5 text-sm uppercase tracking-wider text-muted-foreground">
                 Recommended Next Step
+                <InfoHint
+                  title="Recommended Next Step"
+                  howCalculated="Generated by the system from the initiative's computed Priority and Innovation Score. It updates automatically whenever the score or priority changes."
+                  inputs={["Priority level", "Innovation Score (0–100)"]}
+                  systemGenerated={[
+                    "Priority level",
+                    "Innovation Score",
+                    "The recommendation sentence",
+                  ]}
+                />
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -1138,37 +1199,57 @@ export default function InitiativeDetail() {
         </div>
       </div>
 
-      {/* Version History */}
+      {/* History: Version History + Calculation History */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <History className="mr-2 h-5 w-5 text-primary" />
-            <h2 className="text-xl font-bold">Version History</h2>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setCompareOpen(true)}
-            disabled={(versions?.length ?? 0) < 2}
-          >
-            <GitCompareArrows className="mr-2 h-4 w-4" />
-            Compare with Previous
-          </Button>
+        <div className="flex items-center">
+          <History className="mr-2 h-5 w-5 text-primary" />
+          <h2 className="text-xl font-bold">History</h2>
         </div>
-        <DataTable
-          columns={versionColumns}
-          data={versions ?? []}
-          searchPlaceholder="Search history..."
-          exportFileName={`initiative-${initiative.id}-version-history`}
-          initialPageSize={10}
-          emptyMessage="No version history yet."
-        />
+        <Tabs defaultValue="versions">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <TabsList>
+              <TabsTrigger value="versions">Version History</TabsTrigger>
+              <TabsTrigger value="calculations">
+                Calculation History
+              </TabsTrigger>
+            </TabsList>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCompareOpen(true)}
+              disabled={(versions?.length ?? 0) < 2}
+            >
+              <GitCompareArrows className="mr-2 h-4 w-4" />
+              Compare with Previous
+            </Button>
+          </div>
+          <TabsContent value="versions" className="mt-4">
+            <DataTable
+              columns={versionColumns}
+              data={versions ?? []}
+              searchPlaceholder="Search history..."
+              exportFileName={`initiative-${initiative.id}-version-history`}
+              initialPageSize={10}
+              emptyMessage="No version history yet."
+            />
+          </TabsContent>
+          <TabsContent value="calculations" className="mt-4">
+            <CalculationHistory initiativeId={id} />
+          </TabsContent>
+        </Tabs>
       </div>
 
       <CompareDialog
         id={id}
         open={compareOpen}
         onOpenChange={setCompareOpen}
+      />
+
+      <RecalculationResultDialog
+        result={recalcResult}
+        onOpenChange={(open) => {
+          if (!open) setRecalcResult(null);
+        }}
       />
 
       {/* Sticky edit-mode action bar */}

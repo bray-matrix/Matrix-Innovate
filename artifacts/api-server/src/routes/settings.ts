@@ -2,7 +2,7 @@ import { Router, type IRouter } from "express";
 
 const router: IRouter = Router();
 
-export const APPLICATION_VERSION = "v0.1.8";
+export const APPLICATION_VERSION = "v0.1.9";
 
 const SETTINGS = {
   departments: [

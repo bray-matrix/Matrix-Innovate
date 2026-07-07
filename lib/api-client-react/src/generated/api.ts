@@ -20,6 +20,7 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  CalculationEvent,
   DashboardSummary,
   Document,
   Error,
@@ -29,6 +30,7 @@ import type {
   InitiativeRecommendations,
   InitiativeUpdate,
   InitiativeVersion,
+  RecalculationResult,
   Settings,
   ValidationCreate,
   ValidationDetail,
@@ -674,9 +676,9 @@ export const getRecalculateInitiativeUrl = (id: number,) => {
 /**
  * @summary Recalculate scoring, AI readiness, and priority from stored fields
  */
-export const recalculateInitiative = async (id: number, options?: RequestInit): Promise<Initiative> => {
+export const recalculateInitiative = async (id: number, options?: RequestInit): Promise<RecalculationResult> => {
 
-  return customFetch<Initiative>(getRecalculateInitiativeUrl(id),
+  return customFetch<RecalculationResult>(getRecalculateInitiativeUrl(id),
   {
     ...options,
     method: 'POST'
@@ -732,6 +734,83 @@ export const useRecalculateInitiative = <TError = ErrorType<Error>,
       > => {
       return useMutation(getRecalculateInitiativeMutationOptions(options));
     }
+
+export const getListCalculationEventsUrl = (id: number,) => {
+
+
+
+
+  return `/api/initiatives/${id}/calculations`
+}
+
+/**
+ * @summary List the recalculation audit history for an initiative
+ */
+export const listCalculationEvents = async (id: number, options?: RequestInit): Promise<CalculationEvent[]> => {
+
+  return customFetch<CalculationEvent[]>(getListCalculationEventsUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListCalculationEventsQueryKey = (id: number,) => {
+    return [
+    `/api/initiatives/${id}/calculations`
+    ] as const;
+    }
+
+
+export const getListCalculationEventsQueryOptions = <TData = Awaited<ReturnType<typeof listCalculationEvents>>, TError = ErrorType<Error>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCalculationEvents>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListCalculationEventsQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listCalculationEvents>>> = ({ signal }) => listCalculationEvents(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCalculationEvents>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListCalculationEventsQueryResult = NonNullable<Awaited<ReturnType<typeof listCalculationEvents>>>
+export type ListCalculationEventsQueryError = ErrorType<Error>
+
+
+/**
+ * @summary List the recalculation audit history for an initiative
+ */
+
+export function useListCalculationEvents<TData = Awaited<ReturnType<typeof listCalculationEvents>>, TError = ErrorType<Error>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCalculationEvents>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListCalculationEventsQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getCompareInitiativeVersionsUrl = (id: number,) => {
 

@@ -205,11 +205,43 @@ paths:
             type: integer
       responses:
         "200":
-          description: Initiative after recalculation
+          description: Recalculation result with a detailed per-component change explanation
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Initiative"
+                $ref: "#/components/schemas/RecalculationResult"
+        "400":
+          description: Invalid id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /initiatives/{id}/calculations:
+    get:
+      operationId: listCalculationEvents
+      tags: [initiatives]
+      summary: List the recalculation audit history for an initiative
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Calculation events, newest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CalculationEvent"
         "400":
           description: Invalid id
           content:
@@ -1037,6 +1069,99 @@ components:
           type: array
           items:
             type: string
+    ScoringComponentChange:
+      type: object
+      required:
+        - component
+        - label
+        - previous
+        - next
+        - reason
+      properties:
+        component:
+          type: string
+          description: Machine key of the scoring component, e.g. revenuePotential
+        label:
+          type: string
+          description: Display label, e.g. Revenue Opportunity
+        previous:
+          type: integer
+        next:
+          type: integer
+        reason:
+          type: string
+          description: Why the component now has this value
+    RecalculationResult:
+      type: object
+      required:
+        - initiative
+        - changed
+        - previousScore
+        - newScore
+        - netScoreChange
+        - previousPriority
+        - newPriority
+        - changes
+        - unchangedComponents
+      properties:
+        initiative:
+          $ref: "#/components/schemas/Initiative"
+        changed:
+          type: boolean
+          description: Whether the recalculation changed any component, score, or priority
+        previousScore:
+          type: integer
+        newScore:
+          type: integer
+        netScoreChange:
+          type: integer
+        previousPriority:
+          type: string
+        newPriority:
+          type: string
+        changes:
+          type: array
+          items:
+            $ref: "#/components/schemas/ScoringComponentChange"
+        unchangedComponents:
+          type: array
+          description: Display labels of components that did not change
+          items:
+            type: string
+    CalculationEvent:
+      type: object
+      required:
+        - id
+        - initiativeId
+        - changedBy
+        - previousScore
+        - newScore
+        - previousPriority
+        - newPriority
+        - changes
+        - createdAt
+      properties:
+        id:
+          type: integer
+        initiativeId:
+          type: integer
+        changedBy:
+          type: string
+        previousScore:
+          type: integer
+        newScore:
+          type: integer
+        previousPriority:
+          type: string
+        newPriority:
+          type: string
+        changes:
+          type: array
+          items:
+            $ref: "#/components/schemas/ScoringComponentChange"
+        createdAt:
+          type: string
+          format: date-time
     InitiativeRecommendations:
       type: object
       required:
@@ -1054,12 +1179,16 @@ components:
         - expectedAnnualValue
         - confidenceScore
         - nextAction
+        - sourceLabel
       properties:
         initiativeId:
           type: integer
         engine:
           type: string
           description: Identifier of the recommendation provider that produced this result
+        sourceLabel:
+          type: string
+          description: Human-readable provider name shown as the recommendation source, e.g. "Rule Engine v1"
         generatedAt:
           type: string
           format: date-time

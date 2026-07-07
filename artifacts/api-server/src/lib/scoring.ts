@@ -153,6 +153,90 @@ export function deriveCostSavingsScore(
   return Math.max(costTier, hoursTier);
 }
 
+// ---------------------------------------------------------------------------
+// Scoring explanations (v0.1.9)
+//
+// Produces a human-readable reason for every scoring component's current
+// value so recalculation diffs and audit history can explain exactly why a
+// component is what it is.
+// ---------------------------------------------------------------------------
+
+export const COMPONENT_LABELS: Record<keyof ScoringComponents, string> = {
+  businessValue: "Business Value",
+  revenuePotential: "Revenue Opportunity",
+  costSavingsScore: "Cost Savings",
+  customerImpactScore: "Customer Impact",
+  strategicAlignment: "Strategic Alignment",
+  aiReadinessScore: "AI Readiness",
+  prototypeConfidence: "Prototype Confidence",
+  technicalComplexityPenalty: "Technical Complexity",
+  riskPenalty: "Compliance Risk",
+};
+
+const formatMoney = (value: number): string =>
+  `$${Math.round(value).toLocaleString("en-US")}`;
+
+export function explainComponents(
+  inputs: RecalculationInputs,
+  components: ScoringComponents,
+): Record<keyof ScoringComponents, string> {
+  const revenueReason =
+    inputs.estimatedRevenueOpportunity > 0
+      ? `Estimated revenue opportunity of ${formatMoney(inputs.estimatedRevenueOpportunity)} maps to ${components.revenuePotential} of 15 points.`
+      : "Revenue opportunity field is blank.";
+
+  let costReason: string;
+  if (inputs.estimatedCostSavings <= 0 && inputs.estimatedHoursSavedMonthly <= 0) {
+    costReason = "Cost savings and hours saved fields are blank.";
+  } else {
+    const parts: string[] = [];
+    if (inputs.estimatedCostSavings > 0) {
+      parts.push(`estimated cost savings of ${formatMoney(inputs.estimatedCostSavings)}`);
+    }
+    if (inputs.estimatedHoursSavedMonthly > 0) {
+      parts.push(`${inputs.estimatedHoursSavedMonthly} hours saved monthly`);
+    }
+    costReason = `Based on ${parts.join(" and ")}, the higher tier gives ${components.costSavingsScore} of 15 points.`;
+  }
+
+  const aiLevel = levelOf(inputs.aiReadiness);
+  const aiReason =
+    aiLevel === "unknown"
+      ? "AI readiness level is not set; the previous component value was kept."
+      : `AI readiness is ${capitalize(aiLevel)}.`;
+
+  const complexityLevel = levelOf(inputs.technicalComplexity);
+  const complexityReason =
+    complexityLevel === "unknown"
+      ? "Technical complexity level is not set; the previous penalty was kept."
+      : `Technical complexity is ${capitalize(complexityLevel)}.`;
+
+  const riskLevel = levelOf(inputs.complianceRisk);
+  const riskReason =
+    riskLevel === "unknown"
+      ? "Compliance risk level is not set; the previous penalty was kept."
+      : `Compliance risk is ${capitalize(riskLevel)}.`;
+
+  return {
+    businessValue:
+      "User-entered judgment score (0-25); not changed by recalculation.",
+    customerImpactScore:
+      "User-entered judgment score (0-15); not changed by recalculation.",
+    strategicAlignment:
+      "User-entered judgment score (0-10); not changed by recalculation.",
+    prototypeConfidence:
+      "User-entered judgment score (0-10); not changed by recalculation.",
+    revenuePotential: revenueReason,
+    costSavingsScore: costReason,
+    aiReadinessScore: aiReason,
+    technicalComplexityPenalty: complexityReason,
+    riskPenalty: riskReason,
+  };
+}
+
+const capitalize = (value: string): string =>
+  value.charAt(0).toUpperCase() + value.slice(1);
+
 export function recalculateComponents(
   inputs: RecalculationInputs,
   existing: ScoringComponents,

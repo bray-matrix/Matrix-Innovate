@@ -5,6 +5,43 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and the
 project adheres to semantic versioning (patch = fixes/edits, minor = new
 features, major = breaking or milestone changes).
 
+## [0.1.9] — 2026-07-07
+
+### Added
+
+- **Recalculation transparency** — the Recalculate button now returns a
+  detailed result. When values change, a "Recalculation Result" dialog shows
+  the previous → new Innovation Score with net change, any priority change,
+  every changed scoring component (previous → new points with the reason it
+  changed), and the list of unchanged components. When nothing changes, a
+  toast confirms "No changes detected. Innovation Score remains unchanged."
+- **Calculation audit trail** — every recalculation (including no-change runs)
+  is stored in a new `calculation_events` table with timestamp, who triggered
+  it, previous/new score and priority, and per-component changes with reasons.
+  Exposed via `GET /api/initiatives/{id}/calculations`.
+- **Calculation History tab** — the Initiative Workspace history section is
+  now tabbed: "Version History" (existing table) and a new "Calculation
+  History" tab listing each recalculation event with score delta, priority
+  change, user, timestamp, and expandable component-level details.
+- **Calculated-field info icons** — new reusable info popover explaining how
+  each calculated value is derived: Innovation Score and Priority in the
+  workspace header, Expected Value and Recommended Next Step on the AI
+  Opportunity Canvas. Each popover lists the calculation logic, the inputs
+  that affect it, and which values are user-entered vs system-generated.
+- **Recommendation provenance** — every Initiative Intelligence card now shows
+  a Confidence percentage and a Source label ("Rule Engine v1"), returned by
+  the API as `sourceLabel` so a future AI-powered engine can swap in its own
+  label without frontend changes.
+
+### Changed
+
+- `POST /api/initiatives/{id}/recalculate` now returns a `RecalculationResult`
+  (initiative, changed flag, previous/new score and priority, net change,
+  component changes with reasons, unchanged components) instead of the bare
+  initiative.
+- The Intelligence header badge now shows the recommendation source label
+  instead of the internal engine id.
+
 ## [0.1.8] — 2026-07-06
 
 ### Added

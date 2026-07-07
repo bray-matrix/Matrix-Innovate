@@ -294,6 +294,43 @@ export interface SimilarInitiative {
   reasons: string[];
 }
 
+export interface ScoringComponentChange {
+  /** Machine key of the scoring component, e.g. revenuePotential */
+  component: string;
+  /** Display label, e.g. Revenue Opportunity */
+  label: string;
+  previous: number;
+  next: number;
+  /** Why the component now has this value */
+  reason: string;
+}
+
+export interface RecalculationResult {
+  initiative: Initiative;
+  /** Whether the recalculation changed any component, score, or priority */
+  changed: boolean;
+  previousScore: number;
+  newScore: number;
+  netScoreChange: number;
+  previousPriority: string;
+  newPriority: string;
+  changes: ScoringComponentChange[];
+  /** Display labels of components that did not change */
+  unchangedComponents: string[];
+}
+
+export interface CalculationEvent {
+  id: number;
+  initiativeId: number;
+  changedBy: string;
+  previousScore: number;
+  newScore: number;
+  previousPriority: string;
+  newPriority: string;
+  changes: ScoringComponentChange[];
+  createdAt: string;
+}
+
 export type InitiativeRecommendationsComplexity = typeof InitiativeRecommendationsComplexity[keyof typeof InitiativeRecommendationsComplexity];
 
 
@@ -307,6 +344,8 @@ export interface InitiativeRecommendations {
   initiativeId: number;
   /** Identifier of the recommendation provider that produced this result */
   engine: string;
+  /** Human-readable provider name shown as the recommendation source, e.g. "Rule Engine v1" */
+  sourceLabel: string;
   generatedAt: string;
   similarInitiatives: SimilarInitiative[];
   prototypeScope: string;

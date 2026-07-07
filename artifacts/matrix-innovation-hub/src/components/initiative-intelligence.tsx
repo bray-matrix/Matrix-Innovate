@@ -44,6 +44,8 @@ interface IntelligenceCardProps {
   iconColor: string;
   badge?: React.ReactNode;
   defaultOpen?: boolean;
+  confidence?: number;
+  source?: string;
   children: React.ReactNode;
 }
 
@@ -54,6 +56,8 @@ function IntelligenceCard({
   iconColor,
   badge,
   defaultOpen = true,
+  confidence,
+  source,
   children,
 }: IntelligenceCardProps) {
   const [open, setOpen] = useState(defaultOpen);
@@ -77,7 +81,29 @@ function IntelligenceCard({
           </CardHeader>
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <CardContent className="pt-0 pb-4">{children}</CardContent>
+          <CardContent className="pt-0 pb-4">
+            {children}
+            {(confidence !== undefined || source) && (
+              <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 border-t pt-2 text-xs text-muted-foreground">
+                {confidence !== undefined && (
+                  <span>
+                    Confidence:{" "}
+                    <span className="font-medium text-foreground">
+                      {confidence}%
+                    </span>
+                  </span>
+                )}
+                {source && (
+                  <span>
+                    Source:{" "}
+                    <span className="font-medium text-foreground">
+                      {source}
+                    </span>
+                  </span>
+                )}
+              </div>
+            )}
+          </CardContent>
         </CollapsibleContent>
       </Collapsible>
     </Card>
@@ -169,7 +195,7 @@ export function InitiativeIntelligence({ initiativeId }: { initiativeId: number 
         </div>
         {data && (
           <Badge variant="outline" className="font-mono text-xs">
-            Engine: {data.engine}
+            Source: {data.sourceLabel}
           </Badge>
         )}
       </div>
@@ -206,6 +232,8 @@ function IntelligenceCards({ data }: { data: InitiativeRecommendations }) {
           title="Recommended Next Action"
           accent="border-l-[#002D72]"
           iconColor="text-primary"
+        confidence={data.confidenceScore}
+        source={data.sourceLabel}
         >
           <p className="text-lg font-semibold text-foreground">
             {data.nextAction}
@@ -218,6 +246,8 @@ function IntelligenceCards({ data }: { data: InitiativeRecommendations }) {
         title="Similar Initiatives"
         accent="border-l-[#00A3E0]"
         iconColor="text-[#00A3E0]"
+        confidence={data.confidenceScore}
+        source={data.sourceLabel}
         badge={
           <Badge variant="secondary" className="font-mono">
             {data.similarInitiatives.length}
@@ -242,6 +272,8 @@ function IntelligenceCards({ data }: { data: InitiativeRecommendations }) {
         title="Recommended Prototype Scope"
         accent="border-l-[#7C3AED]"
         iconColor="text-[#7C3AED]"
+        confidence={data.confidenceScore}
+        source={data.sourceLabel}
       >
         <p className="text-sm leading-relaxed">{data.prototypeScope}</p>
       </IntelligenceCard>
@@ -251,6 +283,8 @@ function IntelligenceCards({ data }: { data: InitiativeRecommendations }) {
         title="Estimated Complexity"
         accent="border-l-[#FFC72C]"
         iconColor="text-[#B58900]"
+        confidence={data.confidenceScore}
+        source={data.sourceLabel}
         badge={
           <Badge
             variant="outline"
@@ -268,6 +302,8 @@ function IntelligenceCards({ data }: { data: InitiativeRecommendations }) {
         title="Estimated Prototype Duration"
         accent="border-l-[#00A3E0]"
         iconColor="text-[#00A3E0]"
+        confidence={data.confidenceScore}
+        source={data.sourceLabel}
       >
         <div className="flex items-baseline gap-2">
           <span className="text-3xl font-bold tracking-tight">
@@ -284,6 +320,8 @@ function IntelligenceCards({ data }: { data: InitiativeRecommendations }) {
         title="Suggested Team Roles"
         accent="border-l-[#002D72]"
         iconColor="text-primary"
+        confidence={data.confidenceScore}
+        source={data.sourceLabel}
         badge={
           <Badge variant="secondary" className="font-mono">
             {data.teamRoles.length}
@@ -298,6 +336,8 @@ function IntelligenceCards({ data }: { data: InitiativeRecommendations }) {
         title="Potential Risks"
         accent="border-l-red-500"
         iconColor="text-red-500"
+        confidence={data.confidenceScore}
+        source={data.sourceLabel}
         badge={
           <Badge variant="secondary" className="font-mono">
             {data.risks.length}
@@ -312,6 +352,8 @@ function IntelligenceCards({ data }: { data: InitiativeRecommendations }) {
         title="Expected Business Value"
         accent="border-l-[#2E7D32]"
         iconColor="text-[#2E7D32]"
+        confidence={data.confidenceScore}
+        source={data.sourceLabel}
       >
         <p className="text-sm font-medium leading-relaxed">
           {data.expectedBusinessValue}
@@ -323,6 +365,8 @@ function IntelligenceCards({ data }: { data: InitiativeRecommendations }) {
         title="Confidence Score"
         accent="border-l-[#FFC72C]"
         iconColor="text-[#B58900]"
+        confidence={data.confidenceScore}
+        source={data.sourceLabel}
       >
         <ConfidenceMeter value={data.confidenceScore} />
       </IntelligenceCard>

@@ -12,6 +12,8 @@ export interface InitiativeRecommendations {
   initiativeId: number;
   /** Identifier of the recommendation provider that produced this result */
   engine: string;
+  /** Human-readable provider name shown as the recommendation source, e.g. "Rule Engine v1" */
+  sourceLabel: string;
   generatedAt: Date;
   similarInitiatives: SimilarInitiative[];
   prototypeScope: string;

@@ -1,5 +1,11 @@
 import { Router, type IRouter } from "express";
-import { db, initiativesTable, initiativeVersionsTable } from "@workspace/db";
+import {
+  db,
+  initiativesTable,
+  initiativeVersionsTable,
+  calculationEventsTable,
+  type CalculationComponentChange,
+} from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
 import {
   CreateInitiativeBody,
@@ -9,6 +15,9 @@ import {
   calculateScore,
   derivePriority,
   recalculateComponents,
+  explainComponents,
+  COMPONENT_LABELS,
+  type ScoringComponents,
 } from "../lib/scoring";
 import { bumpVersion, determineBumpKind, DEFAULT_VERSION } from "../lib/versioning";
 import { getRecommendationProvider } from "../lib/intelligence";
@@ -212,42 +221,94 @@ router.post("/initiatives/:id/recalculate", async (req, res) => {
     return;
   }
 
-  const components = recalculateComponents(
-    {
-      estimatedRevenueOpportunity: existing.estimatedRevenueOpportunity,
-      estimatedCostSavings: existing.estimatedCostSavings,
-      estimatedHoursSavedMonthly: existing.estimatedHoursSavedMonthly,
-      aiReadiness: existing.aiReadiness,
-      technicalComplexity: existing.technicalComplexity,
-      complianceRisk: existing.complianceRisk,
-    },
-    {
-      businessValue: existing.businessValue,
-      revenuePotential: existing.revenuePotential,
-      costSavingsScore: existing.costSavingsScore,
-      customerImpactScore: existing.customerImpactScore,
-      strategicAlignment: existing.strategicAlignment,
-      aiReadinessScore: existing.aiReadinessScore,
-      prototypeConfidence: existing.prototypeConfidence,
-      technicalComplexityPenalty: existing.technicalComplexityPenalty,
-      riskPenalty: existing.riskPenalty,
-    },
-  );
+  const inputs = {
+    estimatedRevenueOpportunity: existing.estimatedRevenueOpportunity,
+    estimatedCostSavings: existing.estimatedCostSavings,
+    estimatedHoursSavedMonthly: existing.estimatedHoursSavedMonthly,
+    aiReadiness: existing.aiReadiness,
+    technicalComplexity: existing.technicalComplexity,
+    complianceRisk: existing.complianceRisk,
+  };
+  const previousComponents: ScoringComponents = {
+    businessValue: existing.businessValue,
+    revenuePotential: existing.revenuePotential,
+    costSavingsScore: existing.costSavingsScore,
+    customerImpactScore: existing.customerImpactScore,
+    strategicAlignment: existing.strategicAlignment,
+    aiReadinessScore: existing.aiReadinessScore,
+    prototypeConfidence: existing.prototypeConfidence,
+    technicalComplexityPenalty: existing.technicalComplexityPenalty,
+    riskPenalty: existing.riskPenalty,
+  };
+  const components = recalculateComponents(inputs, previousComponents);
   const score = calculateScore(components);
   const priority = derivePriority(score);
 
-  const changedNothing =
-    components.revenuePotential === existing.revenuePotential &&
-    components.costSavingsScore === existing.costSavingsScore &&
-    components.aiReadinessScore === existing.aiReadinessScore &&
-    components.technicalComplexityPenalty ===
-      existing.technicalComplexityPenalty &&
-    components.riskPenalty === existing.riskPenalty &&
-    score === existing.score &&
-    priority === existing.priority;
+  // Build the per-component diff with reasons for every changed value.
+  const reasons = explainComponents(inputs, components);
+  const componentKeys = Object.keys(
+    COMPONENT_LABELS,
+  ) as (keyof ScoringComponents)[];
+  const changes: CalculationComponentChange[] = [];
+  const unchangedComponents: string[] = [];
+  for (const key of componentKeys) {
+    if (components[key] !== previousComponents[key]) {
+      changes.push({
+        component: key,
+        label: COMPONENT_LABELS[key],
+        previous: previousComponents[key],
+        next: components[key],
+        reason: reasons[key],
+      });
+    } else {
+      unchangedComponents.push(COMPONENT_LABELS[key]);
+    }
+  }
 
-  if (changedNothing) {
-    res.json(serialize(existing));
+  const changed =
+    changes.length > 0 || score !== existing.score || priority !== existing.priority;
+
+  // Data-drift edge case: the stored total can be out of sync with the stored
+  // components (e.g. legacy or manually adjusted data). Ensure the result
+  // always explains why the score moved, even when no component changed.
+  if (changed && changes.length === 0) {
+    changes.push({
+      component: "total",
+      label: "Innovation Score",
+      previous: existing.score,
+      next: score,
+      reason:
+        "The stored total was out of sync with its scoring components; it was recomputed from the current component values.",
+    });
+  }
+  const changedBy = existing.submitterName || "System";
+
+  const buildResult = (
+    row: typeof initiativesTable.$inferSelect,
+  ) => ({
+    initiative: serialize(row),
+    changed,
+    previousScore: existing.score,
+    newScore: score,
+    netScoreChange: score - existing.score,
+    previousPriority: existing.priority,
+    newPriority: priority,
+    changes,
+    unchangedComponents,
+  });
+
+  if (!changed) {
+    // Audit even no-change recalculations so the full history is preserved.
+    await db.insert(calculationEventsTable).values({
+      initiativeId: id,
+      changedBy,
+      previousScore: existing.score,
+      newScore: score,
+      previousPriority: existing.priority,
+      newPriority: priority,
+      changes: [],
+    });
+    res.json(buildResult(existing));
     return;
   }
 
@@ -268,15 +329,59 @@ router.post("/initiatives/:id/recalculate", async (req, res) => {
     await tx.insert(initiativeVersionsTable).values({
       initiativeId: id,
       version: newVersion,
-      changedBy: existing.submitterName || "System",
+      changedBy,
       summary: `Recalculated scoring and AI readiness (score ${existing.score} to ${score})`,
       snapshot: buildSnapshot(updated),
+    });
+
+    await tx.insert(calculationEventsTable).values({
+      initiativeId: id,
+      changedBy,
+      previousScore: existing.score,
+      newScore: score,
+      previousPriority: existing.priority,
+      newPriority: priority,
+      changes,
     });
 
     return updated;
   });
 
-  res.json(serialize(row));
+  res.json(buildResult(row));
+});
+
+router.get("/initiatives/:id/calculations", async (req, res) => {
+  const id = Number(req.params.id);
+  if (Number.isNaN(id)) {
+    res.status(400).json({ error: "Invalid id" });
+    return;
+  }
+  const [initiative] = await db
+    .select()
+    .from(initiativesTable)
+    .where(eq(initiativesTable.id, id));
+  if (!initiative) {
+    res.status(404).json({ error: "Initiative not found" });
+    return;
+  }
+  const events = await db
+    .select()
+    .from(calculationEventsTable)
+    .where(eq(calculationEventsTable.initiativeId, id))
+    .orderBy(desc(calculationEventsTable.createdAt), desc(calculationEventsTable.id));
+  res.json(
+    events.map((event) => ({
+      id: event.id,
+      initiativeId: event.initiativeId,
+      changedBy: event.changedBy,
+      previousScore: event.previousScore,
+      newScore: event.newScore,
+      previousPriority: event.previousPriority,
+      newPriority: event.newPriority,
+      changes: event.changes,
+      createdAt: event.createdAt.toISOString(),
+    })),
+  );
 });
 
 router.get("/initiatives/:id/compare", async (req, res) => {
