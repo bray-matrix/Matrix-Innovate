@@ -13,7 +13,7 @@ const DOCUMENTS = [
   ...doc,
   version: "v1.0",
   owner: "CIO / AI Innovation Office",
-  status: "Published",
+  status: "Not Published",
 }));
 
 router.get("/documents", (_req, res) => {
