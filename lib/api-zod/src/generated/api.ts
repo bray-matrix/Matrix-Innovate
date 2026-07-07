@@ -513,3 +513,199 @@ export const GetSettingsResponse = zod.object({
 })
 
 
+/**
+ * @summary List validation records, newest first
+ */
+export const ListValidationsResponseItem = zod.object({
+  "id": zod.number(),
+  "applicationVersion": zod.string(),
+  "releaseName": zod.string(),
+  "status": zod.enum(['Not Started', 'In Progress', 'Passed', 'Failed']),
+  "validationDate": zod.string().nullable(),
+  "validatorName": zod.string(),
+  "summary": zod.string(),
+  "overallNotes": zod.string(),
+  "totalItems": zod.number(),
+  "passedItems": zod.number(),
+  "failedItems": zod.number(),
+  "notTestedItems": zod.number(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+export const ListValidationsResponse = zod.array(ListValidationsResponseItem)
+
+
+/**
+ * Creates a new validation record for the current application version, seeded from the built-in checklist templates covering every feature area of the app.
+ * @summary Generate a validation checklist for the current application version
+ */
+export const CreateValidationBody = zod.object({
+  "validatorName": zod.string().optional(),
+  "releaseName": zod.string().optional()
+})
+
+export const CreateValidationResponse = zod.object({
+  "id": zod.number(),
+  "applicationVersion": zod.string(),
+  "releaseName": zod.string(),
+  "status": zod.enum(['Not Started', 'In Progress', 'Passed', 'Failed']),
+  "validationDate": zod.string().nullable(),
+  "validatorName": zod.string(),
+  "summary": zod.string(),
+  "overallNotes": zod.string(),
+  "totalItems": zod.number(),
+  "passedItems": zod.number(),
+  "failedItems": zod.number(),
+  "notTestedItems": zod.number(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+}).and(zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.number(),
+  "recordId": zod.number(),
+  "featureArea": zod.string(),
+  "breadcrumb": zod.string(),
+  "whatToValidate": zod.string(),
+  "expectedResult": zod.string(),
+  "result": zod.enum(['Pass', 'Fail', 'Not Tested']),
+  "comments": zod.string(),
+  "sortOrder": zod.number()
+}))
+}))
+
+
+/**
+ * @summary Get a validation record with its checklist items
+ */
+export const GetValidationParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetValidationResponse = zod.object({
+  "id": zod.number(),
+  "applicationVersion": zod.string(),
+  "releaseName": zod.string(),
+  "status": zod.enum(['Not Started', 'In Progress', 'Passed', 'Failed']),
+  "validationDate": zod.string().nullable(),
+  "validatorName": zod.string(),
+  "summary": zod.string(),
+  "overallNotes": zod.string(),
+  "totalItems": zod.number(),
+  "passedItems": zod.number(),
+  "failedItems": zod.number(),
+  "notTestedItems": zod.number(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+}).and(zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.number(),
+  "recordId": zod.number(),
+  "featureArea": zod.string(),
+  "breadcrumb": zod.string(),
+  "whatToValidate": zod.string(),
+  "expectedResult": zod.string(),
+  "result": zod.enum(['Pass', 'Fail', 'Not Tested']),
+  "comments": zod.string(),
+  "sortOrder": zod.number()
+}))
+}))
+
+
+/**
+ * @summary Update validation record header fields
+ */
+export const UpdateValidationParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const UpdateValidationBody = zod.object({
+  "releaseName": zod.string().optional(),
+  "validatorName": zod.string().optional(),
+  "summary": zod.string().optional(),
+  "overallNotes": zod.string().optional()
+})
+
+export const UpdateValidationResponse = zod.object({
+  "id": zod.number(),
+  "applicationVersion": zod.string(),
+  "releaseName": zod.string(),
+  "status": zod.enum(['Not Started', 'In Progress', 'Passed', 'Failed']),
+  "validationDate": zod.string().nullable(),
+  "validatorName": zod.string(),
+  "summary": zod.string(),
+  "overallNotes": zod.string(),
+  "totalItems": zod.number(),
+  "passedItems": zod.number(),
+  "failedItems": zod.number(),
+  "notTestedItems": zod.number(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+}).and(zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.number(),
+  "recordId": zod.number(),
+  "featureArea": zod.string(),
+  "breadcrumb": zod.string(),
+  "whatToValidate": zod.string(),
+  "expectedResult": zod.string(),
+  "result": zod.enum(['Pass', 'Fail', 'Not Tested']),
+  "comments": zod.string(),
+  "sortOrder": zod.number()
+}))
+}))
+
+
+/**
+ * @summary Delete a validation record and its items
+ */
+export const DeleteValidationParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const DeleteValidationResponse = zod.void()
+
+
+/**
+ * Updating an item also re-derives the parent record's overall validation status and validation date server-side.
+ * @summary Update a checklist item result or comments
+ */
+export const UpdateValidationItemParams = zod.object({
+  "id": zod.coerce.number(),
+  "itemId": zod.coerce.number()
+})
+
+export const UpdateValidationItemBody = zod.object({
+  "result": zod.enum(['Pass', 'Fail', 'Not Tested']).optional(),
+  "comments": zod.string().optional()
+})
+
+export const UpdateValidationItemResponse = zod.object({
+  "id": zod.number(),
+  "applicationVersion": zod.string(),
+  "releaseName": zod.string(),
+  "status": zod.enum(['Not Started', 'In Progress', 'Passed', 'Failed']),
+  "validationDate": zod.string().nullable(),
+  "validatorName": zod.string(),
+  "summary": zod.string(),
+  "overallNotes": zod.string(),
+  "totalItems": zod.number(),
+  "passedItems": zod.number(),
+  "failedItems": zod.number(),
+  "notTestedItems": zod.number(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+}).and(zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.number(),
+  "recordId": zod.number(),
+  "featureArea": zod.string(),
+  "breadcrumb": zod.string(),
+  "whatToValidate": zod.string(),
+  "expectedResult": zod.string(),
+  "result": zod.enum(['Pass', 'Fail', 'Not Tested']),
+  "comments": zod.string(),
+  "sortOrder": zod.number()
+}))
+}))
+
+

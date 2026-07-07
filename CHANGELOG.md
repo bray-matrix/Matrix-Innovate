@@ -5,6 +5,33 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and the
 project adheres to semantic versioning (patch = fixes/edits, minor = new
 features, major = breaking or milestone changes).
 
+## [0.1.8] — 2026-07-06
+
+### Added
+
+- **Validation Review Checklist system** — a new "Validation" section (new
+  sidebar navigation item and `/validation` page) where Matrix users can
+  validate every application version before sign-off and generate clean
+  feedback for Replit or another development team.
+- **Generate Validation Checklist** button — creates a validation record for
+  the current application version, seeded from built-in checklist templates
+  covering all ten feature areas: Dashboard, AI Innovation Interview,
+  Initiative List, Initiative Detail / Workspace, Scoring, Kanban, Documents,
+  Admin, Intelligence Engine, and Version History. Each checklist item has a
+  feature area, breadcrumb/navigation path, what to validate, expected
+  result, a Pass / Fail / Not Tested toggle, and optional comments.
+- Validation records store Application Version, Release Name, Validation
+  Status, Validation Date, Validator Name, Summary, and Overall Validation
+  Notes. Status is derived automatically from item results (Not Started /
+  In Progress / Passed / Failed) and the validation date is stamped when a
+  run reaches a terminal state.
+- **Generate Replit Feedback** button — produces a copy/paste summary with
+  the version tested, passed / failed / not tested items, all comments, and
+  recommended fixes, formatted for pasting directly back into Replit Agent.
+- New database tables `validation_records` and `validation_items`; new API
+  endpoints `GET/POST /api/validations`, `GET/PATCH/DELETE
+  /api/validations/{id}`, and `PATCH /api/validations/{id}/items/{itemId}`.
+
 ## [0.1.7] — 2026-07-06
 
 ### Added

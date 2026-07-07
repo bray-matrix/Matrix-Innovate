@@ -2,6 +2,8 @@ import { Router, type IRouter } from "express";
 
 const router: IRouter = Router();
 
+export const APPLICATION_VERSION = "v0.1.8";
+
 const SETTINGS = {
   departments: [
     "Operations",
@@ -41,7 +43,7 @@ const SETTINGS = {
     { name: "Technical Complexity Penalty", weight: -10 },
     { name: "Risk Penalty", weight: -10 },
   ],
-  applicationVersion: "v0.1.7",
+  applicationVersion: APPLICATION_VERSION,
 };
 
 router.get("/settings", (_req, res) => {

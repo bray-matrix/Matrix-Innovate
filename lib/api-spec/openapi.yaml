@@ -18,6 +18,8 @@ tags:
     description: Document library operations
   - name: settings
     description: Admin settings operations
+  - name: validations
+    description: Validation review checklist operations
 paths:
   /healthz:
     get:
@@ -288,6 +290,163 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Settings"
+  /validations:
+    get:
+      operationId: listValidations
+      tags: [validations]
+      summary: List validation records, newest first
+      responses:
+        "200":
+          description: A list of validation records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ValidationRecord"
+    post:
+      operationId: createValidation
+      tags: [validations]
+      summary: Generate a validation checklist for the current application version
+      description: >
+        Creates a new validation record for the current application version,
+        seeded from the built-in checklist templates covering every feature
+        area of the app.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ValidationCreate"
+      responses:
+        "201":
+          description: Created validation record with checklist items
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationDetail"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /validations/{id}:
+    get:
+      operationId: getValidation
+      tags: [validations]
+      summary: Get a validation record with its checklist items
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: The validation record with items
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationDetail"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    patch:
+      operationId: updateValidation
+      tags: [validations]
+      summary: Update validation record header fields
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ValidationUpdate"
+      responses:
+        "200":
+          description: Updated validation record with items
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationDetail"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      operationId: deleteValidation
+      tags: [validations]
+      summary: Delete a validation record and its items
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /validations/{id}/items/{itemId}:
+    patch:
+      operationId: updateValidationItem
+      tags: [validations]
+      summary: Update a checklist item result or comments
+      description: >
+        Updating an item also re-derives the parent record's overall
+        validation status and validation date server-side.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ValidationItemUpdate"
+      responses:
+        "200":
+          description: Parent validation record with items after the update
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationDetail"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 components:
   schemas:
     HealthStatus:
@@ -731,6 +890,122 @@ components:
           type: string
         weight:
           type: integer
+    ValidationRecord:
+      type: object
+      required:
+        - id
+        - applicationVersion
+        - releaseName
+        - status
+        - validationDate
+        - validatorName
+        - summary
+        - overallNotes
+        - totalItems
+        - passedItems
+        - failedItems
+        - notTestedItems
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: integer
+        applicationVersion:
+          type: string
+        releaseName:
+          type: string
+        status:
+          type: string
+          enum: ["Not Started", "In Progress", "Passed", "Failed"]
+        validationDate:
+          type: ["string", "null"]
+        validatorName:
+          type: string
+        summary:
+          type: string
+        overallNotes:
+          type: string
+        totalItems:
+          type: integer
+        passedItems:
+          type: integer
+        failedItems:
+          type: integer
+        notTestedItems:
+          type: integer
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+    ValidationItem:
+      type: object
+      required:
+        - id
+        - recordId
+        - featureArea
+        - breadcrumb
+        - whatToValidate
+        - expectedResult
+        - result
+        - comments
+        - sortOrder
+      properties:
+        id:
+          type: integer
+        recordId:
+          type: integer
+        featureArea:
+          type: string
+        breadcrumb:
+          type: string
+        whatToValidate:
+          type: string
+        expectedResult:
+          type: string
+        result:
+          type: string
+          enum: ["Pass", "Fail", "Not Tested"]
+        comments:
+          type: string
+        sortOrder:
+          type: integer
+    ValidationDetail:
+      allOf:
+        - $ref: "#/components/schemas/ValidationRecord"
+        - type: object
+          required:
+            - items
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/ValidationItem"
+    ValidationCreate:
+      type: object
+      properties:
+        validatorName:
+          type: string
+        releaseName:
+          type: string
+    ValidationUpdate:
+      type: object
+      properties:
+        releaseName:
+          type: string
+        validatorName:
+          type: string
+        summary:
+          type: string
+        overallNotes:
+          type: string
+    ValidationItemUpdate:
+      type: object
+      properties:
+        result:
+          type: string
+          enum: ["Pass", "Fail", "Not Tested"]
+        comments:
+          type: string
     SimilarInitiative:
       type: object
       required:

@@ -11,7 +11,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { useGetSettings } from "@workspace/api-client-react";
-import { LayoutDashboard, PlusCircle, List, KanbanSquare, FileText, Settings, Rocket, Sparkles } from "lucide-react";
+import { LayoutDashboard, PlusCircle, List, KanbanSquare, FileText, Settings, Rocket, Sparkles, ClipboardCheck } from "lucide-react";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
@@ -24,6 +24,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     { href: "/initiatives", label: "Initiatives", icon: List },
     { href: "/kanban", label: "Kanban", icon: KanbanSquare },
     { href: "/documents", label: "Documents", icon: FileText },
+    { href: "/validation", label: "Validation", icon: ClipboardCheck },
     { href: "/admin", label: "Admin", icon: Settings },
   ];
 

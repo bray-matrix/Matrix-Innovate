@@ -30,6 +30,11 @@ import type {
   InitiativeUpdate,
   InitiativeVersion,
   Settings,
+  ValidationCreate,
+  ValidationDetail,
+  ValidationItemUpdate,
+  ValidationRecord,
+  ValidationUpdate,
   VersionComparison
 } from './api.schemas';
 
@@ -1035,4 +1040,444 @@ export function useGetSettings<TData = Awaited<ReturnType<typeof getSettings>>, 
 
 
 
+
+export const getListValidationsUrl = () => {
+
+
+
+
+  return `/api/validations`
+}
+
+/**
+ * @summary List validation records, newest first
+ */
+export const listValidations = async ( options?: RequestInit): Promise<ValidationRecord[]> => {
+
+  return customFetch<ValidationRecord[]>(getListValidationsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListValidationsQueryKey = () => {
+    return [
+    `/api/validations`
+    ] as const;
+    }
+
+
+export const getListValidationsQueryOptions = <TData = Awaited<ReturnType<typeof listValidations>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listValidations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListValidationsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listValidations>>> = ({ signal }) => listValidations({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listValidations>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListValidationsQueryResult = NonNullable<Awaited<ReturnType<typeof listValidations>>>
+export type ListValidationsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List validation records, newest first
+ */
+
+export function useListValidations<TData = Awaited<ReturnType<typeof listValidations>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listValidations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListValidationsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateValidationUrl = () => {
+
+
+
+
+  return `/api/validations`
+}
+
+/**
+ * Creates a new validation record for the current application version, seeded from the built-in checklist templates covering every feature area of the app.
+ * @summary Generate a validation checklist for the current application version
+ */
+export const createValidation = async (validationCreate: ValidationCreate, options?: RequestInit): Promise<ValidationDetail> => {
+
+  return customFetch<ValidationDetail>(getCreateValidationUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(validationCreate)
+  }
+);}
+
+
+
+
+export const getCreateValidationMutationOptions = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createValidation>>, TError,{data: BodyType<ValidationCreate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createValidation>>, TError,{data: BodyType<ValidationCreate>}, TContext> => {
+
+const mutationKey = ['createValidation'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createValidation>>, {data: BodyType<ValidationCreate>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createValidation(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateValidationMutationResult = NonNullable<Awaited<ReturnType<typeof createValidation>>>
+    export type CreateValidationMutationBody = BodyType<ValidationCreate>
+    export type CreateValidationMutationError = ErrorType<Error>
+
+    /**
+ * @summary Generate a validation checklist for the current application version
+ */
+export const useCreateValidation = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createValidation>>, TError,{data: BodyType<ValidationCreate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createValidation>>,
+        TError,
+        {data: BodyType<ValidationCreate>},
+        TContext
+      > => {
+      return useMutation(getCreateValidationMutationOptions(options));
+    }
+
+export const getGetValidationUrl = (id: number,) => {
+
+
+
+
+  return `/api/validations/${id}`
+}
+
+/**
+ * @summary Get a validation record with its checklist items
+ */
+export const getValidation = async (id: number, options?: RequestInit): Promise<ValidationDetail> => {
+
+  return customFetch<ValidationDetail>(getGetValidationUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetValidationQueryKey = (id: number,) => {
+    return [
+    `/api/validations/${id}`
+    ] as const;
+    }
+
+
+export const getGetValidationQueryOptions = <TData = Awaited<ReturnType<typeof getValidation>>, TError = ErrorType<Error>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getValidation>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetValidationQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getValidation>>> = ({ signal }) => getValidation(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getValidation>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetValidationQueryResult = NonNullable<Awaited<ReturnType<typeof getValidation>>>
+export type GetValidationQueryError = ErrorType<Error>
+
+
+/**
+ * @summary Get a validation record with its checklist items
+ */
+
+export function useGetValidation<TData = Awaited<ReturnType<typeof getValidation>>, TError = ErrorType<Error>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getValidation>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetValidationQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateValidationUrl = (id: number,) => {
+
+
+
+
+  return `/api/validations/${id}`
+}
+
+/**
+ * @summary Update validation record header fields
+ */
+export const updateValidation = async (id: number,
+    validationUpdate: ValidationUpdate, options?: RequestInit): Promise<ValidationDetail> => {
+
+  return customFetch<ValidationDetail>(getUpdateValidationUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(validationUpdate)
+  }
+);}
+
+
+
+
+export const getUpdateValidationMutationOptions = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateValidation>>, TError,{id: number;data: BodyType<ValidationUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateValidation>>, TError,{id: number;data: BodyType<ValidationUpdate>}, TContext> => {
+
+const mutationKey = ['updateValidation'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateValidation>>, {id: number;data: BodyType<ValidationUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateValidation(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateValidationMutationResult = NonNullable<Awaited<ReturnType<typeof updateValidation>>>
+    export type UpdateValidationMutationBody = BodyType<ValidationUpdate>
+    export type UpdateValidationMutationError = ErrorType<Error>
+
+    /**
+ * @summary Update validation record header fields
+ */
+export const useUpdateValidation = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateValidation>>, TError,{id: number;data: BodyType<ValidationUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateValidation>>,
+        TError,
+        {id: number;data: BodyType<ValidationUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateValidationMutationOptions(options));
+    }
+
+export const getDeleteValidationUrl = (id: number,) => {
+
+
+
+
+  return `/api/validations/${id}`
+}
+
+/**
+ * @summary Delete a validation record and its items
+ */
+export const deleteValidation = async (id: number, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteValidationUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteValidationMutationOptions = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteValidation>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteValidation>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['deleteValidation'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteValidation>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteValidation(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteValidationMutationResult = NonNullable<Awaited<ReturnType<typeof deleteValidation>>>
+
+    export type DeleteValidationMutationError = ErrorType<Error>
+
+    /**
+ * @summary Delete a validation record and its items
+ */
+export const useDeleteValidation = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteValidation>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteValidation>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getDeleteValidationMutationOptions(options));
+    }
+
+export const getUpdateValidationItemUrl = (id: number,
+    itemId: number,) => {
+
+
+
+
+  return `/api/validations/${id}/items/${itemId}`
+}
+
+/**
+ * Updating an item also re-derives the parent record's overall validation status and validation date server-side.
+ * @summary Update a checklist item result or comments
+ */
+export const updateValidationItem = async (id: number,
+    itemId: number,
+    validationItemUpdate: ValidationItemUpdate, options?: RequestInit): Promise<ValidationDetail> => {
+
+  return customFetch<ValidationDetail>(getUpdateValidationItemUrl(id,itemId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(validationItemUpdate)
+  }
+);}
+
+
+
+
+export const getUpdateValidationItemMutationOptions = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateValidationItem>>, TError,{id: number;itemId: number;data: BodyType<ValidationItemUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateValidationItem>>, TError,{id: number;itemId: number;data: BodyType<ValidationItemUpdate>}, TContext> => {
+
+const mutationKey = ['updateValidationItem'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateValidationItem>>, {id: number;itemId: number;data: BodyType<ValidationItemUpdate>}> = (props) => {
+          const {id,itemId,data} = props ?? {};
+
+          return  updateValidationItem(id,itemId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateValidationItemMutationResult = NonNullable<Awaited<ReturnType<typeof updateValidationItem>>>
+    export type UpdateValidationItemMutationBody = BodyType<ValidationItemUpdate>
+    export type UpdateValidationItemMutationError = ErrorType<Error>
+
+    /**
+ * @summary Update a checklist item result or comments
+ */
+export const useUpdateValidationItem = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateValidationItem>>, TError,{id: number;itemId: number;data: BodyType<ValidationItemUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateValidationItem>>,
+        TError,
+        {id: number;itemId: number;data: BodyType<ValidationItemUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateValidationItemMutationOptions(options));
+    }
 

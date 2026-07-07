@@ -203,6 +203,85 @@ export interface Settings {
   applicationVersion: string;
 }
 
+export type ValidationRecordStatus = typeof ValidationRecordStatus[keyof typeof ValidationRecordStatus];
+
+
+export const ValidationRecordStatus = {
+  Not_Started: 'Not Started',
+  In_Progress: 'In Progress',
+  Passed: 'Passed',
+  Failed: 'Failed',
+} as const;
+
+export interface ValidationRecord {
+  id: number;
+  applicationVersion: string;
+  releaseName: string;
+  status: ValidationRecordStatus;
+  /** @nullable */
+  validationDate: string | null;
+  validatorName: string;
+  summary: string;
+  overallNotes: string;
+  totalItems: number;
+  passedItems: number;
+  failedItems: number;
+  notTestedItems: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type ValidationItemResult = typeof ValidationItemResult[keyof typeof ValidationItemResult];
+
+
+export const ValidationItemResult = {
+  Pass: 'Pass',
+  Fail: 'Fail',
+  Not_Tested: 'Not Tested',
+} as const;
+
+export interface ValidationItem {
+  id: number;
+  recordId: number;
+  featureArea: string;
+  breadcrumb: string;
+  whatToValidate: string;
+  expectedResult: string;
+  result: ValidationItemResult;
+  comments: string;
+  sortOrder: number;
+}
+
+export type ValidationDetail = ValidationRecord & {
+  items: ValidationItem[];
+};
+
+export interface ValidationCreate {
+  validatorName?: string;
+  releaseName?: string;
+}
+
+export interface ValidationUpdate {
+  releaseName?: string;
+  validatorName?: string;
+  summary?: string;
+  overallNotes?: string;
+}
+
+export type ValidationItemUpdateResult = typeof ValidationItemUpdateResult[keyof typeof ValidationItemUpdateResult];
+
+
+export const ValidationItemUpdateResult = {
+  Pass: 'Pass',
+  Fail: 'Fail',
+  Not_Tested: 'Not Tested',
+} as const;
+
+export interface ValidationItemUpdate {
+  result?: ValidationItemUpdateResult;
+  comments?: string;
+}
+
 export interface SimilarInitiative {
   id: number;
   title: string;

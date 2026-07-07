@@ -11,6 +11,7 @@ import InitiativeDetail from "@/pages/initiative-detail";
 import ScoreInitiative from "@/pages/score-initiative";
 import KanbanBoard from "@/pages/kanban";
 import Documents from "@/pages/documents";
+import ValidationPage from "@/pages/validation";
 import Admin from "@/pages/admin";
 import NotFound from "@/pages/not-found";
 
@@ -28,6 +29,7 @@ function Router() {
         <Route path="/initiatives/:id/score" component={ScoreInitiative} />
         <Route path="/kanban" component={KanbanBoard} />
         <Route path="/documents" component={Documents} />
+        <Route path="/validation" component={ValidationPage} />
         <Route path="/admin" component={Admin} />
         <Route component={NotFound} />
       </Switch>
