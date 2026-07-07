@@ -504,6 +504,53 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ProductHealth"
+  /environment:
+    get:
+      operationId: getEnvironmentStatus
+      tags: [environment]
+      summary: Environment status, setup flag, and record counts
+      responses:
+        "200":
+          description: Current environment status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvironmentStatus"
+  /environment/initialize:
+    post:
+      operationId: initializeEnvironment
+      tags: [environment]
+      summary: Run the System Initialization Wizard actions
+      description: >
+        Executes only the selected cleanup actions, marks first-time setup as
+        complete, and records the run in the Environment History log.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EnvironmentInitializeRequest"
+      responses:
+        "201":
+          description: The recorded environment initialization event
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvironmentEvent"
+  /environment/history:
+    get:
+      operationId: listEnvironmentHistory
+      tags: [environment]
+      summary: Environment History log, newest first
+      responses:
+        "200":
+          description: List of environment initialization events
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EnvironmentEvent"
   /validations:
     get:
       operationId: listValidations
@@ -1802,3 +1849,82 @@ components:
           description: Backlog items Complete with targetVersion == current app version
         applicationVersion:
           type: string
+    EnvironmentStatus:
+      type: object
+      required: [environment, firstTimeSetupComplete, counts]
+      properties:
+        environment:
+          type: string
+          description: Development or Production
+        firstTimeSetupComplete:
+          type: boolean
+        counts:
+          type: object
+          required:
+            [
+              initiatives,
+              validationRecords,
+              calculationEvents,
+              archivedInitiatives,
+            ]
+          properties:
+            initiatives:
+              type: integer
+            validationRecords:
+              type: integer
+            calculationEvents:
+              type: integer
+            archivedInitiatives:
+              type: integer
+    EnvironmentInitializeRequest:
+      type: object
+      required: [performedBy]
+      properties:
+        performedBy:
+          type: string
+          minLength: 1
+          description: Name of the administrator running the initialization
+        archiveSampleInitiatives:
+          type: boolean
+          default: false
+        removeSampleInitiatives:
+          type: boolean
+          default: false
+        clearValidationRecords:
+          type: boolean
+          default: false
+        clearCalculationHistory:
+          type: boolean
+          default: false
+        clearRecommendationHistory:
+          type: boolean
+          default: false
+    EnvironmentActionResult:
+      type: object
+      required: [action, label, records, detail]
+      properties:
+        action:
+          type: string
+        label:
+          type: string
+        records:
+          type: integer
+        detail:
+          type: string
+    EnvironmentEvent:
+      type: object
+      required: [id, performedBy, environment, actions, createdAt]
+      properties:
+        id:
+          type: integer
+        performedBy:
+          type: string
+        environment:
+          type: string
+        actions:
+          type: array
+          items:
+            $ref: "#/components/schemas/EnvironmentActionResult"
+        createdAt:
+          type: string
+          format: date-time

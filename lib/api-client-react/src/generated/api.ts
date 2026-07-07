@@ -26,6 +26,9 @@ import type {
   CalculationEvent,
   DashboardSummary,
   Document,
+  EnvironmentEvent,
+  EnvironmentInitializeRequest,
+  EnvironmentStatus,
   Error,
   HealthStatus,
   Initiative,
@@ -1916,6 +1919,231 @@ export function useGetProductHealth<TData = Awaited<ReturnType<typeof getProduct
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetProductHealthQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetEnvironmentStatusUrl = () => {
+
+
+
+
+  return `/api/environment`
+}
+
+/**
+ * @summary Environment status, setup flag, and record counts
+ */
+export const getEnvironmentStatus = async ( options?: RequestInit): Promise<EnvironmentStatus> => {
+
+  return customFetch<EnvironmentStatus>(getGetEnvironmentStatusUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetEnvironmentStatusQueryKey = () => {
+    return [
+    `/api/environment`
+    ] as const;
+    }
+
+
+export const getGetEnvironmentStatusQueryOptions = <TData = Awaited<ReturnType<typeof getEnvironmentStatus>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getEnvironmentStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetEnvironmentStatusQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getEnvironmentStatus>>> = ({ signal }) => getEnvironmentStatus({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getEnvironmentStatus>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetEnvironmentStatusQueryResult = NonNullable<Awaited<ReturnType<typeof getEnvironmentStatus>>>
+export type GetEnvironmentStatusQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Environment status, setup flag, and record counts
+ */
+
+export function useGetEnvironmentStatus<TData = Awaited<ReturnType<typeof getEnvironmentStatus>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getEnvironmentStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetEnvironmentStatusQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getInitializeEnvironmentUrl = () => {
+
+
+
+
+  return `/api/environment/initialize`
+}
+
+/**
+ * Executes only the selected cleanup actions, marks first-time setup as complete, and records the run in the Environment History log.
+ * @summary Run the System Initialization Wizard actions
+ */
+export const initializeEnvironment = async (environmentInitializeRequest: EnvironmentInitializeRequest, options?: RequestInit): Promise<EnvironmentEvent> => {
+
+  return customFetch<EnvironmentEvent>(getInitializeEnvironmentUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(environmentInitializeRequest)
+  }
+);}
+
+
+
+
+export const getInitializeEnvironmentMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof initializeEnvironment>>, TError,{data: BodyType<EnvironmentInitializeRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof initializeEnvironment>>, TError,{data: BodyType<EnvironmentInitializeRequest>}, TContext> => {
+
+const mutationKey = ['initializeEnvironment'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof initializeEnvironment>>, {data: BodyType<EnvironmentInitializeRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  initializeEnvironment(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type InitializeEnvironmentMutationResult = NonNullable<Awaited<ReturnType<typeof initializeEnvironment>>>
+    export type InitializeEnvironmentMutationBody = BodyType<EnvironmentInitializeRequest>
+    export type InitializeEnvironmentMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Run the System Initialization Wizard actions
+ */
+export const useInitializeEnvironment = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof initializeEnvironment>>, TError,{data: BodyType<EnvironmentInitializeRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof initializeEnvironment>>,
+        TError,
+        {data: BodyType<EnvironmentInitializeRequest>},
+        TContext
+      > => {
+      return useMutation(getInitializeEnvironmentMutationOptions(options));
+    }
+
+export const getListEnvironmentHistoryUrl = () => {
+
+
+
+
+  return `/api/environment/history`
+}
+
+/**
+ * @summary Environment History log, newest first
+ */
+export const listEnvironmentHistory = async ( options?: RequestInit): Promise<EnvironmentEvent[]> => {
+
+  return customFetch<EnvironmentEvent[]>(getListEnvironmentHistoryUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListEnvironmentHistoryQueryKey = () => {
+    return [
+    `/api/environment/history`
+    ] as const;
+    }
+
+
+export const getListEnvironmentHistoryQueryOptions = <TData = Awaited<ReturnType<typeof listEnvironmentHistory>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listEnvironmentHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListEnvironmentHistoryQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listEnvironmentHistory>>> = ({ signal }) => listEnvironmentHistory({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listEnvironmentHistory>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListEnvironmentHistoryQueryResult = NonNullable<Awaited<ReturnType<typeof listEnvironmentHistory>>>
+export type ListEnvironmentHistoryQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Environment History log, newest first
+ */
+
+export function useListEnvironmentHistory<TData = Awaited<ReturnType<typeof listEnvironmentHistory>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listEnvironmentHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListEnvironmentHistoryQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

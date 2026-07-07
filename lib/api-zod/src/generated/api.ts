@@ -834,6 +834,73 @@ export const GetProductHealthResponse = zod.object({
 
 
 /**
+ * @summary Environment status, setup flag, and record counts
+ */
+export const GetEnvironmentStatusResponse = zod.object({
+  "environment": zod.string().describe('Development or Production'),
+  "firstTimeSetupComplete": zod.boolean(),
+  "counts": zod.object({
+  "initiatives": zod.number(),
+  "validationRecords": zod.number(),
+  "calculationEvents": zod.number(),
+  "archivedInitiatives": zod.number()
+})
+})
+
+
+/**
+ * Executes only the selected cleanup actions, marks first-time setup as complete, and records the run in the Environment History log.
+ * @summary Run the System Initialization Wizard actions
+ */
+
+export const initializeEnvironmentBodyArchiveSampleInitiativesDefault = false;
+export const initializeEnvironmentBodyRemoveSampleInitiativesDefault = false;
+export const initializeEnvironmentBodyClearValidationRecordsDefault = false;
+export const initializeEnvironmentBodyClearCalculationHistoryDefault = false;
+export const initializeEnvironmentBodyClearRecommendationHistoryDefault = false;
+
+export const InitializeEnvironmentBody = zod.object({
+  "performedBy": zod.string().min(1).describe('Name of the administrator running the initialization'),
+  "archiveSampleInitiatives": zod.boolean().default(initializeEnvironmentBodyArchiveSampleInitiativesDefault),
+  "removeSampleInitiatives": zod.boolean().default(initializeEnvironmentBodyRemoveSampleInitiativesDefault),
+  "clearValidationRecords": zod.boolean().default(initializeEnvironmentBodyClearValidationRecordsDefault),
+  "clearCalculationHistory": zod.boolean().default(initializeEnvironmentBodyClearCalculationHistoryDefault),
+  "clearRecommendationHistory": zod.boolean().default(initializeEnvironmentBodyClearRecommendationHistoryDefault)
+})
+
+export const InitializeEnvironmentResponse = zod.object({
+  "id": zod.number(),
+  "performedBy": zod.string(),
+  "environment": zod.string(),
+  "actions": zod.array(zod.object({
+  "action": zod.string(),
+  "label": zod.string(),
+  "records": zod.number(),
+  "detail": zod.string()
+})),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Environment History log, newest first
+ */
+export const ListEnvironmentHistoryResponseItem = zod.object({
+  "id": zod.number(),
+  "performedBy": zod.string(),
+  "environment": zod.string(),
+  "actions": zod.array(zod.object({
+  "action": zod.string(),
+  "label": zod.string(),
+  "records": zod.number(),
+  "detail": zod.string()
+})),
+  "createdAt": zod.coerce.date()
+})
+export const ListEnvironmentHistoryResponse = zod.array(ListEnvironmentHistoryResponseItem)
+
+
+/**
  * @summary List validation records, newest first
  */
 export const ListValidationsResponseItem = zod.object({

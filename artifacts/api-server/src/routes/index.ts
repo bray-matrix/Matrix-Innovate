@@ -6,6 +6,7 @@ import documentsRouter from "./documents";
 import settingsRouter from "./settings";
 import validationsRouter from "./validations";
 import backlogRouter from "./backlog";
+import environmentRouter from "./environment";
 
 const router: IRouter = Router();
 
@@ -16,5 +17,6 @@ router.use(documentsRouter);
 router.use(settingsRouter);
 router.use(validationsRouter);
 router.use(backlogRouter);
+router.use(environmentRouter);
 
 export default router;

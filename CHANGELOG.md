@@ -5,6 +5,35 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and the
 project adheres to semantic versioning (patch = fixes/edits, minor = new
 features, major = breaking or milestone changes).
 
+## [0.2.4] — 2026-07-07
+
+### Added
+
+- System Initialization Wizard: "Initialize Environment" action in Admin
+  Settings to prepare the hub for production use. Business Data options —
+  archive sample initiatives (snapshotted with versions and calculation
+  history to a new `archived_initiatives` table before removal), remove
+  sample initiatives, clear validation records, clear calculation history,
+  and clear recommendation history (informational — recommendations are
+  computed on demand and never stored). System Data (governance documents,
+  product backlog, parking lot, AI provider configuration, application
+  settings, validation templates, version history) is always preserved and
+  shown as locked in the wizard.
+- Confirmation summary step before execution; only selected actions run.
+- Environment History log (`environment_events` table) recording date, user,
+  environment, and actions performed for every initialization run, displayed
+  in Admin Settings.
+- "First-Time Setup Complete" flag persisted in a new `system_flags` table
+  and surfaced as a badge in Admin Settings so future deployments know
+  initialization has already occurred.
+- New API endpoints: `GET /api/environment` (status, flag, record counts),
+  `POST /api/environment/initialize`, `GET /api/environment/history`.
+
+### Changed
+
+- Application version to v0.2.4. No existing functionality or architecture
+  was modified.
+
 ## [0.2.3] — 2026-07-07
 
 The Hub now manages its own evolution: a Product Backlog and Parking Lot

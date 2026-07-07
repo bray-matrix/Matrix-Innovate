@@ -675,3 +675,45 @@ export interface ProductHealth {
   applicationVersion: string;
 }
 
+export type EnvironmentStatusCounts = {
+  initiatives: number;
+  validationRecords: number;
+  calculationEvents: number;
+  archivedInitiatives: number;
+};
+
+export interface EnvironmentStatus {
+  /** Development or Production */
+  environment: string;
+  firstTimeSetupComplete: boolean;
+  counts: EnvironmentStatusCounts;
+}
+
+export interface EnvironmentInitializeRequest {
+  /**
+     * Name of the administrator running the initialization
+     * @minLength 1
+     */
+  performedBy: string;
+  archiveSampleInitiatives?: boolean;
+  removeSampleInitiatives?: boolean;
+  clearValidationRecords?: boolean;
+  clearCalculationHistory?: boolean;
+  clearRecommendationHistory?: boolean;
+}
+
+export interface EnvironmentActionResult {
+  action: string;
+  label: string;
+  records: number;
+  detail: string;
+}
+
+export interface EnvironmentEvent {
+  id: number;
+  performedBy: string;
+  environment: string;
+  actions: EnvironmentActionResult[];
+  createdAt: string;
+}
+

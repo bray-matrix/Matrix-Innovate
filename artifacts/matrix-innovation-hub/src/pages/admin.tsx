@@ -22,6 +22,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import type { AIProviderInfo } from "@workspace/api-client-react";
+import { InitializeEnvironmentCard } from "@/components/init-wizard";
 
 function formatTestTime(value: string): string {
   const d = new Date(value);
@@ -470,6 +471,8 @@ export default function Admin() {
             <ProviderTestHistory />
           </CardContent>
         </Card>
+
+        <InitializeEnvironmentCard />
       </div>
     </div>
   );
