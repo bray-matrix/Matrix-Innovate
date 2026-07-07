@@ -1,8 +1,14 @@
-import express, { type Express } from "express";
+import express, {
+  type Express,
+  type Request,
+  type Response,
+  type NextFunction,
+} from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import { AIProviderNotConfiguredError } from "./lib/ai";
 
 const app: Express = express();
 
@@ -30,5 +36,18 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", router);
+
+// Selecting a placeholder AI provider (via AI_PROVIDER) must surface as a
+// clear 503, not an opaque 500.
+app.use(
+  (err: unknown, req: Request, res: Response, next: NextFunction) => {
+    if (err instanceof AIProviderNotConfiguredError) {
+      req.log.warn({ err }, "AI provider not configured");
+      res.status(503).json({ error: err.message });
+      return;
+    }
+    next(err);
+  },
+);
 
 export default app;

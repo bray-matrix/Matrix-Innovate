@@ -6,6 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './aIProviderConfig';
+export * from './aIProviderConfigProviderStatus';
+export * from './aIProviderInfo';
+export * from './aIProviderInfoStatus';
 export * from './calculationEvent';
 export * from './dashboardSummary';
 export * from './document';

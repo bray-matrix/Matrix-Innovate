@@ -28,7 +28,7 @@ export default function Admin() {
           <p className="text-muted-foreground">System configuration and application metadata.</p>
         </div>
         <Badge variant="outline" className="text-sm px-3 py-1">
-          v{settings.applicationVersion}
+          {settings.applicationVersion}
         </Badge>
       </div>
 
@@ -91,6 +91,61 @@ export default function Admin() {
             </div>
           </CardContent>
         </Card>
+
+        {settings.aiProvider && (
+          <Card className="md:col-span-2">
+            <CardHeader>
+              <CardTitle>AI Provider Configuration</CardTitle>
+              <CardDescription>
+                All generated intelligence flows through a provider abstraction. Read-only view — no API keys are stored or shown here.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              <div className="grid gap-4 sm:grid-cols-3">
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Active Provider</p>
+                  <Badge className="bg-primary text-primary-foreground">{settings.aiProvider.activeProvider}</Badge>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Status</p>
+                  <Badge variant={settings.aiProvider.providerStatus === "Active" ? "default" : "outline"}>
+                    {settings.aiProvider.providerStatus}
+                  </Badge>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Last Provider Test</p>
+                  <span className="text-sm">
+                    {settings.aiProvider.lastProviderTest
+                      ? new Date(settings.aiProvider.lastProviderTest).toLocaleString()
+                      : "Never run"}
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Available Providers</p>
+                <div className="space-y-2">
+                  {settings.aiProvider.availableProviders.map(p => (
+                    <div key={p.id} className="flex items-start justify-between gap-4 border-b pb-2 last:border-0 last:pb-0">
+                      <div>
+                        <span className="font-medium text-sm">{p.label}</span>
+                        <p className="text-xs text-muted-foreground">{p.notes}</p>
+                      </div>
+                      <Badge variant={p.status === "Active" ? "default" : "secondary"} className="shrink-0">
+                        {p.status === "Active" ? "Active" : "Not Configured"}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Notes</p>
+                <p className="text-sm text-muted-foreground">{settings.aiProvider.providerNotes}</p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );

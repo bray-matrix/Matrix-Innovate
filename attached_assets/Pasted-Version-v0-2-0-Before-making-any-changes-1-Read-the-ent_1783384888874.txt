@@ -1,0 +1,77 @@
+Version: v0.2.0
+
+Before making any changes:
+
+1. Read the entire existing codebase.
+2. Preserve all existing functionality.
+3. Do not remove features unless explicitly instructed.
+4. Build on top of the existing architecture.
+5. Follow semantic versioning.
+6. Update the internal CHANGELOG.
+7. If a requested feature conflicts with the existing design, explain why before changing it.
+
+Objective:
+Create an AI Provider Abstraction Layer so Matrix Innovation Hub can support OpenAI, Claude, Azure OpenAI, or a future internal/local model without changing business logic or UI components.
+
+Requirements:
+
+1. Create a provider-agnostic AI service interface.
+
+The application should never call OpenAI, Claude, or any specific AI vendor directly from UI components, route handlers, scoring logic, recommendation logic, or interview logic.
+
+2. Define an AIProvider interface with methods for:
+
+- classifyInitiative()
+- generateExecutiveSummary()
+- generateOpportunityCanvas()
+- generateInterviewQuestions()
+- generateRecommendations()
+- estimateComplexity()
+- recommendPrototypeScope()
+- explainScoreChange()
+
+3. Implement these providers:
+
+- RuleBasedAIProvider
+- OpenAIProvider placeholder
+- ClaudeProvider placeholder
+- AzureOpenAIProvider placeholder
+- LocalLLMProvider placeholder
+
+Only RuleBasedAIProvider should be active for now.
+
+4. Add a provider factory:
+
+getAIProvider()
+
+The active provider should be selected from configuration, not hard-coded.
+
+5. Add Admin Settings section:
+
+AI Provider Configuration
+
+Display:
+- Active Provider
+- Provider Status
+- Available Providers
+- Last Provider Test
+- Provider Notes
+
+Do not require API keys yet.
+
+6. Add source labels throughout the app where generated intelligence appears.
+
+Examples:
+- Source: Rule Engine v1
+- Source: OpenAI placeholder
+- Source: Claude placeholder
+
+7. Refactor existing intelligence, interview and summary generation code to use the provider abstraction where practical.
+
+Do not change user-facing behavior.
+
+8. Preserve current Rule Engine behavior exactly.
+
+This is an architecture sprint, not a feature sprint.
+
+Update the application version to v0.2.0.

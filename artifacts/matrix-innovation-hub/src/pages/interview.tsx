@@ -34,6 +34,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { RULE_ENGINE_SOURCE_LABEL } from "@/lib/aiSource";
 import {
   Bot,
   User as UserIcon,
@@ -631,9 +632,14 @@ function ReviewDraft({
 
       <Card className="bg-primary text-primary-foreground border-primary">
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm uppercase tracking-wider opacity-90">
-            Executive Summary
-          </CardTitle>
+          <div className="flex items-center justify-between gap-2">
+            <CardTitle className="text-sm uppercase tracking-wider opacity-90">
+              Executive Summary
+            </CardTitle>
+            <span className="text-xs opacity-75">
+              Source: {RULE_ENGINE_SOURCE_LABEL}
+            </span>
+          </div>
         </CardHeader>
         <CardContent>
           <p className="text-base leading-relaxed">{executiveSummary}</p>
@@ -645,7 +651,8 @@ function ReviewDraft({
           <Sparkles className="h-5 w-5 text-secondary" />
           <h3 className="text-lg font-bold">AI Opportunity Canvas</h3>
           <span className="text-xs text-muted-foreground">
-            Auto-generated from your answers — edit the fields below to refine it.
+            Auto-generated from your answers by {RULE_ENGINE_SOURCE_LABEL} —
+            edit the fields below to refine it.
           </span>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">

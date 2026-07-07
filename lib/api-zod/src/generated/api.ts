@@ -403,6 +403,7 @@ export const RecalculateInitiativeResponse = zod.object({
   "createdAt": zod.string(),
   "updatedAt": zod.string()
 }),
+  "sourceLabel": zod.string().describe('Which intelligence source generated the explanations (e.g. \"Rule Engine v1\")'),
   "changed": zod.boolean().describe('Whether the recalculation changed any component, score, or priority'),
   "previousScore": zod.number(),
   "newScore": zod.number(),
@@ -553,7 +554,19 @@ export const GetSettingsResponse = zod.object({
   "name": zod.string(),
   "weight": zod.number()
 })),
-  "applicationVersion": zod.string()
+  "applicationVersion": zod.string(),
+  "aiProvider": zod.object({
+  "activeProvider": zod.string().describe('Source label of the active provider (e.g. \"Rule Engine v1\")'),
+  "providerStatus": zod.enum(['Active', 'Placeholder']),
+  "availableProviders": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "status": zod.enum(['Active', 'Placeholder']),
+  "notes": zod.string()
+})),
+  "lastProviderTest": zod.string().nullable().describe('ISO timestamp of the last provider connectivity test, or null if never run'),
+  "providerNotes": zod.string()
+}).optional()
 })
 
 

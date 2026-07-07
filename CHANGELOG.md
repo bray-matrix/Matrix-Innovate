@@ -5,6 +5,42 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and the
 project adheres to semantic versioning (patch = fixes/edits, minor = new
 features, major = breaking or milestone changes).
 
+## [0.2.0] — 2026-07-07
+
+Architecture sprint: AI Provider Abstraction Layer. No user-facing behavior
+changes — all generated intelligence behaves exactly as before.
+
+### Added
+
+- **AI provider abstraction** — a unified `AIProvider` interface now fronts
+  all generated intelligence (classification, executive summaries,
+  opportunity canvas, interview questions, recommendations, complexity
+  estimates, prototype scope, and score-change explanations). Business logic
+  and routes obtain the provider via a config-driven `getAIProvider()`
+  factory (`AI_PROVIDER` environment variable) instead of calling any
+  implementation directly.
+- **Registered provider placeholders** — OpenAI, Claude, Azure OpenAI, and
+  Local LLM providers are registered as placeholders that fail loudly if
+  selected, so vendors can be implemented later without touching business
+  logic or UI. The rule-based engine remains the only active provider.
+- **Admin → AI Provider Configuration** — a new read-only section showing
+  the active provider, its status, the last provider test, all available
+  providers with configuration status, and operator notes. No API keys are
+  stored or displayed.
+- **Source labels** — every place that displays generated intelligence now
+  states its source: the interview review screen (executive summary and
+  canvas), the initiative detail canvas, the recalculation result dialog
+  (label supplied by the server from the active provider), and the
+  calculation history tab.
+
+### Changed
+
+- The recommendations endpoint and the recalculation explanation logic now
+  route through the AI provider abstraction (delegating to the same rule
+  engine as before — output is unchanged).
+- The settings endpoint now includes the AI provider configuration, and the
+  recalculation result includes a `sourceLabel` field.
+
 ## [0.1.9] — 2026-07-07
 
 ### Added

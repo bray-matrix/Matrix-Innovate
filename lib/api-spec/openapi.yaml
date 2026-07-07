@@ -912,6 +912,50 @@ components:
             $ref: "#/components/schemas/ScoringWeight"
         applicationVersion:
           type: string
+        aiProvider:
+          $ref: "#/components/schemas/AIProviderConfig"
+    AIProviderConfig:
+      type: object
+      required:
+        - activeProvider
+        - providerStatus
+        - availableProviders
+        - lastProviderTest
+        - providerNotes
+      properties:
+        activeProvider:
+          type: string
+          description: Source label of the active provider (e.g. "Rule Engine v1")
+        providerStatus:
+          type: string
+          enum: [Active, Placeholder]
+        availableProviders:
+          type: array
+          items:
+            $ref: "#/components/schemas/AIProviderInfo"
+        lastProviderTest:
+          type: string
+          nullable: true
+          description: ISO timestamp of the last provider connectivity test, or null if never run
+        providerNotes:
+          type: string
+    AIProviderInfo:
+      type: object
+      required:
+        - id
+        - label
+        - status
+        - notes
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        status:
+          type: string
+          enum: [Active, Placeholder]
+        notes:
+          type: string
     ScoringWeight:
       type: object
       required:
@@ -1103,9 +1147,13 @@ components:
         - newPriority
         - changes
         - unchangedComponents
+        - sourceLabel
       properties:
         initiative:
           $ref: "#/components/schemas/Initiative"
+        sourceLabel:
+          type: string
+          description: Which intelligence source generated the explanations (e.g. "Rule Engine v1")
         changed:
           type: boolean
           description: Whether the recalculation changed any component, score, or priority

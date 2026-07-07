@@ -51,6 +51,7 @@ import {
 } from "@/components/calculation-transparency";
 import { format } from "date-fns";
 import { toast } from "@/hooks/use-toast";
+import { RULE_ENGINE_SOURCE_LABEL } from "@/lib/aiSource";
 import {
   Target,
   FileText,
@@ -840,6 +841,9 @@ export default function InitiativeDetail() {
         <div className="flex items-center">
           <Target className="mr-2 h-5 w-5 text-primary" />
           <h2 className="text-xl font-bold">AI Opportunity Canvas</h2>
+          <span className="ml-3 text-xs text-muted-foreground">
+            Source: {RULE_ENGINE_SOURCE_LABEL}
+          </span>
           {isEditing && (
             <Badge variant="outline" className="ml-3 border-[#FFC72C] text-foreground">
               Editing

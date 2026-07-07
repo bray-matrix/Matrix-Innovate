@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { AIProviderConfig } from './aIProviderConfig';
 import type { ScoringWeight } from './scoringWeight';
 
 export interface Settings {
@@ -13,4 +14,5 @@ export interface Settings {
   statuses: string[];
   scoringWeights: ScoringWeight[];
   applicationVersion: string;
+  aiProvider?: AIProviderConfig;
 }

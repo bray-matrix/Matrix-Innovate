@@ -15,12 +15,11 @@ import {
   calculateScore,
   derivePriority,
   recalculateComponents,
-  explainComponents,
   COMPONENT_LABELS,
   type ScoringComponents,
 } from "../lib/scoring";
 import { bumpVersion, determineBumpKind, DEFAULT_VERSION } from "../lib/versioning";
-import { getRecommendationProvider } from "../lib/intelligence";
+import { getAIProvider } from "../lib/ai";
 
 const router: IRouter = Router();
 
@@ -198,7 +197,9 @@ router.get("/initiatives/:id/recommendations", async (req, res) => {
     return;
   }
   const allInitiatives = await db.select().from(initiativesTable);
-  const provider = getRecommendationProvider();
+  // All AI-generated intelligence goes through the provider abstraction —
+  // never a vendor implementation directly.
+  const provider = getAIProvider();
   const recommendations = await provider.generateRecommendations({
     initiative,
     allInitiatives,
@@ -245,7 +246,9 @@ router.post("/initiatives/:id/recalculate", async (req, res) => {
   const priority = derivePriority(score);
 
   // Build the per-component diff with reasons for every changed value.
-  const reasons = explainComponents(inputs, components);
+  // Explanation text comes from the AI provider abstraction (rule-based today).
+  const aiProvider = getAIProvider();
+  const reasons = await aiProvider.explainScoreChange(inputs, components);
   const componentKeys = Object.keys(
     COMPONENT_LABELS,
   ) as (keyof ScoringComponents)[];
@@ -295,6 +298,7 @@ router.post("/initiatives/:id/recalculate", async (req, res) => {
     newPriority: priority,
     changes,
     unchangedComponents,
+    sourceLabel: aiProvider.sourceLabel,
   });
 
   if (!changed) {

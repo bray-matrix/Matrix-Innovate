@@ -1,8 +1,9 @@
 import { Router, type IRouter } from "express";
+import { getAIProvider, listAIProviders } from "../lib/ai";
 
 const router: IRouter = Router();
 
-export const APPLICATION_VERSION = "v0.1.9";
+export const APPLICATION_VERSION = "v0.2.0";
 
 const SETTINGS = {
   departments: [
@@ -47,7 +48,26 @@ const SETTINGS = {
 };
 
 router.get("/settings", (_req, res) => {
-  res.json(SETTINGS);
+  const active = getAIProvider();
+  res.json({
+    ...SETTINGS,
+    aiProvider: {
+      activeProvider: active.sourceLabel,
+      providerStatus: active.status,
+      availableProviders: listAIProviders().map((p) => ({
+        id: p.id,
+        label: p.sourceLabel,
+        status: p.status,
+        notes: p.notes,
+      })),
+      // No provider connectivity test has been run yet — placeholders do not
+      // require API keys and the rule engine needs no connectivity.
+      lastProviderTest: null,
+      providerNotes:
+        "The active provider is selected via the AI_PROVIDER environment variable. " +
+        "Only the rule-based engine is active; vendor providers are registered placeholders and require no API keys yet.",
+    },
+  });
 });
 
 export default router;

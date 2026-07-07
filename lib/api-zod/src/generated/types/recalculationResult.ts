@@ -10,6 +10,8 @@ import type { ScoringComponentChange } from './scoringComponentChange';
 
 export interface RecalculationResult {
   initiative: Initiative;
+  /** Which intelligence source generated the explanations (e.g. "Rule Engine v1") */
+  sourceLabel: string;
   /** Whether the recalculation changed any component, score, or priority */
   changed: boolean;
   previousScore: number;

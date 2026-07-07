@@ -195,12 +195,46 @@ export interface ScoringWeight {
   weight: number;
 }
 
+export type AIProviderConfigProviderStatus = typeof AIProviderConfigProviderStatus[keyof typeof AIProviderConfigProviderStatus];
+
+
+export const AIProviderConfigProviderStatus = {
+  Active: 'Active',
+  Placeholder: 'Placeholder',
+} as const;
+
+export type AIProviderInfoStatus = typeof AIProviderInfoStatus[keyof typeof AIProviderInfoStatus];
+
+
+export const AIProviderInfoStatus = {
+  Active: 'Active',
+  Placeholder: 'Placeholder',
+} as const;
+
+export interface AIProviderInfo {
+  id: string;
+  label: string;
+  status: AIProviderInfoStatus;
+  notes: string;
+}
+
+export interface AIProviderConfig {
+  /** Source label of the active provider (e.g. "Rule Engine v1") */
+  activeProvider: string;
+  providerStatus: AIProviderConfigProviderStatus;
+  availableProviders: AIProviderInfo[];
+  /** ISO timestamp of the last provider connectivity test, or null if never run */
+  lastProviderTest: string | null;
+  providerNotes: string;
+}
+
 export interface Settings {
   departments: string[];
   categories: string[];
   statuses: string[];
   scoringWeights: ScoringWeight[];
   applicationVersion: string;
+  aiProvider?: AIProviderConfig;
 }
 
 export type ValidationRecordStatus = typeof ValidationRecordStatus[keyof typeof ValidationRecordStatus];
@@ -307,6 +341,8 @@ export interface ScoringComponentChange {
 
 export interface RecalculationResult {
   initiative: Initiative;
+  /** Which intelligence source generated the explanations (e.g. "Rule Engine v1") */
+  sourceLabel: string;
   /** Whether the recalculation changed any component, score, or priority */
   changed: boolean;
   previousScore: number;
