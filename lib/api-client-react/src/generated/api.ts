@@ -20,6 +20,9 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  BacklogItem,
+  BacklogItemCreate,
+  BacklogItemUpdate,
   CalculationEvent,
   DashboardSummary,
   Document,
@@ -30,6 +33,10 @@ import type {
   InitiativeRecommendations,
   InitiativeUpdate,
   InitiativeVersion,
+  ParkingLotItem,
+  ParkingLotItemCreate,
+  ParkingLotItemUpdate,
+  ProductHealth,
   ProviderTestEvent,
   RecalculationResult,
   Settings,
@@ -1256,6 +1263,659 @@ export function useListAiProviderTests<TData = Awaited<ReturnType<typeof listAiP
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getListAiProviderTestsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListBacklogItemsUrl = () => {
+
+
+
+
+  return `/api/backlog`
+}
+
+/**
+ * @summary List product backlog items, newest first
+ */
+export const listBacklogItems = async ( options?: RequestInit): Promise<BacklogItem[]> => {
+
+  return customFetch<BacklogItem[]>(getListBacklogItemsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListBacklogItemsQueryKey = () => {
+    return [
+    `/api/backlog`
+    ] as const;
+    }
+
+
+export const getListBacklogItemsQueryOptions = <TData = Awaited<ReturnType<typeof listBacklogItems>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listBacklogItems>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListBacklogItemsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listBacklogItems>>> = ({ signal }) => listBacklogItems({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listBacklogItems>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListBacklogItemsQueryResult = NonNullable<Awaited<ReturnType<typeof listBacklogItems>>>
+export type ListBacklogItemsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List product backlog items, newest first
+ */
+
+export function useListBacklogItems<TData = Awaited<ReturnType<typeof listBacklogItems>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listBacklogItems>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListBacklogItemsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateBacklogItemUrl = () => {
+
+
+
+
+  return `/api/backlog`
+}
+
+/**
+ * @summary Create a product backlog item
+ */
+export const createBacklogItem = async (backlogItemCreate: BacklogItemCreate, options?: RequestInit): Promise<BacklogItem> => {
+
+  return customFetch<BacklogItem>(getCreateBacklogItemUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(backlogItemCreate)
+  }
+);}
+
+
+
+
+export const getCreateBacklogItemMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createBacklogItem>>, TError,{data: BodyType<BacklogItemCreate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createBacklogItem>>, TError,{data: BodyType<BacklogItemCreate>}, TContext> => {
+
+const mutationKey = ['createBacklogItem'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createBacklogItem>>, {data: BodyType<BacklogItemCreate>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createBacklogItem(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateBacklogItemMutationResult = NonNullable<Awaited<ReturnType<typeof createBacklogItem>>>
+    export type CreateBacklogItemMutationBody = BodyType<BacklogItemCreate>
+    export type CreateBacklogItemMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Create a product backlog item
+ */
+export const useCreateBacklogItem = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createBacklogItem>>, TError,{data: BodyType<BacklogItemCreate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createBacklogItem>>,
+        TError,
+        {data: BodyType<BacklogItemCreate>},
+        TContext
+      > => {
+      return useMutation(getCreateBacklogItemMutationOptions(options));
+    }
+
+export const getUpdateBacklogItemUrl = (id: number,) => {
+
+
+
+
+  return `/api/backlog/${id}`
+}
+
+/**
+ * @summary Update a product backlog item
+ */
+export const updateBacklogItem = async (id: number,
+    backlogItemUpdate: BacklogItemUpdate, options?: RequestInit): Promise<BacklogItem> => {
+
+  return customFetch<BacklogItem>(getUpdateBacklogItemUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(backlogItemUpdate)
+  }
+);}
+
+
+
+
+export const getUpdateBacklogItemMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateBacklogItem>>, TError,{id: number;data: BodyType<BacklogItemUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateBacklogItem>>, TError,{id: number;data: BodyType<BacklogItemUpdate>}, TContext> => {
+
+const mutationKey = ['updateBacklogItem'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateBacklogItem>>, {id: number;data: BodyType<BacklogItemUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateBacklogItem(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateBacklogItemMutationResult = NonNullable<Awaited<ReturnType<typeof updateBacklogItem>>>
+    export type UpdateBacklogItemMutationBody = BodyType<BacklogItemUpdate>
+    export type UpdateBacklogItemMutationError = ErrorType<void>
+
+    /**
+ * @summary Update a product backlog item
+ */
+export const useUpdateBacklogItem = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateBacklogItem>>, TError,{id: number;data: BodyType<BacklogItemUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateBacklogItem>>,
+        TError,
+        {id: number;data: BodyType<BacklogItemUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateBacklogItemMutationOptions(options));
+    }
+
+export const getDeleteBacklogItemUrl = (id: number,) => {
+
+
+
+
+  return `/api/backlog/${id}`
+}
+
+/**
+ * @summary Delete a product backlog item
+ */
+export const deleteBacklogItem = async (id: number, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteBacklogItemUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteBacklogItemMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteBacklogItem>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteBacklogItem>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['deleteBacklogItem'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteBacklogItem>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteBacklogItem(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteBacklogItemMutationResult = NonNullable<Awaited<ReturnType<typeof deleteBacklogItem>>>
+
+    export type DeleteBacklogItemMutationError = ErrorType<void>
+
+    /**
+ * @summary Delete a product backlog item
+ */
+export const useDeleteBacklogItem = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteBacklogItem>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteBacklogItem>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getDeleteBacklogItemMutationOptions(options));
+    }
+
+export const getListParkingLotItemsUrl = () => {
+
+
+
+
+  return `/api/parking-lot`
+}
+
+/**
+ * @summary List parking lot items, newest first
+ */
+export const listParkingLotItems = async ( options?: RequestInit): Promise<ParkingLotItem[]> => {
+
+  return customFetch<ParkingLotItem[]>(getListParkingLotItemsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListParkingLotItemsQueryKey = () => {
+    return [
+    `/api/parking-lot`
+    ] as const;
+    }
+
+
+export const getListParkingLotItemsQueryOptions = <TData = Awaited<ReturnType<typeof listParkingLotItems>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listParkingLotItems>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListParkingLotItemsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listParkingLotItems>>> = ({ signal }) => listParkingLotItems({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listParkingLotItems>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListParkingLotItemsQueryResult = NonNullable<Awaited<ReturnType<typeof listParkingLotItems>>>
+export type ListParkingLotItemsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List parking lot items, newest first
+ */
+
+export function useListParkingLotItems<TData = Awaited<ReturnType<typeof listParkingLotItems>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listParkingLotItems>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListParkingLotItemsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateParkingLotItemUrl = () => {
+
+
+
+
+  return `/api/parking-lot`
+}
+
+/**
+ * @summary Create a parking lot item
+ */
+export const createParkingLotItem = async (parkingLotItemCreate: ParkingLotItemCreate, options?: RequestInit): Promise<ParkingLotItem> => {
+
+  return customFetch<ParkingLotItem>(getCreateParkingLotItemUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(parkingLotItemCreate)
+  }
+);}
+
+
+
+
+export const getCreateParkingLotItemMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createParkingLotItem>>, TError,{data: BodyType<ParkingLotItemCreate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createParkingLotItem>>, TError,{data: BodyType<ParkingLotItemCreate>}, TContext> => {
+
+const mutationKey = ['createParkingLotItem'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createParkingLotItem>>, {data: BodyType<ParkingLotItemCreate>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createParkingLotItem(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateParkingLotItemMutationResult = NonNullable<Awaited<ReturnType<typeof createParkingLotItem>>>
+    export type CreateParkingLotItemMutationBody = BodyType<ParkingLotItemCreate>
+    export type CreateParkingLotItemMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Create a parking lot item
+ */
+export const useCreateParkingLotItem = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createParkingLotItem>>, TError,{data: BodyType<ParkingLotItemCreate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createParkingLotItem>>,
+        TError,
+        {data: BodyType<ParkingLotItemCreate>},
+        TContext
+      > => {
+      return useMutation(getCreateParkingLotItemMutationOptions(options));
+    }
+
+export const getUpdateParkingLotItemUrl = (id: number,) => {
+
+
+
+
+  return `/api/parking-lot/${id}`
+}
+
+/**
+ * @summary Update a parking lot item
+ */
+export const updateParkingLotItem = async (id: number,
+    parkingLotItemUpdate: ParkingLotItemUpdate, options?: RequestInit): Promise<ParkingLotItem> => {
+
+  return customFetch<ParkingLotItem>(getUpdateParkingLotItemUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(parkingLotItemUpdate)
+  }
+);}
+
+
+
+
+export const getUpdateParkingLotItemMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateParkingLotItem>>, TError,{id: number;data: BodyType<ParkingLotItemUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateParkingLotItem>>, TError,{id: number;data: BodyType<ParkingLotItemUpdate>}, TContext> => {
+
+const mutationKey = ['updateParkingLotItem'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateParkingLotItem>>, {id: number;data: BodyType<ParkingLotItemUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateParkingLotItem(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateParkingLotItemMutationResult = NonNullable<Awaited<ReturnType<typeof updateParkingLotItem>>>
+    export type UpdateParkingLotItemMutationBody = BodyType<ParkingLotItemUpdate>
+    export type UpdateParkingLotItemMutationError = ErrorType<void>
+
+    /**
+ * @summary Update a parking lot item
+ */
+export const useUpdateParkingLotItem = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateParkingLotItem>>, TError,{id: number;data: BodyType<ParkingLotItemUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateParkingLotItem>>,
+        TError,
+        {id: number;data: BodyType<ParkingLotItemUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateParkingLotItemMutationOptions(options));
+    }
+
+export const getDeleteParkingLotItemUrl = (id: number,) => {
+
+
+
+
+  return `/api/parking-lot/${id}`
+}
+
+/**
+ * @summary Delete a parking lot item
+ */
+export const deleteParkingLotItem = async (id: number, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteParkingLotItemUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteParkingLotItemMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteParkingLotItem>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteParkingLotItem>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['deleteParkingLotItem'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteParkingLotItem>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteParkingLotItem(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteParkingLotItemMutationResult = NonNullable<Awaited<ReturnType<typeof deleteParkingLotItem>>>
+
+    export type DeleteParkingLotItemMutationError = ErrorType<void>
+
+    /**
+ * @summary Delete a parking lot item
+ */
+export const useDeleteParkingLotItem = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteParkingLotItem>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteParkingLotItem>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getDeleteParkingLotItemMutationOptions(options));
+    }
+
+export const getGetProductHealthUrl = () => {
+
+
+
+
+  return `/api/product-health`
+}
+
+/**
+ * @summary Product health summary for the dashboard widget
+ */
+export const getProductHealth = async ( options?: RequestInit): Promise<ProductHealth> => {
+
+  return customFetch<ProductHealth>(getGetProductHealthUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetProductHealthQueryKey = () => {
+    return [
+    `/api/product-health`
+    ] as const;
+    }
+
+
+export const getGetProductHealthQueryOptions = <TData = Awaited<ReturnType<typeof getProductHealth>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getProductHealth>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetProductHealthQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getProductHealth>>> = ({ signal }) => getProductHealth({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getProductHealth>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetProductHealthQueryResult = NonNullable<Awaited<ReturnType<typeof getProductHealth>>>
+export type GetProductHealthQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Product health summary for the dashboard widget
+ */
+
+export function useGetProductHealth<TData = Awaited<ReturnType<typeof getProductHealth>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getProductHealth>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetProductHealthQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

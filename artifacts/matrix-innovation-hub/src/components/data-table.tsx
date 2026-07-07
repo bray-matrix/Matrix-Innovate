@@ -84,6 +84,26 @@ function toCsvCell(value: unknown): string {
   return str;
 }
 
+interface SavedTableLayout {
+  sorting: SortingState;
+  columnVisibility: VisibilityState;
+  pageSize: number;
+}
+
+function layoutStorageId(storageKey: string): string {
+  return `datatable-layout:${storageKey}`;
+}
+
+function loadSavedLayout(storageKey?: string): SavedTableLayout | null {
+  if (!storageKey) return null;
+  try {
+    const raw = localStorage.getItem(layoutStorageId(storageKey));
+    return raw ? (JSON.parse(raw) as SavedTableLayout) : null;
+  } catch {
+    return null;
+  }
+}
+
 interface DataTableProps<TData> {
   columns: ColumnDef<TData, unknown>[];
   data: TData[];
@@ -93,6 +113,8 @@ interface DataTableProps<TData> {
   initialColumnVisibility?: VisibilityState;
   initialPageSize?: number;
   emptyMessage?: string;
+  /** When set, "Save Layout" persists sorting/columns/page size to localStorage under this key. */
+  storageKey?: string;
 }
 
 const PAGE_SIZES = [10, 25, 50, 100];
@@ -106,12 +128,18 @@ export function DataTable<TData>({
   initialColumnVisibility,
   initialPageSize = 10,
   emptyMessage = "No records found.",
+  storageKey,
 }: DataTableProps<TData>) {
-  const [sorting, setSorting] = useState<SortingState>([]);
+  const [savedLayout] = useState<SavedTableLayout | null>(() =>
+    loadSavedLayout(storageKey),
+  );
+  const [sorting, setSorting] = useState<SortingState>(
+    savedLayout?.sorting ?? [],
+  );
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(
-    initialColumnVisibility ?? {},
+    savedLayout?.columnVisibility ?? initialColumnVisibility ?? {},
   );
   const [showFilters, setShowFilters] = useState(false);
 
@@ -131,7 +159,9 @@ export function DataTable<TData>({
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
-    initialState: { pagination: { pageSize: initialPageSize } },
+    initialState: {
+      pagination: { pageSize: savedLayout?.pageSize ?? initialPageSize },
+    },
   });
 
   const hideableColumns = table
@@ -246,12 +276,37 @@ export function DataTable<TData>({
           <Button
             variant="outline"
             size="sm"
-            onClick={() =>
-              toast({
-                title: "Save layout",
-                description: "Saving personal column layouts is coming soon.",
-              })
-            }
+            onClick={() => {
+              if (!storageKey) {
+                toast({
+                  title: "Save layout",
+                  description:
+                    "Saving personal column layouts is coming soon.",
+                });
+                return;
+              }
+              const layout: SavedTableLayout = {
+                sorting,
+                columnVisibility,
+                pageSize: table.getState().pagination.pageSize,
+              };
+              try {
+                localStorage.setItem(
+                  layoutStorageId(storageKey),
+                  JSON.stringify(layout),
+                );
+                toast({
+                  title: "Layout saved",
+                  description:
+                    "Sorting, visible columns, and page size will be restored next visit.",
+                });
+              } catch {
+                toast({
+                  title: "Save layout failed",
+                  description: "Could not persist the layout in this browser.",
+                });
+              }
+            }}
           >
             <Save className="mr-2 h-4 w-4" />
             Save Layout

@@ -12,6 +12,7 @@ import ScoreInitiative from "@/pages/score-initiative";
 import KanbanBoard from "@/pages/kanban";
 import Documents from "@/pages/documents";
 import ValidationPage from "@/pages/validation";
+import ProductBacklogPage from "@/pages/backlog";
 import Admin from "@/pages/admin";
 import NotFound from "@/pages/not-found";
 
@@ -30,6 +31,7 @@ function Router() {
         <Route path="/kanban" component={KanbanBoard} />
         <Route path="/documents" component={Documents} />
         <Route path="/validation" component={ValidationPage} />
+        <Route path="/backlog" component={ProductBacklogPage} />
         <Route path="/admin" component={Admin} />
         <Route component={NotFound} />
       </Switch>

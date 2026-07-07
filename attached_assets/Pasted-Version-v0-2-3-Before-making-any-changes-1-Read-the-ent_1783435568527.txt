@@ -1,0 +1,128 @@
+Version: v0.2.3
+
+Before making any changes:
+
+1. Read the entire existing codebase.
+2. Preserve all existing functionality.
+3. Do not remove features unless explicitly instructed.
+4. Build on top of the existing architecture.
+5. Follow semantic versioning.
+6. Update the internal CHANGELOG.
+7. If a requested feature conflicts with the existing design, explain why before changing it.
+
+Objective:
+Create an internal Product Backlog and Parking Lot module so the Matrix Innovation Hub manages its own evolution.
+
+Purpose:
+All future enhancements, bug fixes, feature requests, technical debt, usability improvements, and architectural ideas should be managed inside the Matrix Innovation Hub instead of external notes or emails.
+
+Navigation:
+Add a new sidebar item:
+Product Backlog
+
+The module should contain two primary views:
+
+1. Active Product Backlog
+2. Parking Lot
+
+Backlog Item fields:
+
+- ID (PB-0001)
+- Title
+- Description
+- Type
+    - Feature
+    - Enhancement
+    - Bug
+    - Technical Debt
+    - Architecture
+    - UX/UI
+    - Documentation
+- Priority
+    - Critical
+    - High
+    - Medium
+    - Low
+- Status
+    - New
+    - Grooming
+    - Approved
+    - In Progress
+    - Testing
+    - Complete
+    - Deferred
+- Target Version
+- Module
+    - Foundation
+    - Intelligence
+    - Portfolio
+    - Knowledge
+    - Collaboration
+    - Integrations
+- Submitted By
+- Assigned To
+- Created Date
+- Last Updated
+- Notes
+
+Parking Lot fields:
+
+- ID (PL-0001)
+- Title
+- Description
+- Reason Parked
+- Estimated Value
+- Future Release Candidate
+- Date Added
+
+Features:
+
+- Default to enterprise table view.
+- Search.
+- Filters.
+- Sorting.
+- Saved layouts.
+- Export CSV.
+- Export Excel (placeholder).
+
+Relationships:
+
+Allow Product Backlog items to optionally link to:
+
+- Initiatives
+- Validation findings
+- Application versions
+
+Seed the Product Backlog with completed work:
+
+- Governance Package
+- AI Innovation Interview
+- Initiative Workspace
+- Intelligence Engine
+- Validation Module
+- AI Provider Abstraction
+
+Seed the Parking Lot with:
+
+- AI-generated Executive Summary improvements
+- Dashboard breadcrumb navigation
+- Provider switching
+- Knowledge reuse engine
+- Lessons Learned library
+
+Dashboard:
+
+Add a small Product Health widget showing:
+
+- Open Backlog Items
+- Parking Lot Items
+- Completed This Release
+- Current Application Version
+
+Do not modify existing initiative workflows.
+
+Do not modify AI providers.
+
+This module is intended to manage the evolution of the Matrix Innovation Hub itself.
+
+Update the application version to v0.2.3.

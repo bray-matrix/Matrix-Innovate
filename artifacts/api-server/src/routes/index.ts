@@ -5,6 +5,7 @@ import dashboardRouter from "./dashboard";
 import documentsRouter from "./documents";
 import settingsRouter from "./settings";
 import validationsRouter from "./validations";
+import backlogRouter from "./backlog";
 
 const router: IRouter = Router();
 
@@ -14,5 +15,6 @@ router.use(dashboardRouter);
 router.use(documentsRouter);
 router.use(settingsRouter);
 router.use(validationsRouter);
+router.use(backlogRouter);
 
 export default router;

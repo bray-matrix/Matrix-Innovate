@@ -616,6 +616,224 @@ export const ListAiProviderTestsResponse = zod.array(ListAiProviderTestsResponse
 
 
 /**
+ * @summary List product backlog items, newest first
+ */
+export const ListBacklogItemsResponseItem = zod.object({
+  "id": zod.number(),
+  "displayId": zod.string().describe('Human-readable id, e.g. PB-0001'),
+  "title": zod.string(),
+  "description": zod.string(),
+  "type": zod.enum(['Feature', 'Enhancement', 'Bug', 'Technical Debt', 'Architecture', 'UX/UI', 'Documentation']),
+  "priority": zod.enum(['Critical', 'High', 'Medium', 'Low']),
+  "status": zod.enum(['New', 'Grooming', 'Approved', 'In Progress', 'Testing', 'Complete', 'Deferred']),
+  "targetVersion": zod.string(),
+  "module": zod.enum(['Foundation', 'Intelligence', 'Portfolio', 'Knowledge', 'Collaboration', 'Integrations']),
+  "submittedBy": zod.string(),
+  "assignedTo": zod.string(),
+  "notes": zod.string(),
+  "linkedInitiativeId": zod.number().nullish(),
+  "linkedValidationId": zod.number().nullish(),
+  "linkedVersion": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListBacklogItemsResponse = zod.array(ListBacklogItemsResponseItem)
+
+
+/**
+ * @summary Create a product backlog item
+ */
+
+
+
+export const CreateBacklogItemBody = zod.object({
+  "title": zod.string().min(1),
+  "description": zod.string().optional(),
+  "type": zod.enum(['Feature', 'Enhancement', 'Bug', 'Technical Debt', 'Architecture', 'UX/UI', 'Documentation']).optional(),
+  "priority": zod.enum(['Critical', 'High', 'Medium', 'Low']).optional(),
+  "status": zod.enum(['New', 'Grooming', 'Approved', 'In Progress', 'Testing', 'Complete', 'Deferred']).optional(),
+  "targetVersion": zod.string().optional(),
+  "module": zod.enum(['Foundation', 'Intelligence', 'Portfolio', 'Knowledge', 'Collaboration', 'Integrations']).optional(),
+  "submittedBy": zod.string().optional(),
+  "assignedTo": zod.string().optional(),
+  "notes": zod.string().optional(),
+  "linkedInitiativeId": zod.number().nullish(),
+  "linkedValidationId": zod.number().nullish(),
+  "linkedVersion": zod.string().optional()
+})
+
+export const CreateBacklogItemResponse = zod.object({
+  "id": zod.number(),
+  "displayId": zod.string().describe('Human-readable id, e.g. PB-0001'),
+  "title": zod.string(),
+  "description": zod.string(),
+  "type": zod.enum(['Feature', 'Enhancement', 'Bug', 'Technical Debt', 'Architecture', 'UX/UI', 'Documentation']),
+  "priority": zod.enum(['Critical', 'High', 'Medium', 'Low']),
+  "status": zod.enum(['New', 'Grooming', 'Approved', 'In Progress', 'Testing', 'Complete', 'Deferred']),
+  "targetVersion": zod.string(),
+  "module": zod.enum(['Foundation', 'Intelligence', 'Portfolio', 'Knowledge', 'Collaboration', 'Integrations']),
+  "submittedBy": zod.string(),
+  "assignedTo": zod.string(),
+  "notes": zod.string(),
+  "linkedInitiativeId": zod.number().nullish(),
+  "linkedValidationId": zod.number().nullish(),
+  "linkedVersion": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Update a product backlog item
+ */
+export const UpdateBacklogItemParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+
+
+export const UpdateBacklogItemBody = zod.object({
+  "title": zod.string().min(1).optional(),
+  "description": zod.string().optional(),
+  "type": zod.enum(['Feature', 'Enhancement', 'Bug', 'Technical Debt', 'Architecture', 'UX/UI', 'Documentation']).optional(),
+  "priority": zod.enum(['Critical', 'High', 'Medium', 'Low']).optional(),
+  "status": zod.enum(['New', 'Grooming', 'Approved', 'In Progress', 'Testing', 'Complete', 'Deferred']).optional(),
+  "targetVersion": zod.string().optional(),
+  "module": zod.enum(['Foundation', 'Intelligence', 'Portfolio', 'Knowledge', 'Collaboration', 'Integrations']).optional(),
+  "submittedBy": zod.string().optional(),
+  "assignedTo": zod.string().optional(),
+  "notes": zod.string().optional(),
+  "linkedInitiativeId": zod.number().nullish(),
+  "linkedValidationId": zod.number().nullish(),
+  "linkedVersion": zod.string().optional()
+})
+
+export const UpdateBacklogItemResponse = zod.object({
+  "id": zod.number(),
+  "displayId": zod.string().describe('Human-readable id, e.g. PB-0001'),
+  "title": zod.string(),
+  "description": zod.string(),
+  "type": zod.enum(['Feature', 'Enhancement', 'Bug', 'Technical Debt', 'Architecture', 'UX/UI', 'Documentation']),
+  "priority": zod.enum(['Critical', 'High', 'Medium', 'Low']),
+  "status": zod.enum(['New', 'Grooming', 'Approved', 'In Progress', 'Testing', 'Complete', 'Deferred']),
+  "targetVersion": zod.string(),
+  "module": zod.enum(['Foundation', 'Intelligence', 'Portfolio', 'Knowledge', 'Collaboration', 'Integrations']),
+  "submittedBy": zod.string(),
+  "assignedTo": zod.string(),
+  "notes": zod.string(),
+  "linkedInitiativeId": zod.number().nullish(),
+  "linkedValidationId": zod.number().nullish(),
+  "linkedVersion": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Delete a product backlog item
+ */
+export const DeleteBacklogItemParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const DeleteBacklogItemResponse = zod.void()
+
+
+/**
+ * @summary List parking lot items, newest first
+ */
+export const ListParkingLotItemsResponseItem = zod.object({
+  "id": zod.number(),
+  "displayId": zod.string().describe('Human-readable id, e.g. PL-0001'),
+  "title": zod.string(),
+  "description": zod.string(),
+  "reasonParked": zod.string(),
+  "estimatedValue": zod.string(),
+  "futureReleaseCandidate": zod.boolean(),
+  "createdAt": zod.coerce.date()
+})
+export const ListParkingLotItemsResponse = zod.array(ListParkingLotItemsResponseItem)
+
+
+/**
+ * @summary Create a parking lot item
+ */
+
+
+
+export const CreateParkingLotItemBody = zod.object({
+  "title": zod.string().min(1),
+  "description": zod.string().optional(),
+  "reasonParked": zod.string().optional(),
+  "estimatedValue": zod.string().optional(),
+  "futureReleaseCandidate": zod.boolean().optional()
+})
+
+export const CreateParkingLotItemResponse = zod.object({
+  "id": zod.number(),
+  "displayId": zod.string().describe('Human-readable id, e.g. PL-0001'),
+  "title": zod.string(),
+  "description": zod.string(),
+  "reasonParked": zod.string(),
+  "estimatedValue": zod.string(),
+  "futureReleaseCandidate": zod.boolean(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Update a parking lot item
+ */
+export const UpdateParkingLotItemParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+
+
+export const UpdateParkingLotItemBody = zod.object({
+  "title": zod.string().min(1).optional(),
+  "description": zod.string().optional(),
+  "reasonParked": zod.string().optional(),
+  "estimatedValue": zod.string().optional(),
+  "futureReleaseCandidate": zod.boolean().optional()
+})
+
+export const UpdateParkingLotItemResponse = zod.object({
+  "id": zod.number(),
+  "displayId": zod.string().describe('Human-readable id, e.g. PL-0001'),
+  "title": zod.string(),
+  "description": zod.string(),
+  "reasonParked": zod.string(),
+  "estimatedValue": zod.string(),
+  "futureReleaseCandidate": zod.boolean(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Delete a parking lot item
+ */
+export const DeleteParkingLotItemParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const DeleteParkingLotItemResponse = zod.void()
+
+
+/**
+ * @summary Product health summary for the dashboard widget
+ */
+export const GetProductHealthResponse = zod.object({
+  "openBacklogItems": zod.number().describe('Backlog items not Complete or Deferred'),
+  "parkingLotItems": zod.number(),
+  "completedThisRelease": zod.number().describe('Backlog items Complete with targetVersion == current app version'),
+  "applicationVersion": zod.string()
+})
+
+
+/**
  * @summary List validation records, newest first
  */
 export const ListValidationsResponseItem = zod.object({

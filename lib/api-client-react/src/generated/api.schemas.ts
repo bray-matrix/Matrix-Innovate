@@ -437,3 +437,241 @@ export interface InitiativeRecommendations {
   nextAction: string;
 }
 
+export type BacklogItemType = typeof BacklogItemType[keyof typeof BacklogItemType];
+
+
+export const BacklogItemType = {
+  Feature: 'Feature',
+  Enhancement: 'Enhancement',
+  Bug: 'Bug',
+  Technical_Debt: 'Technical Debt',
+  Architecture: 'Architecture',
+  'UX/UI': 'UX/UI',
+  Documentation: 'Documentation',
+} as const;
+
+export type BacklogItemPriority = typeof BacklogItemPriority[keyof typeof BacklogItemPriority];
+
+
+export const BacklogItemPriority = {
+  Critical: 'Critical',
+  High: 'High',
+  Medium: 'Medium',
+  Low: 'Low',
+} as const;
+
+export type BacklogItemStatus = typeof BacklogItemStatus[keyof typeof BacklogItemStatus];
+
+
+export const BacklogItemStatus = {
+  New: 'New',
+  Grooming: 'Grooming',
+  Approved: 'Approved',
+  In_Progress: 'In Progress',
+  Testing: 'Testing',
+  Complete: 'Complete',
+  Deferred: 'Deferred',
+} as const;
+
+export type BacklogItemModule = typeof BacklogItemModule[keyof typeof BacklogItemModule];
+
+
+export const BacklogItemModule = {
+  Foundation: 'Foundation',
+  Intelligence: 'Intelligence',
+  Portfolio: 'Portfolio',
+  Knowledge: 'Knowledge',
+  Collaboration: 'Collaboration',
+  Integrations: 'Integrations',
+} as const;
+
+export interface BacklogItem {
+  id: number;
+  /** Human-readable id, e.g. PB-0001 */
+  displayId: string;
+  title: string;
+  description: string;
+  type: BacklogItemType;
+  priority: BacklogItemPriority;
+  status: BacklogItemStatus;
+  targetVersion: string;
+  module: BacklogItemModule;
+  submittedBy: string;
+  assignedTo: string;
+  notes: string;
+  linkedInitiativeId?: number | null;
+  linkedValidationId?: number | null;
+  linkedVersion: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type BacklogItemCreateType = typeof BacklogItemCreateType[keyof typeof BacklogItemCreateType];
+
+
+export const BacklogItemCreateType = {
+  Feature: 'Feature',
+  Enhancement: 'Enhancement',
+  Bug: 'Bug',
+  Technical_Debt: 'Technical Debt',
+  Architecture: 'Architecture',
+  'UX/UI': 'UX/UI',
+  Documentation: 'Documentation',
+} as const;
+
+export type BacklogItemCreatePriority = typeof BacklogItemCreatePriority[keyof typeof BacklogItemCreatePriority];
+
+
+export const BacklogItemCreatePriority = {
+  Critical: 'Critical',
+  High: 'High',
+  Medium: 'Medium',
+  Low: 'Low',
+} as const;
+
+export type BacklogItemCreateStatus = typeof BacklogItemCreateStatus[keyof typeof BacklogItemCreateStatus];
+
+
+export const BacklogItemCreateStatus = {
+  New: 'New',
+  Grooming: 'Grooming',
+  Approved: 'Approved',
+  In_Progress: 'In Progress',
+  Testing: 'Testing',
+  Complete: 'Complete',
+  Deferred: 'Deferred',
+} as const;
+
+export type BacklogItemCreateModule = typeof BacklogItemCreateModule[keyof typeof BacklogItemCreateModule];
+
+
+export const BacklogItemCreateModule = {
+  Foundation: 'Foundation',
+  Intelligence: 'Intelligence',
+  Portfolio: 'Portfolio',
+  Knowledge: 'Knowledge',
+  Collaboration: 'Collaboration',
+  Integrations: 'Integrations',
+} as const;
+
+export interface BacklogItemCreate {
+  /** @minLength 1 */
+  title: string;
+  description?: string;
+  type?: BacklogItemCreateType;
+  priority?: BacklogItemCreatePriority;
+  status?: BacklogItemCreateStatus;
+  targetVersion?: string;
+  module?: BacklogItemCreateModule;
+  submittedBy?: string;
+  assignedTo?: string;
+  notes?: string;
+  linkedInitiativeId?: number | null;
+  linkedValidationId?: number | null;
+  linkedVersion?: string;
+}
+
+export type BacklogItemUpdateType = typeof BacklogItemUpdateType[keyof typeof BacklogItemUpdateType];
+
+
+export const BacklogItemUpdateType = {
+  Feature: 'Feature',
+  Enhancement: 'Enhancement',
+  Bug: 'Bug',
+  Technical_Debt: 'Technical Debt',
+  Architecture: 'Architecture',
+  'UX/UI': 'UX/UI',
+  Documentation: 'Documentation',
+} as const;
+
+export type BacklogItemUpdatePriority = typeof BacklogItemUpdatePriority[keyof typeof BacklogItemUpdatePriority];
+
+
+export const BacklogItemUpdatePriority = {
+  Critical: 'Critical',
+  High: 'High',
+  Medium: 'Medium',
+  Low: 'Low',
+} as const;
+
+export type BacklogItemUpdateStatus = typeof BacklogItemUpdateStatus[keyof typeof BacklogItemUpdateStatus];
+
+
+export const BacklogItemUpdateStatus = {
+  New: 'New',
+  Grooming: 'Grooming',
+  Approved: 'Approved',
+  In_Progress: 'In Progress',
+  Testing: 'Testing',
+  Complete: 'Complete',
+  Deferred: 'Deferred',
+} as const;
+
+export type BacklogItemUpdateModule = typeof BacklogItemUpdateModule[keyof typeof BacklogItemUpdateModule];
+
+
+export const BacklogItemUpdateModule = {
+  Foundation: 'Foundation',
+  Intelligence: 'Intelligence',
+  Portfolio: 'Portfolio',
+  Knowledge: 'Knowledge',
+  Collaboration: 'Collaboration',
+  Integrations: 'Integrations',
+} as const;
+
+export interface BacklogItemUpdate {
+  /** @minLength 1 */
+  title?: string;
+  description?: string;
+  type?: BacklogItemUpdateType;
+  priority?: BacklogItemUpdatePriority;
+  status?: BacklogItemUpdateStatus;
+  targetVersion?: string;
+  module?: BacklogItemUpdateModule;
+  submittedBy?: string;
+  assignedTo?: string;
+  notes?: string;
+  linkedInitiativeId?: number | null;
+  linkedValidationId?: number | null;
+  linkedVersion?: string;
+}
+
+export interface ParkingLotItem {
+  id: number;
+  /** Human-readable id, e.g. PL-0001 */
+  displayId: string;
+  title: string;
+  description: string;
+  reasonParked: string;
+  estimatedValue: string;
+  futureReleaseCandidate: boolean;
+  createdAt: string;
+}
+
+export interface ParkingLotItemCreate {
+  /** @minLength 1 */
+  title: string;
+  description?: string;
+  reasonParked?: string;
+  estimatedValue?: string;
+  futureReleaseCandidate?: boolean;
+}
+
+export interface ParkingLotItemUpdate {
+  /** @minLength 1 */
+  title?: string;
+  description?: string;
+  reasonParked?: string;
+  estimatedValue?: string;
+  futureReleaseCandidate?: boolean;
+}
+
+export interface ProductHealth {
+  /** Backlog items not Complete or Deferred */
+  openBacklogItems: number;
+  parkingLotItems: number;
+  /** Backlog items Complete with targetVersion == current app version */
+  completedThisRelease: number;
+  applicationVersion: string;
+}
+

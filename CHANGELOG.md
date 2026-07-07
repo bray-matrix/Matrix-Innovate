@@ -5,6 +5,37 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and the
 project adheres to semantic versioning (patch = fixes/edits, minor = new
 features, major = breaking or milestone changes).
 
+## [0.2.3] — 2026-07-07
+
+The Hub now manages its own evolution: a Product Backlog and Parking Lot
+module replaces external notes and emails for tracking enhancements, bugs,
+technical debt, and parked ideas. No changes to initiative workflows or AI
+providers.
+
+### Added
+
+- New "Product Backlog" sidebar item with two views: Active Product Backlog
+  and Parking Lot, both in an enterprise table with search, filters, sorting,
+  column visibility, CSV export, and an Excel export placeholder.
+- Backlog items (PB-0001 ids) with type, priority, status, target version,
+  module, submitted by, assigned to, notes, and optional links to
+  initiatives, validation records, and application versions.
+- Parking lot items (PL-0001 ids) with reason parked, estimated value, and a
+  future-release-candidate flag.
+- Saved table layouts: the Save Layout button now persists sorting, visible
+  columns, and page size per table in the browser.
+- Dashboard "Product Health" widget: open backlog items, parking lot items,
+  completed this release, and the current application version.
+- New API endpoints: `/backlog`, `/backlog/{id}`, `/parking-lot`,
+  `/parking-lot/{id}`, `/product-health`, backed by new `backlog_items` and
+  `parking_lot_items` tables.
+- Seeded the backlog with the six major features delivered so far and the
+  parking lot with five deferred ideas.
+
+### Changed
+
+- Application version bumped to v0.2.3.
+
 ## [0.2.2] — 2026-07-07
 
 Polish pass on the AI Provider Configuration experience in Admin, preparing

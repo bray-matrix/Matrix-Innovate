@@ -348,6 +348,162 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/ProviderTestEvent"
+  /backlog:
+    get:
+      operationId: listBacklogItems
+      tags: [backlog]
+      summary: List product backlog items, newest first
+      responses:
+        "200":
+          description: A list of backlog items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BacklogItem"
+    post:
+      operationId: createBacklogItem
+      tags: [backlog]
+      summary: Create a product backlog item
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BacklogItemCreate"
+      responses:
+        "201":
+          description: Created backlog item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BacklogItem"
+  /backlog/{id}:
+    patch:
+      operationId: updateBacklogItem
+      tags: [backlog]
+      summary: Update a product backlog item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BacklogItemUpdate"
+      responses:
+        "200":
+          description: Updated backlog item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BacklogItem"
+        "404":
+          description: Backlog item not found
+    delete:
+      operationId: deleteBacklogItem
+      tags: [backlog]
+      summary: Delete a product backlog item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Backlog item not found
+  /parking-lot:
+    get:
+      operationId: listParkingLotItems
+      tags: [backlog]
+      summary: List parking lot items, newest first
+      responses:
+        "200":
+          description: A list of parking lot items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ParkingLotItem"
+    post:
+      operationId: createParkingLotItem
+      tags: [backlog]
+      summary: Create a parking lot item
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ParkingLotItemCreate"
+      responses:
+        "201":
+          description: Created parking lot item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParkingLotItem"
+  /parking-lot/{id}:
+    patch:
+      operationId: updateParkingLotItem
+      tags: [backlog]
+      summary: Update a parking lot item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ParkingLotItemUpdate"
+      responses:
+        "200":
+          description: Updated parking lot item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParkingLotItem"
+        "404":
+          description: Parking lot item not found
+    delete:
+      operationId: deleteParkingLotItem
+      tags: [backlog]
+      summary: Delete a parking lot item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Parking lot item not found
+  /product-health:
+    get:
+      operationId: getProductHealth
+      tags: [backlog]
+      summary: Product health summary for the dashboard widget
+      responses:
+        "200":
+          description: Product health counts and current version
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductHealth"
   /validations:
     get:
       operationId: listValidations
@@ -1373,4 +1529,276 @@ components:
           type: integer
           description: Confidence in the recommendations from 0 to 100
         nextAction:
+          type: string
+    BacklogItem:
+      type: object
+      required:
+        [
+          id,
+          displayId,
+          title,
+          description,
+          type,
+          priority,
+          status,
+          targetVersion,
+          module,
+          submittedBy,
+          assignedTo,
+          notes,
+          linkedVersion,
+          createdAt,
+          updatedAt,
+        ]
+      properties:
+        id:
+          type: integer
+        displayId:
+          type: string
+          description: Human-readable id, e.g. PB-0001
+        title:
+          type: string
+        description:
+          type: string
+        type:
+          type: string
+          enum:
+            [
+              Feature,
+              Enhancement,
+              Bug,
+              Technical Debt,
+              Architecture,
+              UX/UI,
+              Documentation,
+            ]
+        priority:
+          type: string
+          enum: [Critical, High, Medium, Low]
+        status:
+          type: string
+          enum:
+            [New, Grooming, Approved, In Progress, Testing, Complete, Deferred]
+        targetVersion:
+          type: string
+        module:
+          type: string
+          enum:
+            [
+              Foundation,
+              Intelligence,
+              Portfolio,
+              Knowledge,
+              Collaboration,
+              Integrations,
+            ]
+        submittedBy:
+          type: string
+        assignedTo:
+          type: string
+        notes:
+          type: string
+        linkedInitiativeId:
+          type: integer
+          nullable: true
+        linkedValidationId:
+          type: integer
+          nullable: true
+        linkedVersion:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    BacklogItemCreate:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        type:
+          type: string
+          enum:
+            [
+              Feature,
+              Enhancement,
+              Bug,
+              Technical Debt,
+              Architecture,
+              UX/UI,
+              Documentation,
+            ]
+        priority:
+          type: string
+          enum: [Critical, High, Medium, Low]
+        status:
+          type: string
+          enum:
+            [New, Grooming, Approved, In Progress, Testing, Complete, Deferred]
+        targetVersion:
+          type: string
+        module:
+          type: string
+          enum:
+            [
+              Foundation,
+              Intelligence,
+              Portfolio,
+              Knowledge,
+              Collaboration,
+              Integrations,
+            ]
+        submittedBy:
+          type: string
+        assignedTo:
+          type: string
+        notes:
+          type: string
+        linkedInitiativeId:
+          type: integer
+          nullable: true
+        linkedValidationId:
+          type: integer
+          nullable: true
+        linkedVersion:
+          type: string
+    BacklogItemUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        type:
+          type: string
+          enum:
+            [
+              Feature,
+              Enhancement,
+              Bug,
+              Technical Debt,
+              Architecture,
+              UX/UI,
+              Documentation,
+            ]
+        priority:
+          type: string
+          enum: [Critical, High, Medium, Low]
+        status:
+          type: string
+          enum:
+            [New, Grooming, Approved, In Progress, Testing, Complete, Deferred]
+        targetVersion:
+          type: string
+        module:
+          type: string
+          enum:
+            [
+              Foundation,
+              Intelligence,
+              Portfolio,
+              Knowledge,
+              Collaboration,
+              Integrations,
+            ]
+        submittedBy:
+          type: string
+        assignedTo:
+          type: string
+        notes:
+          type: string
+        linkedInitiativeId:
+          type: integer
+          nullable: true
+        linkedValidationId:
+          type: integer
+          nullable: true
+        linkedVersion:
+          type: string
+    ParkingLotItem:
+      type: object
+      required:
+        [
+          id,
+          displayId,
+          title,
+          description,
+          reasonParked,
+          estimatedValue,
+          futureReleaseCandidate,
+          createdAt,
+        ]
+      properties:
+        id:
+          type: integer
+        displayId:
+          type: string
+          description: Human-readable id, e.g. PL-0001
+        title:
+          type: string
+        description:
+          type: string
+        reasonParked:
+          type: string
+        estimatedValue:
+          type: string
+        futureReleaseCandidate:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+    ParkingLotItemCreate:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        reasonParked:
+          type: string
+        estimatedValue:
+          type: string
+        futureReleaseCandidate:
+          type: boolean
+    ParkingLotItemUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        reasonParked:
+          type: string
+        estimatedValue:
+          type: string
+        futureReleaseCandidate:
+          type: boolean
+    ProductHealth:
+      type: object
+      required:
+        [
+          openBacklogItems,
+          parkingLotItems,
+          completedThisRelease,
+          applicationVersion,
+        ]
+      properties:
+        openBacklogItems:
+          type: integer
+          description: Backlog items not Complete or Deferred
+        parkingLotItems:
+          type: integer
+        completedThisRelease:
+          type: integer
+          description: Backlog items Complete with targetVersion == current app version
+        applicationVersion:
           type: string
