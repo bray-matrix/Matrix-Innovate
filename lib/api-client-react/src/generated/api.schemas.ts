@@ -216,11 +216,23 @@ export interface AIProviderInfo {
   label: string;
   status: AIProviderInfoStatus;
   notes: string;
+  /** Whether this provider is the currently active one */
+  isActive: boolean;
+  /** AIProvider capability method names this provider is registered for */
+  capabilities: string[];
+  /** Outcome of the most recent readiness test for this provider, or null if never tested */
+  lastTestPassed: boolean | null;
+  /** ISO timestamp of the most recent readiness test for this provider, or null if never tested */
+  lastTestAt: string | null;
+  /** Operator-facing description of what would happen if this provider became active */
+  switchImpact: string;
 }
 
 export interface AIProviderConfig {
   /** Source label of the active provider (e.g. "Rule Engine v1") */
   activeProvider: string;
+  /** Machine id of the active provider (e.g. "rule-based") */
+  activeProviderId: string;
   providerStatus: AIProviderConfigProviderStatus;
   availableProviders: AIProviderInfo[];
   /** ISO timestamp of the last provider connectivity test, or null if never run */

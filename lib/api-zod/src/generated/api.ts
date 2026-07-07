@@ -557,12 +557,18 @@ export const GetSettingsResponse = zod.object({
   "applicationVersion": zod.string(),
   "aiProvider": zod.object({
   "activeProvider": zod.string().describe('Source label of the active provider (e.g. \"Rule Engine v1\")'),
+  "activeProviderId": zod.string().describe('Machine id of the active provider (e.g. \"rule-based\")'),
   "providerStatus": zod.enum(['Active', 'Placeholder']),
   "availableProviders": zod.array(zod.object({
   "id": zod.string(),
   "label": zod.string(),
   "status": zod.enum(['Active', 'Placeholder']),
-  "notes": zod.string()
+  "notes": zod.string(),
+  "isActive": zod.boolean().describe('Whether this provider is the currently active one'),
+  "capabilities": zod.array(zod.string()).describe('AIProvider capability method names this provider is registered for'),
+  "lastTestPassed": zod.boolean().nullable().describe('Outcome of the most recent readiness test for this provider, or null if never tested'),
+  "lastTestAt": zod.string().nullable().describe('ISO timestamp of the most recent readiness test for this provider, or null if never tested'),
+  "switchImpact": zod.string().describe('Operator-facing description of what would happen if this provider became active')
 })),
   "lastProviderTest": zod.string().nullable().describe('ISO timestamp of the last provider connectivity test, or null if never run'),
   "providerNotes": zod.string()

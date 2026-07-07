@@ -5,6 +5,38 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and the
 project adheres to semantic versioning (patch = fixes/edits, minor = new
 features, major = breaking or milestone changes).
 
+## [0.2.2] — 2026-07-07
+
+Polish pass on the AI Provider Configuration experience in Admin, preparing
+the ground for future OpenAI, Claude, Azure OpenAI, or Local LLM setup. No
+provider switching, no API keys, no vendor calls, and no changes to
+initiative workflows.
+
+### Added
+
+- **Provider status badges** — each registered provider now shows badges for
+  Active, Available, Not Configured, Passed Last Test, and Failed Last Test,
+  derived from its registration status and its most recent readiness test.
+- **Per-provider configuration summary** — Admin now shows a read-only
+  summary card for every registered provider: name, provider key,
+  status badges, capability list, last test result, last test timestamp,
+  and operator notes.
+- **Provider Switching Preview** — a new read-only Admin section showing the
+  current active provider, every registered provider, and an explanation of
+  what would happen if it became active, with a clear warning that
+  placeholder providers are registered but not configured. Actual switching
+  remains disabled — the active provider is still selected only via the
+  AI_PROVIDER environment variable.
+- **API** — `GET /api/settings` now returns per-provider `isActive`,
+  `capabilities`, `lastTestPassed`, `lastTestAt`, and `switchImpact`, plus
+  the active provider id.
+
+### Changed
+
+- The detailed provider test result panel now hydrates from the latest
+  stored test event after a page reload instead of only showing results from
+  the current session.
+
 ## [0.2.1] — 2026-07-07
 
 AI Provider validation and readiness testing — proving the abstraction layer

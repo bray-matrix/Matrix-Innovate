@@ -11,6 +11,8 @@ import type { AIProviderInfo } from './aIProviderInfo';
 export interface AIProviderConfig {
   /** Source label of the active provider (e.g. "Rule Engine v1") */
   activeProvider: string;
+  /** Machine id of the active provider (e.g. "rule-based") */
+  activeProviderId: string;
   providerStatus: AIProviderConfigProviderStatus;
   availableProviders: AIProviderInfo[];
   /** ISO timestamp of the last provider connectivity test, or null if never run */

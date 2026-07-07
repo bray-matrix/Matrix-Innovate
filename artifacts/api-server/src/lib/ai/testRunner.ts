@@ -184,6 +184,14 @@ const CAPABILITY_CHECKS: CapabilityCheck[] = [
 ];
 
 /**
+ * Names of every AIProvider capability exercised by the readiness test.
+ * Derived from CAPABILITY_CHECKS so the two can never drift apart.
+ */
+export const AI_CAPABILITY_NAMES: readonly string[] = CAPABILITY_CHECKS.map(
+  (check) => check.capability,
+);
+
+/**
  * Runs the full capability readiness test against the given provider using
  * synthetic sample data only. Never throws — failures are captured in the
  * result so they can be stored and displayed.

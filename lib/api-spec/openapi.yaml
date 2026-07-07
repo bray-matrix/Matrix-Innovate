@@ -944,6 +944,7 @@ components:
       type: object
       required:
         - activeProvider
+        - activeProviderId
         - providerStatus
         - availableProviders
         - lastProviderTest
@@ -952,6 +953,9 @@ components:
         activeProvider:
           type: string
           description: Source label of the active provider (e.g. "Rule Engine v1")
+        activeProviderId:
+          type: string
+          description: Machine id of the active provider (e.g. "rule-based")
         providerStatus:
           type: string
           enum: [Active, Placeholder]
@@ -1020,6 +1024,11 @@ components:
         - label
         - status
         - notes
+        - isActive
+        - capabilities
+        - lastTestPassed
+        - lastTestAt
+        - switchImpact
       properties:
         id:
           type: string
@@ -1030,6 +1039,25 @@ components:
           enum: [Active, Placeholder]
         notes:
           type: string
+        isActive:
+          type: boolean
+          description: Whether this provider is the currently active one
+        capabilities:
+          type: array
+          items:
+            type: string
+          description: AIProvider capability method names this provider is registered for
+        lastTestPassed:
+          type: boolean
+          nullable: true
+          description: Outcome of the most recent readiness test for this provider, or null if never tested
+        lastTestAt:
+          type: string
+          nullable: true
+          description: ISO timestamp of the most recent readiness test for this provider, or null if never tested
+        switchImpact:
+          type: string
+          description: Operator-facing description of what would happen if this provider became active
     ScoringWeight:
       type: object
       required:
