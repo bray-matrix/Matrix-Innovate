@@ -1,3 +1,4 @@
 - [Scoring penalty sign convention](scoring-penalty-sign.md) — penalties are negative magnitudes (0..-10); server must clamp to [-max,0] and ADD, not subtract, or penalties are silently dropped.
 - [Adaptive interview engine](interview-engine-architecture.md) — engine owns classify/plan, model lib owns scoring/draft; swap engine for OpenAI, keep model stable.
 - [Initiative smart version bump & history](initiative-versioning.md) — semver per initiative: edit=patch, status=minor, →Production=major; UPDATE+history insert must be one transaction.
+- [Workflow restart drops requests](workflow-restart-request-drops.md) — failed request + no server log usually means the API workflow was rebuilding; check restart timing before debugging code.

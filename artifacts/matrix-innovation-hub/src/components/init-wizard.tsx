@@ -119,10 +119,14 @@ export function InitializeEnvironmentCard() {
         queryClient.invalidateQueries();
         toast({ title: "Environment initialized" });
       },
-      onError: () =>
+      onError: (error) =>
         toast({
           title: "Initialization failed",
-          description: "No changes were recorded. Check the server logs.",
+          description: `No changes were recorded. ${
+            error instanceof Error && error.message
+              ? error.message
+              : "The server could not be reached — it may be restarting. Try again in a moment."
+          }`,
           variant: "destructive",
         }),
     },
