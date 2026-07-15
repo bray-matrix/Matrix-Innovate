@@ -7,6 +7,7 @@ import express, {
 import cors from "cors";
 import pinoHttp from "pino-http";
 import router from "./routes";
+import matrixRouter, { matrixLaunchContext } from "./matrix/platform";
 import { logger } from "./lib/logger";
 import { AIProviderNotConfiguredError } from "./lib/ai";
 
@@ -35,6 +36,8 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+app.use(matrixLaunchContext);
+app.use("/matrix", matrixRouter);
 app.use("/api", router);
 
 // Selecting a placeholder AI provider (via AI_PROVIDER) must surface as a

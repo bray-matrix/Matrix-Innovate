@@ -1,6 +1,6 @@
 # Matrix Innovation Hub
 
-An internal web application (v0.2.4) for Matrix employees to submit AI innovation ideas — either through a conversational AI Innovation Interview or a classic form — auto-structure them into an AI Opportunity Canvas, score them on a 100-point model, and move them through a lightweight innovation pipeline (Idea → Review → Approved → Prototype → Pilot → Production → Closed/Declined).
+An internal web application (v0.3.0) for Matrix employees to submit AI innovation ideas — either through a conversational AI Innovation Interview or a classic form — auto-structure them into an AI Opportunity Canvas, score them on a 100-point model, and move them through a lightweight innovation pipeline (Idea → Review → Approved → Prototype → Pilot → Production → Closed/Declined).
 
 ## Run & Operate
 
@@ -30,12 +30,14 @@ An internal web application (v0.2.4) for Matrix employees to submit AI innovatio
 - Initiative Intelligence Engine (rule-based recommendations behind a swappable `RecommendationProvider` abstraction): `artifacts/api-server/src/lib/intelligence/`
 - AI Provider Abstraction Layer (`AIProvider` interface, `getAIProvider()` factory driven by the `AI_PROVIDER` env var, rule-based active + OpenAI/Claude/Azure/Local LLM placeholders): `artifacts/api-server/src/lib/ai/`
 - Internal changelog: `CHANGELOG.md` (update on every version bump)
+- Matrix Platform integration (SDK v1): server platform module `artifacts/api-server/src/matrix/platform.ts` (/matrix/app-info, /matrix/health, /matrix/manifest + launch-token trust middleware); frontend launch capture `artifacts/matrix-innovation-hub/src/lib/matrix-platform.ts`
 - Theme/colors: `artifacts/matrix-innovation-hub/src/index.css`
 
 ## Architecture decisions
 
 - Uses Replit's built-in PostgreSQL + Drizzle (not Supabase). Only `initiatives` is a real table; documents and admin settings are static server-side config.
 - Score and priority are computed server-side in `scoring.ts` on create/update — the frontend sends raw scoring components, never the final score, so the model stays authoritative in one place.
+- Matrix Platform endpoints live under /matrix (proxy routes /matrix to the API server) and are intentionally kept OUT of the business OpenAPI spec — platform infrastructure is separated from business logic per Matrix SDK best practices.
 - The AI Opportunity Canvas is composed client-side from initiative fields via a `generateOpportunityCanvas()` helper (placeholder for future OpenAI wiring — no AI calls yet, per MVP scope).
 
 ## Product

@@ -11,6 +11,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { useGetSettings } from "@workspace/api-client-react";
+import { getMatrixLaunchUser, isMatrixLaunch } from "@/lib/matrix-platform";
 import { LayoutDashboard, PlusCircle, List, KanbanSquare, FileText, Settings, Rocket, Sparkles, ClipboardCheck, ListTodo } from "lucide-react";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
@@ -69,6 +70,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             <h1 className="font-semibold text-lg text-foreground">
               {navItems.find((i) => i.href === location)?.label || "Innovation Hub"}
             </h1>
+            {isMatrixLaunch() && (
+              <div className="ml-auto text-xs text-muted-foreground">
+                Matrix Platform
+                {getMatrixLaunchUser() ? ` — ${getMatrixLaunchUser()}` : ""}
+              </div>
+            )}
           </header>
           <div className="flex-1 overflow-auto p-4 md:p-8">
             <div className="max-w-7xl mx-auto w-full">

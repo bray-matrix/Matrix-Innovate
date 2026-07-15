@@ -5,6 +5,26 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and the
 project adheres to semantic versioning (patch = fixes/edits, minor = new
 features, major = breaking or milestone changes).
 
+## [0.3.0] — 2026-07-15
+
+### Added
+
+- Matrix Platform onboarding (Matrix SDK v1): the Innovation Hub is now a
+  Matrix Platform application.
+- New platform endpoints served from a dedicated platform module, separate
+  from business routes: `GET /matrix/app-info` (name, slug, version, SDK
+  version, owner, auth mode), `GET /matrix/health` (status, version, database
+  check), and `GET /matrix/manifest` (application manifest with production
+  and preview URLs, health and version endpoints).
+- Matrix Platform authentication trust: the server accepts a launch token via
+  `X-Matrix-Launch-Token` or bearer authorization and trusts it per the SDK
+  (no separate login). Tokens are never logged or persisted server-side.
+- Platform launch compatibility: the frontend captures `matrix_token` and
+  `matrix_user` launch parameters, stores them for the session, strips them
+  from the URL, forwards the token on API calls, and shows the launch context
+  in the header.
+- Proxy routing for `/matrix` paths to the API server.
+
 ## [0.2.4] — 2026-07-07
 
 ### Added

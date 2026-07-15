@@ -1,0 +1,112 @@
+STEP 0 – VALIDATE PROJECT
+
+Expected Project:
+
+Matrix Innovation Hub
+
+If validation fails:
+
+STOP.
+
+Do not continue.
+
+Do not inspect code.
+
+Do not make changes.
+
+Report the mismatch.
+
+Ticket: IH001
+
+Target Version:
+
+Current Version + Minor
+
+--------------------------------------------------
+
+OBJECTIVE
+
+Matrix Innovation Hub is becoming the first business application onboarded into Matrix Platform.
+
+The attached Matrix SDK documents define the current Matrix Platform standards.
+
+Read ALL attached SDK documents before making any implementation decisions.
+
+Do NOT begin coding until the analysis is complete.
+
+--------------------------------------------------
+
+PHASE 1 – SDK ANALYSIS
+
+Review the project against every SDK requirement.
+
+Determine:
+
+• Already compliant
+
+• Needs minor work
+
+• Needs major work
+
+• Not applicable
+
+For every SDK document, explain how the current Innovation Hub compares.
+
+--------------------------------------------------
+
+PHASE 2 – IMPLEMENTATION PLAN
+
+Produce an implementation plan in priority order.
+
+Include:
+
+• Estimated effort
+
+• Risks
+
+• Questions
+
+• Recommended implementation sequence
+
+--------------------------------------------------
+
+PHASE 3 – IMPLEMENTATION
+
+Only after the analysis is complete:
+
+Implement the minimum changes required to make Innovation Hub a Matrix Platform application.
+
+Required capabilities include:
+
+• Matrix Platform authentication
+• Matrix branding
+• Standard versioning
+• /matrix/app-info
+• /matrix/health
+• Application manifest
+• Platform launch compatibility
+• Readiness compatibility
+
+Do NOT implement features that are not required for the first onboarding.
+
+Keep the implementation as simple as possible.
+
+--------------------------------------------------
+
+DELIVERABLES
+
+Return:
+
+• Gap Analysis
+
+• Implementation Summary
+
+• Release Report
+
+• Architect Review
+
+• Validation Results
+
+• Recommended SDK improvements discovered during this migration
+
+The goal of this project is not only to onboard Innovation Hub, but also to improve the Matrix SDK for future applications.
