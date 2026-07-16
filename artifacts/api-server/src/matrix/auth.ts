@@ -1,11 +1,14 @@
 import type { Request, Response, NextFunction } from "express";
 import { createRemoteJWKSet, jwtVerify, SignJWT } from "jose";
 
-// Matrix Platform Launch Guard (Matrix SDK v1.1 Trust Model).
-// Launch tokens are verified against the platform JWKS (RS256, issuer,
-// audience, expiration). A successful exchange mints a short-lived local
-// session cookie (HS256, signed with SESSION_SECRET). Raw launch tokens are
-// never logged or persisted server-side.
+// Matrix Platform Launch Guard (Matrix SDK v1.1 Trust Model, wired to the
+// real Matrix Platform Identity Provider via OIDC discovery as of v0.3.2).
+// Issuer and JWKS location are discovered from
+//   GET {platform}/.well-known/openid-configuration
+// and are never hard-coded. Launch tokens are verified against the discovered
+// JWKS (RS256, issuer, audience, expiration). A successful exchange mints a
+// short-lived local session cookie (HS256, signed with SESSION_SECRET). Raw
+// launch tokens are never logged or persisted server-side.
 
 export interface MatrixIdentity {
   sub: string;
@@ -14,8 +17,6 @@ export interface MatrixIdentity {
 }
 
 export interface MatrixAuthConfig {
-  issuer: string;
-  jwksUrl: string;
   audience: string;
   platformUrl: string;
   sessionTtlSeconds: number;
@@ -26,11 +27,76 @@ export function getMatrixAuthConfig(): MatrixAuthConfig {
     process.env["MATRIX_PLATFORM_URL"] ?? "https://matrix-platform.replit.app";
   return {
     platformUrl,
-    issuer: process.env["MATRIX_ISSUER"] ?? platformUrl,
-    jwksUrl: process.env["MATRIX_JWKS_URL"] ?? `${platformUrl}/api/platform/jwks`,
     audience: process.env["MATRIX_AUDIENCE"] ?? "matrix-innovation-hub",
     sessionTtlSeconds: parseSessionTtl(process.env["MATRIX_SESSION_TTL_SECONDS"]),
   };
+}
+
+// ---------------------------------------------------------------------------
+// OIDC discovery (Matrix Platform v0.20.0 Identity Provider)
+// ---------------------------------------------------------------------------
+
+export interface MatrixDiscovery {
+  issuer: string;
+  jwksUri: string;
+  logoutEndpoint: string | null;
+}
+
+const DISCOVERY_CACHE_TTL_MS = 5 * 60 * 1000;
+
+let discoveryCache: { value: MatrixDiscovery; platformUrl: string; expiresAt: number } | null =
+  null;
+
+export async function getMatrixDiscovery(): Promise<MatrixDiscovery> {
+  const { platformUrl } = getMatrixAuthConfig();
+  const now = Date.now();
+  if (
+    discoveryCache &&
+    discoveryCache.platformUrl === platformUrl &&
+    discoveryCache.expiresAt > now
+  ) {
+    return discoveryCache.value;
+  }
+
+  const url = `${platformUrl}/.well-known/openid-configuration`;
+  let doc: Record<string, unknown>;
+  try {
+    const res = await fetch(url, { headers: { accept: "application/json" } });
+    if (!res.ok) {
+      throw new Error(`discovery endpoint returned HTTP ${res.status}`);
+    }
+    doc = (await res.json()) as Record<string, unknown>;
+  } catch (err) {
+    // Serve a stale cached document (if any) rather than failing hard on a
+    // transient platform outage; otherwise surface the failure.
+    if (discoveryCache && discoveryCache.platformUrl === platformUrl) {
+      return discoveryCache.value;
+    }
+    throw new Error(
+      `Matrix Platform OIDC discovery failed (${url}): ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+
+  const issuer = typeof doc["issuer"] === "string" ? doc["issuer"] : "";
+  const jwksUri = typeof doc["jwks_uri"] === "string" ? doc["jwks_uri"] : "";
+  if (!issuer || !jwksUri) {
+    throw new Error(
+      "Matrix Platform OIDC discovery document is missing required fields (issuer, jwks_uri)",
+    );
+  }
+  assertTrustedPlatformEndpoint(jwksUri, platformUrl, "jwks_uri");
+
+  const rawLogout =
+    typeof doc["matrix_logout_endpoint"] === "string" ? doc["matrix_logout_endpoint"] : null;
+  let logoutEndpoint: string | null = null;
+  if (rawLogout) {
+    assertTrustedPlatformEndpoint(rawLogout, platformUrl, "matrix_logout_endpoint");
+    logoutEndpoint = rawLogout;
+  }
+
+  const value: MatrixDiscovery = { issuer, jwksUri, logoutEndpoint };
+  discoveryCache = { value, platformUrl, expiresAt: now + DISCOVERY_CACHE_TTL_MS };
+  return value;
 }
 
 function parseSessionTtl(raw: string | undefined): number {
@@ -53,14 +119,40 @@ function getSessionSecret(): Uint8Array {
   return new TextEncoder().encode(secret);
 }
 
+// Discovery-derived endpoints must stay within the configured platform's
+// trust domain: same host as MATRIX_PLATFORM_URL, and https unless the
+// platform itself is a non-https (local/test) origin.
+function assertTrustedPlatformEndpoint(
+  endpoint: string,
+  platformUrl: string,
+  field: string,
+): void {
+  let url: URL;
+  let platform: URL;
+  try {
+    url = new URL(endpoint);
+    platform = new URL(platformUrl);
+  } catch {
+    throw new Error(`Matrix Platform discovery field "${field}" is not a valid URL`);
+  }
+  const httpsRequired = platform.protocol === "https:";
+  if (httpsRequired && url.protocol !== "https:") {
+    throw new Error(`Matrix Platform discovery field "${field}" must use https`);
+  }
+  if (url.host !== platform.host) {
+    throw new Error(
+      `Matrix Platform discovery field "${field}" points outside the platform host`,
+    );
+  }
+}
+
 let jwks: ReturnType<typeof createRemoteJWKSet> | null = null;
 let jwksUrlUsed: string | null = null;
 
-function getJwks(): ReturnType<typeof createRemoteJWKSet> {
-  const { jwksUrl } = getMatrixAuthConfig();
-  if (!jwks || jwksUrlUsed !== jwksUrl) {
-    jwks = createRemoteJWKSet(new URL(jwksUrl));
-    jwksUrlUsed = jwksUrl;
+function getJwks(jwksUri: string): ReturnType<typeof createRemoteJWKSet> {
+  if (!jwks || jwksUrlUsed !== jwksUri) {
+    jwks = createRemoteJWKSet(new URL(jwksUri));
+    jwksUrlUsed = jwksUri;
   }
   return jwks;
 }
@@ -75,11 +167,12 @@ export class LaunchTokenError extends Error {
 const APP_ID_CLAIMS = ["app_id", "application_id", "appId", "client_id"] as const;
 
 export async function verifyLaunchToken(token: string): Promise<MatrixIdentity> {
-  const { issuer, audience } = getMatrixAuthConfig();
+  const { audience } = getMatrixAuthConfig();
+  const { issuer, jwksUri } = await getMatrixDiscovery();
 
   let payload: Record<string, unknown>;
   try {
-    const result = await jwtVerify(token, getJwks(), {
+    const result = await jwtVerify(token, getJwks(jwksUri), {
       algorithms: ["RS256"],
       issuer,
       audience,

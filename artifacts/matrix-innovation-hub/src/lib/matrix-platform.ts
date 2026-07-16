@@ -59,6 +59,18 @@ export async function fetchSessionUser(): Promise<MatrixUser | null> {
   return data.user ?? null;
 }
 
-export async function logoutSession(): Promise<void> {
-  await fetch("/matrix/logout", { method: "POST", credentials: "include" });
+// Logs out locally and returns the Matrix Platform URL the browser should
+// navigate back to (the platform's discovered logout endpoint when available).
+export async function logoutSession(): Promise<string> {
+  try {
+    const res = await fetch("/matrix/logout", { method: "POST", credentials: "include" });
+    if (res.ok) {
+      const data = await res.json();
+      if (typeof data.logoutUrl === "string" && data.logoutUrl) return data.logoutUrl;
+      if (typeof data.platformUrl === "string" && data.platformUrl) return data.platformUrl;
+    }
+  } catch {
+    // fall through to the default platform URL
+  }
+  return MATRIX_PLATFORM_URL;
 }

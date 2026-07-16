@@ -85,8 +85,9 @@ export function MatrixGate({ children }: { children: ReactNode }) {
   }
 
   const logout = async () => {
-    await logoutSession();
+    const returnUrl = await logoutSession();
     setState({ status: "unauthenticated" });
+    window.location.assign(returnUrl);
   };
 
   return (

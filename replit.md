@@ -1,6 +1,6 @@
 # Matrix Innovation Hub
 
-An internal web application (v0.3.1) for Matrix employees to submit AI innovation ideas — either through a conversational AI Innovation Interview or a classic form — auto-structure them into an AI Opportunity Canvas, score them on a 100-point model, and move them through a lightweight innovation pipeline (Idea → Review → Approved → Prototype → Pilot → Production → Closed/Declined).
+An internal web application (v0.3.2) for Matrix employees to submit AI innovation ideas — either through a conversational AI Innovation Interview or a classic form — auto-structure them into an AI Opportunity Canvas, score them on a 100-point model, and move them through a lightweight innovation pipeline (Idea → Review → Approved → Prototype → Pilot → Production → Closed/Declined).
 
 ## Run & Operate
 
@@ -10,7 +10,7 @@ An internal web application (v0.3.1) for Matrix employees to submit AI innovatio
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
 - `node test-launch-guard.mjs` (from `artifacts/api-server/`, after `pnpm run build`) — full launch-guard auth test matrix against a local mock JWKS
-- Required env: `DATABASE_URL` — Postgres connection string; `SESSION_SECRET` — signs the local session cookie. Optional Matrix auth overrides (defaults in `src/matrix/auth.ts`): `MATRIX_PLATFORM_URL`, `MATRIX_ISSUER`, `MATRIX_JWKS_URL` (default ${platform}/api/platform/jwks), `MATRIX_AUDIENCE` (default matrix-innovation-hub), `MATRIX_SESSION_TTL_SECONDS` (default 28800)
+- Required env: `DATABASE_URL` — Postgres connection string; `SESSION_SECRET` — signs the local session cookie. Optional Matrix auth overrides (defaults in `src/matrix/auth.ts`): `MATRIX_PLATFORM_URL` (default https://matrix-platform.replit.app; issuer and JWKS are discovered from its /.well-known/openid-configuration — never hard-coded), `MATRIX_AUDIENCE` (default matrix-innovation-hub), `MATRIX_SESSION_TTL_SECONDS` (default 28800)
 
 ## Stack
 
@@ -31,7 +31,7 @@ An internal web application (v0.3.1) for Matrix employees to submit AI innovatio
 - Initiative Intelligence Engine (rule-based recommendations behind a swappable `RecommendationProvider` abstraction): `artifacts/api-server/src/lib/intelligence/`
 - AI Provider Abstraction Layer (`AIProvider` interface, `getAIProvider()` factory driven by the `AI_PROVIDER` env var, rule-based active + OpenAI/Claude/Azure/Local LLM placeholders): `artifacts/api-server/src/lib/ai/`
 - Internal changelog: `CHANGELOG.md` (update on every version bump)
-- Matrix Platform integration (SDK v1): server platform module `artifacts/api-server/src/matrix/` — `platform.ts` (/matrix/app-info, /matrix/health, /matrix/manifest + /matrix/session launch exchange, /matrix/logout) and `auth.ts` (SDK v1.1 Launch Guard: JWKS/RS256 launch-token verification, HttpOnly session cookie, `requireMatrixSession` guard on all /api routes except /api/healthz); frontend launch capture + session gate `artifacts/matrix-innovation-hub/src/lib/matrix-platform.ts` and `src/components/matrix-gate.tsx`
+- Matrix Platform integration (SDK v1): server platform module `artifacts/api-server/src/matrix/` — `platform.ts` (/matrix/app-info, /matrix/health, /matrix/manifest + /matrix/session launch exchange, /matrix/logout) and `auth.ts` (SDK v1.1 Launch Guard: OIDC discovery of issuer/JWKS from the platform, RS256 launch-token verification, HttpOnly session cookie, `requireMatrixSession` guard on all /api routes except /api/healthz); frontend launch capture + session gate `artifacts/matrix-innovation-hub/src/lib/matrix-platform.ts` and `src/components/matrix-gate.tsx`
 - Theme/colors: `artifacts/matrix-innovation-hub/src/index.css`
 
 ## Architecture decisions

@@ -7,7 +7,8 @@ import { generateKeyPair, exportJWK, SignJWT } from "jose";
 
 const JWKS_PORT = 9301;
 const APP_PORT = 9302;
-const ISSUER = "https://test-matrix-platform.local";
+const ISSUER = "matrix-platform-test";
+const LOGOUT_ENDPOINT = `http://localhost:${9301}/matrix/logout`;
 const AUDIENCE = "matrix-innovation-hub";
 const BASE = `http://localhost:${APP_PORT}`;
 
@@ -18,8 +19,19 @@ jwk.kid = "test-key";
 jwk.alg = "RS256";
 jwk.use = "sig";
 
-const jwksServer = createServer((_req, res) => {
+const jwksServer = createServer((req, res) => {
   res.setHeader("content-type", "application/json");
+  if (req.url === "/.well-known/openid-configuration") {
+    res.end(
+      JSON.stringify({
+        issuer: ISSUER,
+        jwks_uri: `http://localhost:${JWKS_PORT}/.well-known/jwks.json`,
+        id_token_signing_alg_values_supported: ["RS256"],
+        matrix_logout_endpoint: LOGOUT_ENDPOINT,
+      }),
+    );
+    return;
+  }
   res.end(JSON.stringify({ keys: [jwk] }));
 });
 await new Promise((r) => jwksServer.listen(JWKS_PORT, r));
@@ -28,8 +40,7 @@ const child = spawn("node", ["dist/index.mjs"], {
   env: {
     ...process.env,
     PORT: String(APP_PORT),
-    MATRIX_JWKS_URL: `http://localhost:${JWKS_PORT}/jwks`,
-    MATRIX_ISSUER: ISSUER,
+    MATRIX_PLATFORM_URL: `http://localhost:${JWKS_PORT}`,
     MATRIX_AUDIENCE: AUDIENCE,
     SESSION_SECRET: "test-session-secret-for-validation-only",
     NODE_ENV: "development",
@@ -109,6 +120,8 @@ await expectStatus("read API with session returns 200", fetch(`${BASE}/api/initi
 
 // Logout
 const lo = await fetch(`${BASE}/matrix/logout`, { method: "POST", headers: { cookie } });
+const loBody = await lo.json();
+results.push(`${loBody.logoutUrl === LOGOUT_ENDPOINT ? "PASS" : "FAIL"} — logout returns discovered platform logout endpoint`);
 const cleared = /matrix_session=;|Expires=/i.test(lo.headers.get("set-cookie") ?? "");
 results.push(`${cleared ? "PASS" : "FAIL"} — logout clears session cookie`);
 await expectStatus("session invalid after cookie cleared (no cookie)", fetch(`${BASE}/matrix/session`), 401);

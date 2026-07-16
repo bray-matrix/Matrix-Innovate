@@ -4,6 +4,7 @@ import { db } from "@workspace/db";
 import { APPLICATION_VERSION } from "../routes/settings";
 import {
   getMatrixAuthConfig,
+  getMatrixDiscovery,
   LaunchTokenError,
   mintSessionToken,
   readSessionCookie,
@@ -68,9 +69,17 @@ router.get("/session", async (req, res) => {
   res.json({ user: { sub: identity.sub, name: identity.name, email: identity.email } });
 });
 
-router.post("/logout", (_req, res) => {
+router.post("/logout", async (req, res) => {
   res.clearCookie(SESSION_COOKIE, { path: "/" });
-  res.json({ ok: true, platformUrl: getMatrixAuthConfig().platformUrl });
+  const { platformUrl } = getMatrixAuthConfig();
+  let logoutUrl = platformUrl;
+  try {
+    const discovery = await getMatrixDiscovery();
+    if (discovery.logoutEndpoint) logoutUrl = discovery.logoutEndpoint;
+  } catch (err) {
+    req.log.warn({ err }, "Discovery unavailable during logout; using platform URL");
+  }
+  res.json({ ok: true, platformUrl, logoutUrl });
 });
 
 router.get("/app-info", (_req, res) => {

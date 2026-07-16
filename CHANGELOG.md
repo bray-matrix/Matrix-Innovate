@@ -5,6 +5,25 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and the
 project adheres to semantic versioning (patch = fixes/edits, minor = new
 features, major = breaking or milestone changes).
 
+## [0.3.2] — 2026-07-16
+
+### Changed
+
+- Connected to the real Matrix Platform Identity Provider (Matrix Platform
+  v0.20.0). The server now discovers issuer and JWKS via
+  `GET /.well-known/openid-configuration` on the platform; the JWKS URL is
+  no longer hard-coded and the previous `MATRIX_ISSUER` / `MATRIX_JWKS_URL`
+  development overrides were removed.
+- Launch tokens are validated against the discovered metadata: issuer from the
+  discovery document, application audience, RS256 algorithm pinning,
+  expiration, and signature via the discovered `jwks_uri`.
+- Discovery document is cached for 5 minutes; a stale copy is served on
+  transient platform outages rather than failing verification config.
+- Logout now returns the user to Matrix Platform: the server reports the
+  discovered `matrix_logout_endpoint` and the frontend navigates there after
+  the local session cookie is cleared.
+- Direct access remains blocked; no business functionality changed.
+
 ## [0.3.1] — 2026-07-16
 
 ### Security
