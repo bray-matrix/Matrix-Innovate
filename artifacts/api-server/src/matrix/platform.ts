@@ -1,13 +1,23 @@
-import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
+import { Router, type IRouter } from "express";
 import { sql } from "drizzle-orm";
 import { db } from "@workspace/db";
 import { APPLICATION_VERSION } from "../routes/settings";
+import {
+  getMatrixAuthConfig,
+  LaunchTokenError,
+  mintSessionToken,
+  readSessionCookie,
+  SESSION_COOKIE,
+  sessionCookieOptions,
+  verifyLaunchToken,
+  verifySessionToken,
+} from "./auth";
 
-// Matrix Platform integration (Matrix SDK v1).
+// Matrix Platform integration (Matrix SDK v1.1 Trust Model).
 // Platform infrastructure is intentionally kept separate from business routes
 // and outside the business OpenAPI contract (SDK doc 08 - Best Practices).
 
-export const MATRIX_SDK_VERSION = "1.0";
+export const MATRIX_SDK_VERSION = "1.1";
 
 const APP_NAME = "Matrix Innovation Hub";
 const APP_SLUG = "matrix-innovation-hub";
@@ -22,24 +32,46 @@ function baseUrls(): { productionUrl: string | null; previewUrl: string | null }
   };
 }
 
-// SDK doc 02 - Authentication: "Matrix Platform authenticates. Applications
-// trust the launch token. No separate login." The token is trusted as-is and
-// is never logged or persisted.
-export function matrixLaunchContext(req: Request, _res: Response, next: NextFunction): void {
-  const authHeader = req.header("authorization");
-  const bearerMatch = authHeader ? /^Bearer\s+(.+)$/i.exec(authHeader) : null;
-  const token = req.header("x-matrix-launch-token") ?? bearerMatch?.[1];
-  const user = req.header("x-matrix-user");
-  if (token) {
-    (req as Request & { matrixLaunch?: { authenticated: boolean; user: string | null } }).matrixLaunch = {
-      authenticated: true,
-      user: user ?? null,
-    };
-  }
-  next();
-}
-
 const router: IRouter = Router();
+
+// Launch exchange: the frontend sends the fragment-delivered launch token
+// exactly once; the server verifies it against the platform JWKS and mints a
+// short-lived HttpOnly session cookie. The raw token is never logged.
+router.post("/session", async (req, res) => {
+  const token = typeof req.body?.token === "string" ? req.body.token : "";
+  if (!token) {
+    res.status(400).json({ error: "Missing launch token" });
+    return;
+  }
+  try {
+    const identity = await verifyLaunchToken(token);
+    const session = await mintSessionToken(identity);
+    res.cookie(SESSION_COOKIE, session, sessionCookieOptions());
+    res.json({ user: { sub: identity.sub, name: identity.name, email: identity.email } });
+  } catch (err) {
+    if (err instanceof LaunchTokenError) {
+      req.log.warn({ reason: err.message }, "Matrix launch token rejected");
+      res.status(401).json({ error: "Invalid Matrix launch token" });
+      return;
+    }
+    throw err;
+  }
+});
+
+router.get("/session", async (req, res) => {
+  const cookie = readSessionCookie(req);
+  const identity = cookie ? await verifySessionToken(cookie) : null;
+  if (!identity) {
+    res.status(401).json({ error: "Matrix Platform session required" });
+    return;
+  }
+  res.json({ user: { sub: identity.sub, name: identity.name, email: identity.email } });
+});
+
+router.post("/logout", (_req, res) => {
+  res.clearCookie(SESSION_COOKIE, { path: "/" });
+  res.json({ ok: true, platformUrl: getMatrixAuthConfig().platformUrl });
+});
 
 router.get("/app-info", (_req, res) => {
   res.json({

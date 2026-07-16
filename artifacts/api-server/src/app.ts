@@ -7,7 +7,8 @@ import express, {
 import cors from "cors";
 import pinoHttp from "pino-http";
 import router from "./routes";
-import matrixRouter, { matrixLaunchContext } from "./matrix/platform";
+import matrixRouter from "./matrix/platform";
+import { requireMatrixSession } from "./matrix/auth";
 import { logger } from "./lib/logger";
 import { AIProviderNotConfiguredError } from "./lib/ai";
 
@@ -36,8 +37,17 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-app.use(matrixLaunchContext);
 app.use("/matrix", matrixRouter);
+
+// Matrix Platform Launch Guard: every business API requires an authenticated
+// application session. Only the deployment health probe stays public.
+app.use("/api", (req, res, next) => {
+  if (req.path === "/healthz") {
+    next();
+    return;
+  }
+  void requireMatrixSession(req, res, next);
+});
 app.use("/api", router);
 
 // Selecting a placeholder AI provider (via AI_PROVIDER) must surface as a

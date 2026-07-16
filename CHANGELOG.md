@@ -5,6 +5,43 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and the
 project adheres to semantic versioning (patch = fixes/edits, minor = new
 features, major = breaking or milestone changes).
 
+## [0.3.1] — 2026-07-16
+
+### Security
+
+- Matrix Platform Launch Guard (Matrix SDK v1.1 Trust Model): unauthenticated
+  access to the Innovation Hub is now blocked end to end.
+- Launch tokens are no longer trusted by presence. The frontend reads the
+  short-lived RS256 launch token from the URL fragment
+  (`#matrix_token=<JWT>`), scrubs it from the URL immediately, keeps it only
+  in memory, and exchanges it once via `POST /matrix/session`.
+- Server-side verification against the Matrix Platform JWKS: RS256 algorithm
+  pinning, issuer, application audience, expiration, required identity claim
+  (sub), and rejection of contradictory application-id claims. Invalid tokens
+  return 401; raw tokens are never logged or persisted.
+- Successful exchange mints a short-lived local application session cookie
+  (HttpOnly, SameSite=Lax, Secure in production, 8h default TTL). The launch
+  token is not the ongoing browser credential.
+- All business APIs under /api now require the authenticated session and
+  return 401 without it (the deployment health probe /api/healthz remains
+  public). Business pages do not render without a session.
+- Direct access shows a "Matrix Platform sign-in required" screen with a
+  link back to Matrix Platform; no separate login system was added.
+- Logout destroys the local session, clears the cookie, and returns to the
+  launch-required screen.
+- Public metadata endpoints (/matrix/health, /matrix/app-info,
+  /matrix/manifest) remain anonymous and expose safe metadata only.
+- Resolves Replit Security Center findings: unauthenticated modification /
+  deletion / initialization of business data (Critical) and unauthenticated
+  reads of internal initiative and workflow data (High).
+
+### Configuration
+
+- New environment variables (all optional, with defaults):
+  `MATRIX_PLATFORM_URL`, `MATRIX_ISSUER`, `MATRIX_JWKS_URL`,
+  `MATRIX_AUDIENCE`, `MATRIX_SESSION_TTL_SECONDS`. Requires
+  `SESSION_SECRET`.
+
 ## [0.3.0] — 2026-07-15
 
 ### Added

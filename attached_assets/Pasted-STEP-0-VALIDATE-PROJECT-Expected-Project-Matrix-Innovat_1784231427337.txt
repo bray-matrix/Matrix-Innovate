@@ -1,0 +1,180 @@
+STEP 0 – VALIDATE PROJECT
+
+Expected Project:
+
+Matrix Innovation Hub
+
+If validation fails:
+
+STOP.
+
+Do not continue.
+
+Do not inspect code.
+
+Do not make changes.
+
+Report the mismatch.
+
+Ticket: IH002
+
+Target Version: v0.3.1
+
+OBJECTIVE
+
+Implement the Matrix Platform Launch Guard and eliminate unauthenticated access to Matrix Innovation Hub.
+
+Read every attached Matrix Application SDK v1.1 Trust Model document before making changes.
+
+After this release:
+
+- Direct access to Innovation Hub must be blocked.
+- Launch from Matrix Platform with a valid launch token must succeed.
+- All business APIs must enforce the authenticated application session.
+- Innovation Hub must not implement its own login system.
+
+DO NOT MODIFY
+
+- Innovation Hub business workflows
+- Initiative data model
+- Dashboard calculations
+- Matrix Platform
+- Matrix Platform JWT minting
+- Existing public metadata contracts except where needed for safe metadata
+- Replit deployment visibility
+
+BUILD REQUIREMENTS
+
+1. Replace the current token-presence trust behavior.
+
+A launch token is not trusted merely because it exists, is decodable, or is forwarded in a header.
+
+2. Implement the official Matrix launch flow.
+
+Matrix Platform delivers:
+
+#matrix_token=<JWT>
+
+The frontend must:
+
+- Read the token from window.location.hash.
+- Immediately remove it from the URL using history.replaceState.
+- Never persist it in localStorage, sessionStorage, IndexedDB, logs, analytics, or application data.
+- Send it once to a server-side launch exchange endpoint.
+
+3. Implement server-side token verification.
+
+Validate:
+
+- RS256 signature using Matrix Platform JWKS
+- Issuer
+- Application audience
+- Expiration
+- Required identity claims
+- Optional application-id claims when present must not contradict the audience
+
+Reject invalid tokens with HTTP 401.
+
+Do not log the raw token.
+
+4. Create a secure local application session after successful verification.
+
+The session cookie must be:
+
+- HttpOnly
+- Secure in production
+- SameSite=Lax or stricter
+- Short-lived
+
+The Matrix launch token must not remain the ongoing browser session credential.
+
+5. Protect the application.
+
+Without a valid local session:
+
+- Business pages must not render.
+- Internal read APIs must return 401.
+- Create, update, delete, approval, administration, initialization, import, and file APIs must return 401.
+- WebSocket or streaming connections containing internal data must be denied.
+
+Authorization must be enforced server-side.
+
+6. Direct-access experience.
+
+Opening the application directly must show:
+
+Matrix Platform sign-in required
+
+This application is managed by Matrix Platform. Launch it from Matrix Platform to continue.
+
+Include a button or link back to:
+
+https://matrix-platform.replit.app
+
+Do not add a separate login page.
+
+7. Public metadata endpoints.
+
+These may remain anonymous only if they return safe metadata:
+
+- GET /matrix/health
+- GET /matrix/app-info
+- GET /matrix/manifest
+
+Confirm they expose no secrets, user data, internal hostnames, stack traces, database connection information, or environment variables.
+
+8. Logout.
+
+Logout must:
+
+- Destroy the local application session.
+- Clear the session cookie.
+- Return the user to Matrix Platform or the launch-required screen.
+
+9. Security findings.
+
+Specifically remediate the current Replit Security Center findings:
+
+- Critical: unauthenticated users can modify, delete, or initialize core business data.
+- High: unauthenticated users can read internal initiative and workflow data.
+
+Do not use Replit's generic “Fix all issues” implementation if it creates a standalone authentication system or violates the Matrix Platform trust model.
+
+VALIDATION DELIVERABLES
+
+Provide a complete Release Report containing:
+
+- STEP 0 validation
+- Ticket and target version
+- Files changed
+- Authentication/session architecture
+- Protected route inventory
+- Public endpoint inventory
+- Typecheck result
+- Test results
+- Architect review
+- Replit Security Scan results
+- Known issues
+- Publish requirements
+- Git status
+
+Required tests:
+
+1. Direct incognito access cannot reach business pages.
+2. Protected read APIs return 401 without a session.
+3. Protected write APIs return 401 without a session.
+4. Garbage token is rejected.
+5. Expired token is rejected.
+6. Wrong issuer is rejected.
+7. Wrong audience is rejected.
+8. Wrong signature is rejected.
+9. Wrong algorithm is rejected.
+10. Valid Matrix Platform launch creates a session.
+11. Valid launch shows the authenticated user.
+12. Token disappears from the URL immediately.
+13. Logout destroys the session.
+14. Both existing Replit security findings are resolved.
+
+Do not make the application public as part of this ticket.
+
+Do not consider IH002 complete until all validation sections are returned.
