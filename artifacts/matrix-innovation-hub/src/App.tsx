@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppLayout } from "@/components/layout";
 import { MatrixGate } from "@/components/matrix-gate";
+import { getBasePath } from "@/lib/base-path";
 import Dashboard from "@/pages/dashboard";
 import AIInnovationInterview from "@/pages/interview";
 import SubmitInitiative from "@/pages/submit";
@@ -45,7 +46,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <MatrixGate>
-          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+          <WouterRouter base={getBasePath()}>
             <Router />
           </WouterRouter>
         </MatrixGate>

@@ -29,3 +29,4 @@ to = "/index.html"
 [services.env]
 PORT = "25735"
 BASE_PATH = "/"
+GATEWAY_BASE_PATH = "/innovation"

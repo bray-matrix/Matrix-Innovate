@@ -5,6 +5,8 @@
 // memory, exchanged server-side for an HttpOnly session cookie, and never
 // persisted in browser storage or logs.
 
+import { withBase } from "./base-path";
+
 export interface MatrixUser {
   sub: string;
   name: string | null;
@@ -41,7 +43,7 @@ export function takePendingLaunchToken(): string | null {
 export const MATRIX_PLATFORM_URL = "https://matrix-platform.replit.app";
 
 export async function exchangeLaunchToken(token: string): Promise<MatrixUser | null> {
-  const res = await fetch("/matrix/session", {
+  const res = await fetch(withBase("/matrix/session"), {
     method: "POST",
     headers: { "content-type": "application/json" },
     credentials: "include",
@@ -53,7 +55,7 @@ export async function exchangeLaunchToken(token: string): Promise<MatrixUser | n
 }
 
 export async function fetchSessionUser(): Promise<MatrixUser | null> {
-  const res = await fetch("/matrix/session", { credentials: "include" });
+  const res = await fetch(withBase("/matrix/session"), { credentials: "include" });
   if (!res.ok) return null;
   const data = await res.json();
   return data.user ?? null;
@@ -63,7 +65,7 @@ export async function fetchSessionUser(): Promise<MatrixUser | null> {
 // navigate back to (the platform's discovered logout endpoint when available).
 export async function logoutSession(): Promise<string> {
   try {
-    const res = await fetch("/matrix/logout", { method: "POST", credentials: "include" });
+    const res = await fetch(withBase("/matrix/logout"), { method: "POST", credentials: "include" });
     if (res.ok) {
       const data = await res.json();
       if (typeof data.logoutUrl === "string" && data.logoutUrl) return data.logoutUrl;

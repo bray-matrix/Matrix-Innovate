@@ -12,7 +12,21 @@
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Matrix Innovation Hub" />
     <meta name="twitter:description" content="Matrix Innovation Hub — built on Replit. Update this description to reflect the app." />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <script>
+      // Gateway base-path detection (MAS-001). The configured public prefix
+      // is injected at build time; if the current URL lives beneath it, all
+      // relative asset URLs are anchored there via a <base> tag. Standalone
+      // (no prefix in the URL) resolves against the origin root.
+      (function () {
+        var gw = "%VITE_GATEWAY_BASE_PATH%";
+        if (gw.indexOf("%") !== -1) gw = "";
+        var p = window.location.pathname;
+        var prefix = gw && (p === gw || p.indexOf(gw + "/") === 0) ? gw : "";
+        window.__BASE_PATH__ = prefix;
+        document.write('<base href="' + window.location.origin + prefix + '/">');
+      })();
+    </script>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">

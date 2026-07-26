@@ -3,3 +3,4 @@
 - [Initiative smart version bump & history](initiative-versioning.md) — semver per initiative: edit=patch, status=minor, →Production=major; UPDATE+history insert must be one transaction.
 - [Workflow restart drops requests](workflow-restart-request-drops.md) — failed request + no server log usually means the API workflow was rebuilding; check restart timing before debugging code.
 - [Matrix Platform IdP](matrix-platform-idp.md) — real platform issuer is literal "matrix-platform"; discover issuer/JWKS/logout from /.well-known/openid-configuration, never hard-code.
+- [Gateway base-path pattern](gateway-base-path.md) — one build serves standalone root + prefix-stripping gateway via relative assets, runtime <base> tag, and withBase() on all client fetches.

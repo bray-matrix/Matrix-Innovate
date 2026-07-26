@@ -5,6 +5,28 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and the
 project adheres to semantic versioning (patch = fixes/edits, minor = new
 features, major = breaking or milestone changes).
 
+## [0.4.0] — 2026-07-16
+
+### Added
+
+- Gateway compatibility (MAS-001 — Gateway-Compatible Applications): the app
+  can now run beneath an upstream gateway prefix (e.g.
+  https://matrix-platform.replit.app/innovation) while remaining fully
+  functional at its standalone URL — from a single build and deployment.
+- Configurable public base path: `GATEWAY_BASE_PATH` (set to /innovation in
+  the web artifact config; a non-root `BASE_PATH` is also honored). No
+  hostname is ever hardcoded — the prefix is derived from configuration and
+  detected at runtime from the current URL.
+- Production builds emit relative asset URLs; an inline bootstrap script in
+  index.html detects whether the page is being served beneath the configured
+  prefix and anchors assets, favicon, client router (wouter base), generated
+  API client calls, and /matrix session calls to that prefix.
+- Server API and static routes stay at root — the gateway strips the prefix
+  before forwarding, and standalone traffic hits root directly. Session
+  cookies (path=/) work unchanged beneath the gateway domain.
+- Authentication is unchanged (Launch Guard v0.3.x); no feature or design
+  changes.
+
 ## [0.3.2] — 2026-07-16
 
 ### Changed

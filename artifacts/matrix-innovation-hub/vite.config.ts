@@ -18,16 +18,32 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-const basePath = process.env.BASE_PATH;
+const basePath = process.env.BASE_PATH || "/";
 
-if (!basePath) {
-  throw new Error(
-    "BASE_PATH environment variable is required but was not provided.",
-  );
+// Gateway base path (MAS-001 Gateway-Compatible Applications).
+// The public prefix the app may be served beneath by an upstream gateway
+// (e.g. /innovation). Derived purely from configuration — never from a
+// hostname. GATEWAY_BASE_PATH takes precedence; a non-root BASE_PATH is
+// honored as well. "/" or empty means no gateway prefix.
+function normalizePrefix(value: string | undefined): string {
+  if (!value) return "";
+  const trimmed = value.trim().replace(/\/+$/, "");
+  if (!trimmed || trimmed === "/") return "";
+  return trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
 }
 
-export default defineConfig({
-  base: basePath,
+const gatewayBasePath =
+  normalizePrefix(process.env.GATEWAY_BASE_PATH) ||
+  normalizePrefix(basePath === "/" ? "" : basePath);
+
+// Exposed to index.html (%VITE_GATEWAY_BASE_PATH%) and import.meta.env.
+process.env.VITE_GATEWAY_BASE_PATH = gatewayBasePath;
+
+export default defineConfig(async ({ command }) => ({
+  // Production builds emit relative asset URLs; a runtime <base> tag in
+  // index.html anchors them to the detected public prefix, so one build
+  // works both standalone (/) and beneath a gateway prefix.
+  base: command === "build" ? "" : basePath,
   plugins: [
     react(),
     tailwindcss(),
@@ -72,4 +88,4 @@ export default defineConfig({
     host: "0.0.0.0",
     allowedHosts: true,
   },
-});
+}));

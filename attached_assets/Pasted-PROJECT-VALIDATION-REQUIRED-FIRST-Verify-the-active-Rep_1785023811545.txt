@@ -1,0 +1,94 @@
+PROJECT VALIDATION — REQUIRED FIRST
+
+Verify the active Replit project is Matrix Innovation.
+If not, STOP.
+
+OBJECTIVE
+
+Make Matrix Innovation gateway-compatible so it can run beneath:
+
+https://matrix-platform.replit.app/innovation
+
+while remaining:
+
+• A separate Replit project
+• A separate GitHub repository
+• A separate deployment
+• Independently publishable
+• Fully functional at its standalone Replit URL
+
+IMPLEMENTATION STANDARD
+
+Follow MAS-001 — Gateway-Compatible Applications.
+
+Implement only the exact changes required to support a configurable base path.
+
+REQUIRED CONFIGURATION
+
+BASE_PATH=/innovation
+
+Do not hardcode:
+
+• matrix-platform.replit.app
+• matriximaging.com
+• any future public hostname
+
+The application must derive its public path from configuration.
+
+REQUIRED CHANGES
+
+1. Make static assets base-path aware.
+2. Make CSS and JavaScript bundle paths base-path aware.
+3. Make favicon and image paths base-path aware.
+4. Prefix all client API calls with the configured base path.
+5. Configure the client router basename/base path.
+6. Preserve server API and static routes at root because the gateway strips the prefix before forwarding.
+7. Verify redirects and cookies work beneath /innovation.
+8. Preserve standalone operation when BASE_PATH is unset or empty.
+9. Do not change authentication.
+10. Do not add features.
+11. Do not redesign the application.
+12. Do not modify Matrix Platform from this project.
+
+VALIDATION
+
+Validate both modes:
+
+Standalone:
+• Existing Innovation Replit URL continues to work.
+• Existing authentication works.
+• Existing routes and APIs work.
+
+Gateway:
+• /innovation loads.
+• CSS loads.
+• JavaScript loads.
+• Images/icons load.
+• API calls use /innovation/api/...
+• Internal navigation retains /innovation.
+• Deep-link refresh works.
+• Authentication works.
+• Logout works.
+• No upstream Replit URL appears in the browser or rendered pages.
+
+OUTPUT
+
+Provide a Release Report including:
+
+• Semantic version
+• Files changed
+• Environment variables added
+• Base-path implementation
+• Standalone validation
+• Gateway validation
+• Authentication validation
+• Deep-link validation
+• Known limitations
+• Screenshots
+• Git commit
+• Release tag
+• Total elapsed time
+
+Do not mark Complete until Matrix Innovation is published and successfully validated through:
+
+https://matrix-platform.replit.app/innovation
