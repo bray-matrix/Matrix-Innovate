@@ -1,0 +1,190 @@
+MATRIX INNOVATION HUB — PRE-MERGER INVENTORY ONLY
+
+Before making ANY code, database, UI, configuration, version, or deployment changes, confirm that this Replit project is the Innovation Hub application.
+
+Expected application:
+- Application: Matrix Innovation Hub / Innovation Hub
+- Purpose: Matrix innovation intake, evaluation, prioritization, prototyping, and project/initiative management
+- We are evaluating whether Innovation Hub should absorb Matrix Compass OR Compass should absorb Innovation Hub.
+
+DO NOT IMPLEMENT THE MERGER YET.
+DO NOT CHANGE ANY CODE.
+DO NOT CHANGE THE DATABASE.
+DO NOT BUMP THE VERSION.
+DO NOT DEPLOY ANYTHING.
+
+We have already inventoried Compass. The purpose of this inventory is to determine which existing application is the better technical foundation for the combined product.
+
+Perform a complete inventory of the CURRENT Innovation Hub application.
+
+Report:
+
+1. APPLICATION IDENTITY
+- Current application name
+- Current semantic version
+- Environment
+- Production URL if configured
+- Development URL if configured
+- Repository/project name
+- Current Matrix Platform registration/integration method
+
+2. APPLICATION ARCHITECTURE
+- Front-end framework
+- Back-end framework
+- Database/platform
+- Whether production screens use the database or mock/in-memory data
+- Major architectural layers
+- Important shared components/services
+
+Clearly identify any mock data, seed data, temporary persistence, or production data dependencies.
+
+3. CURRENT NAVIGATION AND FEATURES
+For every current menu item/page:
+- Menu name
+- Route
+- Purpose
+- Major functionality
+- Major components/files involved
+
+4. CURRENT WORKFLOW / BUSINESS MODEL
+Describe exactly how Innovation Hub currently handles:
+- idea/request intake
+- initiatives
+- evaluation
+- scoring
+- prioritization
+- prototype/discovery
+- approvals/decisions
+- ownership
+- status
+- milestones
+- risks
+- resources
+- EOS Rocks, if present
+- project creation
+- conversion/promotion between stages or object types
+- portfolio reporting
+- executive reporting
+- benefits/results tracking
+
+5. DATABASE / DATA MODEL
+List all application-owned:
+- database tables
+- primary keys
+- important relationships
+- enums/status fields
+- idea/intake/initiative/project-related entities
+- configuration entities
+- seed/demo-data mechanisms
+
+Identify which tables are actively used by the application versus merely scaffolded or planned.
+
+6. MATRIX PLATFORM INTEGRATION
+Document exactly how Innovation Hub currently connects to Matrix Platform:
+- registration
+- version reporting
+- environment reporting
+- health/status reporting
+- readiness
+- launch URL handling
+- authentication
+- authorization
+- shared services
+- APIs used between Innovation Hub and Matrix Platform
+
+7. SECURITY
+Report:
+- authentication currently implemented
+- authorization/roles currently implemented
+- session/token model
+- dependency on Matrix Platform
+- known security gaps
+
+8. COMPASS CAPABILITY FIT ANALYSIS
+
+Without changing anything, evaluate how difficult it would be to absorb these existing Compass capabilities into Innovation Hub:
+
+- Dashboard
+- Portfolio
+- Organizations
+- Clients / Client Workspace
+- Programs
+- Projects
+- Project creation wizard
+- Project lifecycle stages
+- Milestones
+- Go-Live Readiness
+- Risks
+- Resources / capacity
+- Approvals
+- Reports / Board Pack / PDF
+- Advisor
+- Jira Portfolio
+- Jira connector
+- AI Operations
+- Global Search
+
+For each, classify:
+
+A = Innovation Hub already has equivalent capability
+B = Can be migrated/reused from Compass with limited modification
+C = Requires meaningful rework
+D = Fundamentally conflicts with Innovation Hub architecture
+
+9. SURVIVING APPLICATION RECOMMENDATION
+
+Compare the two possible approaches:
+
+OPTION A:
+Compass survives and absorbs Innovation Hub.
+
+OPTION B:
+Innovation Hub survives and absorbs Compass.
+
+Use what you know about Innovation Hub plus the following confirmed Compass architectural facts:
+
+- React 18 + Vite frontend
+- Express 5 backend
+- PostgreSQL + Drizzle, 29 tables
+- Most Compass business screens STILL use in-memory data.ts mock data
+- PostgreSQL currently supports primarily Data Sources/Jira infrastructure
+- Compass has no distinct Initiative/intake/scoring/promotion workflow
+- Compass projects require programId + clientId
+- Compass has extensive portfolio/project UI
+- Compass has mature reporting/PDF functionality
+- Compass has Jira integration and executive Jira analytics
+- Compass authentication uses Matrix Platform Trust Contract v1
+- Compass does NOT report version/readiness/health to Platform
+- Compass has known frontend Anthropic API-key exposure
+- Compass uses hash routing and supports /compass gateway hosting
+
+Recommend which codebase should survive.
+
+Weight the decision toward:
+1. Existing real persistence
+2. Existing innovation workflow maturity
+3. Amount of reusable code
+4. Least migration risk
+5. Least duplicate/rewrite work
+6. Cleanest long-term architecture
+7. Ability to complete consolidation rapidly rather than redesigning both applications
+
+10. FINANCE HUB PLATFORM BRIDGE
+
+Also identify what would be required for Innovation Hub to adopt the SAME Matrix Platform bridge/integration pattern currently used by Finance Hub.
+
+Do not implement it.
+
+If the exact Finance Hub implementation is not available inside this Replit project, state what information/package/configuration would be required rather than guessing.
+
+11. OUTPUT
+
+Return a concise but complete structured report suitable for merger planning.
+
+End with:
+
+INNOVATION HUB PRE-MERGER INVENTORY COMPLETE
+Code changed: NO
+Database changed: NO
+Version changed: NO
+Deployment changed: NO
