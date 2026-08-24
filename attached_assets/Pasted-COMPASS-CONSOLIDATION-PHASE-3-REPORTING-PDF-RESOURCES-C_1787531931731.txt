@@ -1,0 +1,657 @@
+COMPASS CONSOLIDATION
+PHASE 3: REPORTING / PDF + RESOURCES / CAPACITY
+
+IMPORTANT:
+You are in the surviving Compass application, formerly Matrix Innovation Hub.
+
+Expected current version:
+v1.1.0
+
+Expected current capabilities:
+- Innovation intake/interview/scoring
+- Initiatives + Kanban
+- Organizations
+- Clients
+- Programs
+- Projects
+- Milestones
+- Risks
+- Approvals
+- Go-Live Readiness
+- Portfolio
+- Deterministic project health
+- PostgreSQL-backed business data
+- Matrix SDK v1.1 integration
+
+Before making changes, confirm:
+- Application name reports Compass
+- Version = v1.1.0
+- Existing Initiative and Project counts
+- /matrix/app-info works
+- /matrix/health works
+- All current business modules use real PostgreSQL data
+
+If any assumption is false, STOP and report it.
+
+GOAL
+
+Port the next major Compass capabilities:
+
+1. Resources / Capacity Planning
+2. Executive and operational reporting
+3. PDF export
+
+Use the OLD Compass application only as a functional/code reference.
+
+Do NOT import:
+- data.ts
+- mock repositories
+- in-memory business data
+- frontend Anthropic/API-key patterns
+
+All new functionality must use the surviving Compass PostgreSQL architecture.
+
+--------------------------------------------------
+1. VERSION
+--------------------------------------------------
+
+This is a MINOR release.
+
+Set version:
+
+v1.2.0
+
+Update consistently in:
+- centralized application version
+- /matrix/app-info
+- /matrix/manifest
+- /matrix/health
+- Admin/About
+- package metadata
+- CHANGELOG
+
+--------------------------------------------------
+2. RESOURCES
+--------------------------------------------------
+
+Add a real resource model.
+
+Create resources with at minimum:
+
+- id
+- name
+- email nullable
+- department
+- roleTitle nullable
+- status
+- weeklyCapacityHours nullable
+- manager nullable
+- createdAt
+- updatedAt
+
+Initial resource status:
+- Active
+- Inactive
+
+Departments must not be permanently hard-coded.
+
+Support initial values such as:
+- Project Management
+- Development
+- Operations
+- Technology
+- Executive
+- Sales
+- Finance
+- Other
+
+Create project_resource_assignments:
+
+- id
+- projectId
+- resourceId nullable
+- department nullable
+- roleDescription nullable
+- allocationPercent nullable
+- plannedHours nullable
+- startDate nullable
+- endDate nullable
+- status
+- createdAt
+- updatedAt
+
+Allow both:
+- named-resource assignments
+- department-only demand
+
+This mirrors the useful behavior from old Compass without requiring every future staffing need to have a named person immediately.
+
+--------------------------------------------------
+3. RESOURCE UI
+--------------------------------------------------
+
+Add:
+
+/resources
+
+Show:
+- Resource
+- Department
+- Role
+- Status
+- Capacity
+- Allocated %
+- Available %
+- Active Projects
+
+Provide search and filters for:
+- department
+- status
+- overallocated
+
+Add resource detail or expandable drill-down sufficient to show current assignments.
+
+Add a Resources section/tab to:
+
+/projects/:id
+
+Allow:
+- add resource
+- add department-only demand
+- edit assignment
+- remove assignment
+
+All changes must persist.
+
+--------------------------------------------------
+4. CAPACITY CALCULATION
+--------------------------------------------------
+
+Implement deterministic server-side capacity calculations.
+
+For named resources:
+
+allocatedPercent =
+sum of active assignment allocationPercent for the selected/current timeframe
+
+availablePercent =
+100 - allocatedPercent
+
+Flag:
+- Overallocated when >100%
+- Near Capacity when >=85% and <=100%
+- Available when <85%
+
+If weeklyCapacityHours and plannedHours are available, expose them but do not create a complicated forecasting engine yet.
+
+For department-only demand:
+- report demand separately
+- do not falsely attribute it to named-resource capacity
+
+--------------------------------------------------
+5. RESOURCE SUMMARY
+--------------------------------------------------
+
+Add resource summary information to Portfolio:
+
+- Overallocated Resources
+- Near-Capacity Resources
+- Unfilled Department Demand
+
+Do not overload the Portfolio table with every staffing field.
+
+Allow drill-through to /resources.
+
+--------------------------------------------------
+6. REPORTING FOUNDATION
+--------------------------------------------------
+
+Port the useful reporting concepts from old Compass, but point all calculations at real PostgreSQL data.
+
+Add:
+
+/reports
+
+Initial report catalog:
+
+1. Executive Portfolio
+2. Project Status
+3. Client Portfolio
+4. Program Portfolio
+5. Resource Capacity
+6. Risk & Approval Summary
+7. Go-Live Readiness
+8. Board / Leadership Pack
+
+Reports must be deterministic.
+
+AI must NOT compute:
+- counts
+- health
+- financial totals
+- milestone status
+- risk severity
+- readiness
+- resource capacity
+
+Any future AI narrative must only summarize already-computed facts.
+
+--------------------------------------------------
+7. EXECUTIVE PORTFOLIO REPORT
+--------------------------------------------------
+
+Include:
+
+- total active projects
+- project health distribution
+- projects due within 30 / 60 / 90 days
+- highest-risk projects
+- overdue milestones
+- pending approvals
+- readiness concerns
+- resource capacity concerns
+- recently approved Innovation initiatives awaiting promotion
+
+Include project-level drill-down data.
+
+--------------------------------------------------
+8. PROJECT STATUS REPORT
+--------------------------------------------------
+
+For a selected project include:
+
+- project summary
+- type
+- client/internal context
+- owner
+- lifecycle stage
+- health
+- priority
+- target date
+- originating Initiative
+- milestone status
+- risks
+- pending/recent approvals
+- Go-Live Readiness
+- resource assignments
+
+--------------------------------------------------
+9. CLIENT / PROGRAM REPORTS
+--------------------------------------------------
+
+Client Portfolio:
+- projects
+- health
+- milestones
+- risks
+- approvals
+- readiness
+
+Program Portfolio:
+- same rollup scoped to program
+
+Support selecting the Client or Program before report generation.
+
+--------------------------------------------------
+10. RESOURCE CAPACITY REPORT
+--------------------------------------------------
+
+Include:
+- resource
+- department
+- capacity
+- allocation
+- availability
+- active projects
+- overallocated resources
+- department-only demand
+
+--------------------------------------------------
+11. RISK & APPROVAL REPORT
+--------------------------------------------------
+
+Include:
+- Critical/High open risks
+- project
+- owner
+- mitigation
+- due date
+- pending approvals
+- approval type
+- approver
+- age
+
+Severity-first ordering.
+
+--------------------------------------------------
+12. GO-LIVE READINESS REPORT
+--------------------------------------------------
+
+Include:
+- project
+- target date
+- readiness status
+- failed required items
+- untested required items
+- category
+- owner
+
+Prioritize:
+Not Ready
+then At Risk
+then Not Started
+then Ready
+
+--------------------------------------------------
+13. BOARD / LEADERSHIP PACK
+--------------------------------------------------
+
+Create a combined leadership-oriented report.
+
+This should be concise and decision-focused.
+
+Sections:
+
+EXECUTIVE SUMMARY
+- active projects
+- overall portfolio health
+- significant upcoming dates
+- major resource concerns
+
+ATTENTION REQUIRED
+- Off Track projects
+- Critical risks
+- material overdue milestones
+- failed readiness requirements
+- blocked/pending approvals
+- overallocated resources
+
+UPCOMING 30 / 60 / 90 DAYS
+- target dates
+- major milestones
+- go-live dates if available
+
+INNOVATION PIPELINE
+- initiatives under review
+- approved initiatives
+- approved initiatives awaiting project promotion
+
+Do not mention "Board" inside narrative text as if permission is being requested.
+The report may retain "Board / Leadership Pack" as the report type.
+
+--------------------------------------------------
+14. PDF EXPORT
+--------------------------------------------------
+
+Port/adapt the existing old Compass PDF architecture if practical.
+
+Use a server-safe or currently proven PDF implementation.
+
+Each report should support:
+- on-screen view
+- PDF export
+- print-friendly output
+
+PDF must:
+- use the same deterministic report data as screen output
+- not recalculate business logic independently
+- show report generated date/time
+- show Compass
+- show application version
+- show selected scope where applicable
+
+Do not expose secrets or authentication data in PDFs.
+
+--------------------------------------------------
+15. REPORT DATA ARCHITECTURE
+--------------------------------------------------
+
+Create a centralized reporting service/engine.
+
+Business calculations should be reusable between:
+- web report
+- PDF
+- future API consumers
+
+Avoid duplicating calculations inside React components.
+
+Preferred pattern:
+
+database/repositories
+    ->
+reporting service
+    ->
+structured report model
+    ->
+web renderer / PDF renderer
+
+--------------------------------------------------
+16. DASHBOARD
+--------------------------------------------------
+
+Do not redesign Dashboard.
+
+Add only a small link/action area:
+
+- View Portfolio
+- View Reports
+- View Resources
+
+Do not duplicate full report content on Dashboard.
+
+--------------------------------------------------
+17. NAVIGATION
+--------------------------------------------------
+
+Update navigation to:
+
+HOME
+- Dashboard
+- Portfolio
+
+INNOVATION
+- AI Innovation Interview
+- Submit Initiative
+- Initiatives
+- Kanban
+
+EXECUTION
+- Projects
+- Programs
+- Clients
+- Organizations
+- Resources
+- Approvals
+
+REPORTING
+- Reports
+
+GOVERNANCE
+- Validation
+- Documents
+
+PRODUCT MANAGEMENT
+- Product Backlog
+
+ADMINISTRATION
+- Admin
+
+--------------------------------------------------
+18. DATA SAFETY
+--------------------------------------------------
+
+All schema changes additive.
+
+Do not:
+- delete existing data
+- rename existing tables
+- change existing entity IDs
+- seed fake production business data
+- rebuild the database
+
+Record before/after counts for:
+- initiatives
+- projects
+- milestones
+- risks
+- approvals
+- readiness assessments
+
+--------------------------------------------------
+19. SECURITY
+--------------------------------------------------
+
+Preserve:
+- requireMatrixSession
+- SDK v1.1
+- server-side secrets
+- existing session behavior
+
+All resource mutations require authentication.
+
+Report generation and PDF export require authentication.
+
+Do not add frontend AI keys.
+
+--------------------------------------------------
+20. PERFORMANCE
+--------------------------------------------------
+
+Do not load the entire enterprise dataset into the browser merely to calculate reports.
+
+Reporting calculations should occur server-side.
+
+Use efficient joins/maps/aggregations.
+
+Avoid obvious N+1 query patterns.
+
+At current scale pagination is optional on Resources, but structure APIs so pagination can be added later.
+
+--------------------------------------------------
+21. LOADING EXPERIENCE
+--------------------------------------------------
+
+Use the application's standard loading experience consistently for:
+
+- Resources
+- Reports
+- report generation
+- PDF creation
+
+If a polished loading modal/overlay already exists, reuse it.
+
+Do not introduce another unrelated spinner/loading pattern.
+
+--------------------------------------------------
+22. DO NOT PORT YET
+--------------------------------------------------
+
+Do NOT migrate in this phase:
+
+- Jira Portfolio
+- Jira Connector
+- Matrix Advisor
+- Global Search
+- advanced Client Workspace
+- donor Compass AI Operations
+
+These remain Phase 4.
+
+--------------------------------------------------
+23. VALIDATION
+--------------------------------------------------
+
+Verify:
+
+A. Version = v1.2.0
+B. Existing Initiatives preserved
+C. Existing Projects preserved
+D. Resource CRUD works
+E. Resource assignments persist
+F. Department-only demand works
+G. Capacity calculations correct
+H. Overallocated detection correct
+I. Project Resources tab works
+J. Resource summary appears in Portfolio
+K. /reports loads
+L. Executive Portfolio report correct
+M. Project Status report correct
+N. Client Portfolio report correct
+O. Program Portfolio report correct
+P. Resource Capacity report correct
+Q. Risk & Approval report correct
+R. Go-Live Readiness report correct
+S. Board / Leadership Pack correct
+T. PDF export works
+U. PDF and screen use identical report data model
+V. Report calculations are server-side
+W. Platform authentication works
+X. /matrix/app-info reports Compass v1.2.0
+Y. /matrix/health passes
+Z. No new business module uses mock/in-memory data
+
+--------------------------------------------------
+24. COMPLETION REPORT
+--------------------------------------------------
+
+Return:
+
+VERSION
+Before:
+After:
+
+DATA SAFETY
+Initiatives before/after:
+Projects before/after:
+Milestones before/after:
+Risks before/after:
+Approvals before/after:
+Readiness assessments before/after:
+Existing data preserved: YES/NO
+
+DATABASE ENTITIES ADDED
+[list]
+
+API ROUTES ADDED
+[list]
+
+UI ROUTES ADDED/CHANGED
+[list]
+
+RESOURCES
+Implemented: YES/NO
+Named assignments: YES/NO
+Department demand: YES/NO
+Capacity calculation: YES/NO
+
+REPORTS
+[list each report and PASS/FAIL]
+
+PDF
+Implemented: YES/NO
+Uses same report model as web: YES/NO
+
+PLATFORM
+SDK v1.1 preserved: YES/NO
+Authentication verified: YES/NO
+App-info verified: YES/NO
+Health verified: YES/NO
+
+VALIDATION
+A-Z PASS/FAIL
+
+FILES CHANGED
+[list]
+
+DATABASE MIGRATIONS
+[list]
+
+KNOWN ISSUES
+[list only actual issues]
+
+DEPLOYED
+NO
+
+End with:
+
+COMPASS CONSOLIDATION PHASE 3 COMPLETE

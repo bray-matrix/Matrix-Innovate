@@ -10,6 +10,8 @@ import environmentRouter from "./environment";
 import executionRouter from "./execution";
 import governanceRouter from "./governance";
 import portfolioRouter from "./portfolio";
+import resourcesRouter from "./resources";
+import reportsRouter from "./reports";
 
 const router: IRouter = Router();
 
@@ -24,5 +26,7 @@ router.use(environmentRouter);
 router.use(executionRouter);
 router.use(governanceRouter);
 router.use(portfolioRouter);
+router.use(resourcesRouter);
+router.use(reportsRouter);
 
 export default router;

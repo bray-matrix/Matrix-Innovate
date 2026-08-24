@@ -1093,6 +1093,9 @@ export interface ReadinessAssessmentUpdate {
 }
 
 export interface PortfolioSummary {
+  overallocatedResources: number;
+  nearCapacityResources: number;
+  unfilledDepartmentDemand: number;
   activeProjects: number;
   atRiskProjects: number;
   offTrackProjects: number;
@@ -1143,10 +1146,202 @@ export interface DashboardAttention {
   overdueMilestones: number;
 }
 
+export interface Resource {
+  id: number;
+  name: string;
+  email?: string | null;
+  department: string;
+  roleTitle?: string | null;
+  status: string;
+  weeklyCapacityHours?: number | null;
+  manager?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type ResourceCreateStatus = typeof ResourceCreateStatus[keyof typeof ResourceCreateStatus];
+
+
+export const ResourceCreateStatus = {
+  Active: 'Active',
+  Inactive: 'Inactive',
+} as const;
+
+export interface ResourceCreate {
+  /** @minLength 1 */
+  name: string;
+  email?: string | null;
+  /** @minLength 1 */
+  department: string;
+  roleTitle?: string | null;
+  status?: ResourceCreateStatus;
+  /** @minimum 0 */
+  weeklyCapacityHours?: number | null;
+  manager?: string | null;
+}
+
+export type ResourceUpdateStatus = typeof ResourceUpdateStatus[keyof typeof ResourceUpdateStatus];
+
+
+export const ResourceUpdateStatus = {
+  Active: 'Active',
+  Inactive: 'Inactive',
+} as const;
+
+export interface ResourceUpdate {
+  /** @minLength 1 */
+  name?: string;
+  email?: string | null;
+  /** @minLength 1 */
+  department?: string;
+  roleTitle?: string | null;
+  status?: ResourceUpdateStatus;
+  /** @minimum 0 */
+  weeklyCapacityHours?: number | null;
+  manager?: string | null;
+}
+
+export type ResourceWithCapacity = Resource & ({
+  allocatedPercent: number;
+  availablePercent: number;
+  /** Overallocated | Near Capacity | Available */
+  capacityFlag: string;
+  activeProjects: number;
+  plannedHours?: number | null;
+});
+
+export interface ResourceAssignment {
+  id: number;
+  projectId: number;
+  projectName?: string | null;
+  resourceId?: number | null;
+  resourceName?: string | null;
+  department?: string | null;
+  roleDescription?: string | null;
+  allocationPercent?: number | null;
+  plannedHours?: number | null;
+  startDate?: string | null;
+  endDate?: string | null;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type ResourceDetail = ResourceWithCapacity & {
+  assignments: ResourceAssignment[];
+};
+
+export type ResourceAssignmentCreateStatus = typeof ResourceAssignmentCreateStatus[keyof typeof ResourceAssignmentCreateStatus];
+
+
+export const ResourceAssignmentCreateStatus = {
+  Planned: 'Planned',
+  Active: 'Active',
+  Completed: 'Completed',
+} as const;
+
+export interface ResourceAssignmentCreate {
+  resourceId?: number | null;
+  department?: string | null;
+  roleDescription?: string | null;
+  /**
+     * @minimum 0
+     * @maximum 500
+     */
+  allocationPercent?: number | null;
+  /** @minimum 0 */
+  plannedHours?: number | null;
+  startDate?: string | null;
+  endDate?: string | null;
+  status?: ResourceAssignmentCreateStatus;
+}
+
+export type ResourceAssignmentUpdateStatus = typeof ResourceAssignmentUpdateStatus[keyof typeof ResourceAssignmentUpdateStatus];
+
+
+export const ResourceAssignmentUpdateStatus = {
+  Planned: 'Planned',
+  Active: 'Active',
+  Completed: 'Completed',
+} as const;
+
+export interface ResourceAssignmentUpdate {
+  resourceId?: number | null;
+  department?: string | null;
+  roleDescription?: string | null;
+  /**
+     * @minimum 0
+     * @maximum 500
+     */
+  allocationPercent?: number | null;
+  /** @minimum 0 */
+  plannedHours?: number | null;
+  startDate?: string | null;
+  endDate?: string | null;
+  status?: ResourceAssignmentUpdateStatus;
+}
+
+export interface ReportCatalogEntry {
+  key: string;
+  title: string;
+  description: string;
+  /** none | project | client | program */
+  scope: string;
+}
+
+export interface ReportCard {
+  label: string;
+  value: string;
+  /** default | positive | warning | critical */
+  tone?: string | null;
+}
+
+export interface ReportColumn {
+  key: string;
+  label: string;
+}
+
+export type ReportSectionRowsItem = {[key: string]: string};
+
+export interface ReportSection {
+  key: string;
+  title: string;
+  /** cards | table | keyValues | note */
+  kind: string;
+  cards?: ReportCard[];
+  columns?: ReportColumn[];
+  rows?: ReportSectionRowsItem[];
+  keyValues?: ReportCard[];
+  note?: string | null;
+  emptyMessage?: string | null;
+}
+
+export interface Report {
+  reportKey: string;
+  title: string;
+  generatedAt: string;
+  appName: string;
+  appVersion: string;
+  scopeLabel?: string | null;
+  sections: ReportSection[];
+}
+
 export type ListProjectsParams = {
 /**
  * Filter to projects originating from a given initiative
  */
 initiativeId?: number;
+};
+
+export type GetReportParams = {
+projectId?: number;
+clientId?: number;
+programId?: number;
+};
+
+export type GetReportPdfParams = {
+projectId?: number;
+clientId?: number;
+programId?: number;
 };
 

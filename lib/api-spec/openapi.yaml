@@ -26,6 +26,10 @@ tags:
     description: Risks, approvals, and go-live readiness
   - name: portfolio
     description: Portfolio rollup across execution and governance data
+  - name: resources
+    description: Resources and capacity planning
+  - name: reports
+    description: Deterministic reporting engine and PDF export
 paths:
   /healthz:
     get:
@@ -1639,6 +1643,288 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/DashboardAttention"
+  /resources:
+    get:
+      operationId: listResources
+      tags: [resources]
+      summary: List resources with computed capacity/allocation
+      responses:
+        "200":
+          description: Resources
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ResourceWithCapacity"
+    post:
+      operationId: createResource
+      tags: [resources]
+      summary: Create a resource
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResourceCreate"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Resource"
+        "400":
+          description: Invalid payload
+  /resources/{id}:
+    get:
+      operationId: getResource
+      tags: [resources]
+      summary: Resource detail with current assignments
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Resource detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResourceDetail"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateResource
+      tags: [resources]
+      summary: Update a resource
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResourceUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Resource"
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteResource
+      tags: [resources]
+      summary: Delete a resource (assignments become department-only demand)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+  /projects/{id}/resources:
+    get:
+      operationId: listProjectResourceAssignments
+      tags: [resources]
+      summary: List resource assignments for a project
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Assignments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ResourceAssignment"
+        "404":
+          description: Project not found
+    post:
+      operationId: createProjectResourceAssignment
+      tags: [resources]
+      summary: Add a named-resource assignment or department-only demand
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResourceAssignmentCreate"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResourceAssignment"
+        "400":
+          description: Invalid payload
+        "404":
+          description: Project not found
+  /projects/{id}/resources/{assignmentId}:
+    patch:
+      operationId: updateProjectResourceAssignment
+      tags: [resources]
+      summary: Update a resource assignment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: assignmentId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResourceAssignmentUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResourceAssignment"
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteProjectResourceAssignment
+      tags: [resources]
+      summary: Remove a resource assignment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: assignmentId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+  /reports:
+    get:
+      operationId: listReports
+      tags: [reports]
+      summary: Report catalog
+      responses:
+        "200":
+          description: Catalog
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ReportCatalogEntry"
+  /reports/{key}:
+    get:
+      operationId: getReport
+      tags: [reports]
+      summary: Generate a report (deterministic, server-side)
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: projectId
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: clientId
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: programId
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Report"
+        "400":
+          description: Missing/invalid scope
+        "404":
+          description: Unknown report
+  /reports/{key}/pdf:
+    get:
+      operationId: getReportPdf
+      tags: [reports]
+      summary: Export a report as PDF (same report model as web)
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: projectId
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: clientId
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: programId
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: PDF document
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        "400":
+          description: Missing/invalid scope
+        "404":
+          description: Unknown report
   /dashboard/execution-summary:
     get:
       operationId: getExecutionSummary
@@ -3667,8 +3953,17 @@ components:
           openCriticalHighRisks,
           pendingApprovals,
           notReadyProjects,
+          overallocatedResources,
+          nearCapacityResources,
+          unfilledDepartmentDemand,
         ]
       properties:
+        overallocatedResources:
+          type: integer
+        nearCapacityResources:
+          type: integer
+        unfilledDepartmentDemand:
+          type: integer
         activeProjects:
           type: integer
         atRiskProjects:
@@ -3782,3 +4077,314 @@ components:
           type: integer
         overdueMilestones:
           type: integer
+    Resource:
+      type: object
+      required:
+        [id, name, department, status, createdAt, updatedAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+          nullable: true
+        department:
+          type: string
+        roleTitle:
+          type: string
+          nullable: true
+        status:
+          type: string
+        weeklyCapacityHours:
+          type: integer
+          nullable: true
+        manager:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    ResourceCreate:
+      type: object
+      required: [name, department]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        email:
+          type: string
+          nullable: true
+        department:
+          type: string
+          minLength: 1
+        roleTitle:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [Active, Inactive]
+        weeklyCapacityHours:
+          type: integer
+          nullable: true
+          minimum: 0
+        manager:
+          type: string
+          nullable: true
+    ResourceUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        email:
+          type: string
+          nullable: true
+        department:
+          type: string
+          minLength: 1
+        roleTitle:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [Active, Inactive]
+        weeklyCapacityHours:
+          type: integer
+          nullable: true
+          minimum: 0
+        manager:
+          type: string
+          nullable: true
+    ResourceWithCapacity:
+      allOf:
+        - $ref: "#/components/schemas/Resource"
+        - type: object
+          required:
+            [allocatedPercent, availablePercent, capacityFlag, activeProjects]
+          properties:
+            allocatedPercent:
+              type: integer
+            availablePercent:
+              type: integer
+            capacityFlag:
+              type: string
+              description: Overallocated | Near Capacity | Available
+            activeProjects:
+              type: integer
+            plannedHours:
+              type: integer
+              nullable: true
+    ResourceDetail:
+      allOf:
+        - $ref: "#/components/schemas/ResourceWithCapacity"
+        - type: object
+          required: [assignments]
+          properties:
+            assignments:
+              type: array
+              items:
+                $ref: "#/components/schemas/ResourceAssignment"
+    ResourceAssignment:
+      type: object
+      required: [id, projectId, status, createdAt, updatedAt]
+      properties:
+        id:
+          type: integer
+        projectId:
+          type: integer
+        projectName:
+          type: string
+          nullable: true
+        resourceId:
+          type: integer
+          nullable: true
+        resourceName:
+          type: string
+          nullable: true
+        department:
+          type: string
+          nullable: true
+        roleDescription:
+          type: string
+          nullable: true
+        allocationPercent:
+          type: integer
+          nullable: true
+        plannedHours:
+          type: integer
+          nullable: true
+        startDate:
+          type: string
+          format: date-time
+          nullable: true
+        endDate:
+          type: string
+          format: date-time
+          nullable: true
+        status:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    ResourceAssignmentCreate:
+      type: object
+      properties:
+        resourceId:
+          type: integer
+          nullable: true
+        department:
+          type: string
+          nullable: true
+        roleDescription:
+          type: string
+          nullable: true
+        allocationPercent:
+          type: integer
+          nullable: true
+          minimum: 0
+          maximum: 500
+        plannedHours:
+          type: integer
+          nullable: true
+          minimum: 0
+        startDate:
+          type: string
+          format: date-time
+          nullable: true
+        endDate:
+          type: string
+          format: date-time
+          nullable: true
+        status:
+          type: string
+          enum: [Planned, Active, Completed]
+    ResourceAssignmentUpdate:
+      type: object
+      properties:
+        resourceId:
+          type: integer
+          nullable: true
+        department:
+          type: string
+          nullable: true
+        roleDescription:
+          type: string
+          nullable: true
+        allocationPercent:
+          type: integer
+          nullable: true
+          minimum: 0
+          maximum: 500
+        plannedHours:
+          type: integer
+          nullable: true
+          minimum: 0
+        startDate:
+          type: string
+          format: date-time
+          nullable: true
+        endDate:
+          type: string
+          format: date-time
+          nullable: true
+        status:
+          type: string
+          enum: [Planned, Active, Completed]
+    ReportCatalogEntry:
+      type: object
+      required: [key, title, description, scope]
+      properties:
+        key:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        scope:
+          type: string
+          description: none | project | client | program
+    ReportCard:
+      type: object
+      required: [label, value]
+      properties:
+        label:
+          type: string
+        value:
+          type: string
+        tone:
+          type: string
+          nullable: true
+          description: default | positive | warning | critical
+    ReportColumn:
+      type: object
+      required: [key, label]
+      properties:
+        key:
+          type: string
+        label:
+          type: string
+    ReportSection:
+      type: object
+      required: [key, title, kind]
+      properties:
+        key:
+          type: string
+        title:
+          type: string
+        kind:
+          type: string
+          description: cards | table | keyValues | note
+        cards:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReportCard"
+        columns:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReportColumn"
+        rows:
+          type: array
+          items:
+            type: object
+            additionalProperties:
+              type: string
+        keyValues:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReportCard"
+        note:
+          type: string
+          nullable: true
+        emptyMessage:
+          type: string
+          nullable: true
+    Report:
+      type: object
+      required:
+        [reportKey, title, generatedAt, appName, appVersion, sections]
+      properties:
+        reportKey:
+          type: string
+        title:
+          type: string
+        generatedAt:
+          type: string
+          format: date-time
+        appName:
+          type: string
+        appVersion:
+          type: string
+        scopeLabel:
+          type: string
+          nullable: true
+        sections:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReportSection"

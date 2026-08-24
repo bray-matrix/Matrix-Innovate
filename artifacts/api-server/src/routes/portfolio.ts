@@ -10,7 +10,10 @@ import {
   clientsTable,
   programsTable,
   organizationsTable,
+  resourcesTable,
+  projectResourceAssignmentsTable,
 } from "@workspace/db";
+import { summarizeResourceCapacity } from "../lib/capacity";
 import {
   computeReadinessStatus,
   computeCalculatedHealth,
@@ -159,6 +162,15 @@ router.get("/portfolio", async (_req, res, next) => {
   try {
     const now = new Date();
     const data = await loadPortfolioData();
+    const [resources, resourceAssignments] = await Promise.all([
+      db.select().from(resourcesTable),
+      db.select().from(projectResourceAssignmentsTable),
+    ]);
+    const resourceSummary = summarizeResourceCapacity(
+      resources,
+      resourceAssignments,
+      now,
+    );
     const built = buildPortfolioRows(data, now);
     const active = built.filter(
       ({ project }) =>
@@ -193,6 +205,7 @@ router.get("/portfolio", async (_req, res, next) => {
       notReadyProjects: active.filter(
         ({ row }) => row.readinessStatus === "Not Ready",
       ).length,
+      ...resourceSummary,
     };
     res.json({ summary, rows: built.map(({ row }) => row) });
   } catch (err) {

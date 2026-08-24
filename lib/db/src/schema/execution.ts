@@ -248,3 +248,65 @@ export type InsertReadinessAssessment = z.infer<
 >;
 export type ReadinessItem = typeof readinessItemsTable.$inferSelect;
 export type InsertReadinessItem = z.infer<typeof insertReadinessItemSchema>;
+
+// ---------------------------------------------------------------------------
+// Phase 3: Resources / capacity planning (all additive)
+// ---------------------------------------------------------------------------
+
+export const resourcesTable = pgTable("resources", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  email: text("email"),
+  // Free-text by convention; UI offers standard departments but any value is
+  // allowed (departments are not permanently hard-coded).
+  department: text("department").notNull(),
+  roleTitle: text("role_title"),
+  // Active | Inactive
+  status: text("status").notNull().default("Active"),
+  weeklyCapacityHours: integer("weekly_capacity_hours"),
+  manager: text("manager"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const projectResourceAssignmentsTable = pgTable(
+  "project_resource_assignments",
+  {
+    id: serial("id").primaryKey(),
+    projectId: integer("project_id")
+      .notNull()
+      .references(() => projectsTable.id, { onDelete: "cascade" }),
+    // Nullable: department-only demand has no named resource. If a resource
+    // is deleted, its assignments revert to department-only demand.
+    resourceId: integer("resource_id").references(() => resourcesTable.id, {
+      onDelete: "set null",
+    }),
+    department: text("department"),
+    roleDescription: text("role_description"),
+    allocationPercent: integer("allocation_percent"),
+    plannedHours: integer("planned_hours"),
+    startDate: timestamp("start_date"),
+    endDate: timestamp("end_date"),
+    // Planned | Active | Completed
+    status: text("status").notNull().default("Active"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+);
+
+export const insertResourceSchema = createInsertSchema(resourcesTable).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export const insertProjectResourceAssignmentSchema = createInsertSchema(
+  projectResourceAssignmentsTable,
+).omit({ id: true, createdAt: true, updatedAt: true });
+
+export type Resource = typeof resourcesTable.$inferSelect;
+export type InsertResource = z.infer<typeof insertResourceSchema>;
+export type ProjectResourceAssignment =
+  typeof projectResourceAssignmentsTable.$inferSelect;
+export type InsertProjectResourceAssignment = z.infer<
+  typeof insertProjectResourceAssignmentSchema
+>;

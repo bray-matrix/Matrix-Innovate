@@ -2180,6 +2180,9 @@ export const DeleteReadinessItemResponse = zod.void()
  */
 export const GetPortfolioResponse = zod.object({
   "summary": zod.object({
+  "overallocatedResources": zod.number(),
+  "nearCapacityResources": zod.number(),
+  "unfilledDepartmentDemand": zod.number(),
   "activeProjects": zod.number(),
   "atRiskProjects": zod.number(),
   "offTrackProjects": zod.number(),
@@ -2222,6 +2225,351 @@ export const GetDashboardAttentionResponse = zod.object({
   "notReadyProjects": zod.number(),
   "overdueMilestones": zod.number()
 })
+
+
+/**
+ * @summary List resources with computed capacity/allocation
+ */
+export const ListResourcesResponseItem = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "email": zod.string().nullish(),
+  "department": zod.string(),
+  "roleTitle": zod.string().nullish(),
+  "status": zod.string(),
+  "weeklyCapacityHours": zod.number().nullish(),
+  "manager": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}).and(zod.object({
+  "allocatedPercent": zod.number(),
+  "availablePercent": zod.number(),
+  "capacityFlag": zod.string().describe('Overallocated | Near Capacity | Available'),
+  "activeProjects": zod.number(),
+  "plannedHours": zod.number().nullish()
+}))
+export const ListResourcesResponse = zod.array(ListResourcesResponseItem)
+
+
+/**
+ * @summary Create a resource
+ */
+
+
+export const createResourceBodyWeeklyCapacityHoursMin = 0;
+
+
+
+export const CreateResourceBody = zod.object({
+  "name": zod.string().min(1),
+  "email": zod.string().nullish(),
+  "department": zod.string().min(1),
+  "roleTitle": zod.string().nullish(),
+  "status": zod.enum(['Active', 'Inactive']).optional(),
+  "weeklyCapacityHours": zod.number().min(createResourceBodyWeeklyCapacityHoursMin).nullish(),
+  "manager": zod.string().nullish()
+})
+
+export const CreateResourceResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "email": zod.string().nullish(),
+  "department": zod.string(),
+  "roleTitle": zod.string().nullish(),
+  "status": zod.string(),
+  "weeklyCapacityHours": zod.number().nullish(),
+  "manager": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Resource detail with current assignments
+ */
+export const GetResourceParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetResourceResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "email": zod.string().nullish(),
+  "department": zod.string(),
+  "roleTitle": zod.string().nullish(),
+  "status": zod.string(),
+  "weeklyCapacityHours": zod.number().nullish(),
+  "manager": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}).and(zod.object({
+  "allocatedPercent": zod.number(),
+  "availablePercent": zod.number(),
+  "capacityFlag": zod.string().describe('Overallocated | Near Capacity | Available'),
+  "activeProjects": zod.number(),
+  "plannedHours": zod.number().nullish()
+})).and(zod.object({
+  "assignments": zod.array(zod.object({
+  "id": zod.number(),
+  "projectId": zod.number(),
+  "projectName": zod.string().nullish(),
+  "resourceId": zod.number().nullish(),
+  "resourceName": zod.string().nullish(),
+  "department": zod.string().nullish(),
+  "roleDescription": zod.string().nullish(),
+  "allocationPercent": zod.number().nullish(),
+  "plannedHours": zod.number().nullish(),
+  "startDate": zod.coerce.date().nullish(),
+  "endDate": zod.coerce.date().nullish(),
+  "status": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}))
+}))
+
+
+/**
+ * @summary Update a resource
+ */
+export const UpdateResourceParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+
+export const updateResourceBodyWeeklyCapacityHoursMin = 0;
+
+
+
+export const UpdateResourceBody = zod.object({
+  "name": zod.string().min(1).optional(),
+  "email": zod.string().nullish(),
+  "department": zod.string().min(1).optional(),
+  "roleTitle": zod.string().nullish(),
+  "status": zod.enum(['Active', 'Inactive']).optional(),
+  "weeklyCapacityHours": zod.number().min(updateResourceBodyWeeklyCapacityHoursMin).nullish(),
+  "manager": zod.string().nullish()
+})
+
+export const UpdateResourceResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "email": zod.string().nullish(),
+  "department": zod.string(),
+  "roleTitle": zod.string().nullish(),
+  "status": zod.string(),
+  "weeklyCapacityHours": zod.number().nullish(),
+  "manager": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Delete a resource (assignments become department-only demand)
+ */
+export const DeleteResourceParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const DeleteResourceResponse = zod.void()
+
+
+/**
+ * @summary List resource assignments for a project
+ */
+export const ListProjectResourceAssignmentsParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const ListProjectResourceAssignmentsResponseItem = zod.object({
+  "id": zod.number(),
+  "projectId": zod.number(),
+  "projectName": zod.string().nullish(),
+  "resourceId": zod.number().nullish(),
+  "resourceName": zod.string().nullish(),
+  "department": zod.string().nullish(),
+  "roleDescription": zod.string().nullish(),
+  "allocationPercent": zod.number().nullish(),
+  "plannedHours": zod.number().nullish(),
+  "startDate": zod.coerce.date().nullish(),
+  "endDate": zod.coerce.date().nullish(),
+  "status": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListProjectResourceAssignmentsResponse = zod.array(ListProjectResourceAssignmentsResponseItem)
+
+
+/**
+ * @summary Add a named-resource assignment or department-only demand
+ */
+export const CreateProjectResourceAssignmentParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const createProjectResourceAssignmentBodyAllocationPercentMin = 0;
+export const createProjectResourceAssignmentBodyAllocationPercentMax = 500;
+
+export const createProjectResourceAssignmentBodyPlannedHoursMin = 0;
+
+
+
+export const CreateProjectResourceAssignmentBody = zod.object({
+  "resourceId": zod.number().nullish(),
+  "department": zod.string().nullish(),
+  "roleDescription": zod.string().nullish(),
+  "allocationPercent": zod.number().min(createProjectResourceAssignmentBodyAllocationPercentMin).max(createProjectResourceAssignmentBodyAllocationPercentMax).nullish(),
+  "plannedHours": zod.number().min(createProjectResourceAssignmentBodyPlannedHoursMin).nullish(),
+  "startDate": zod.coerce.date().nullish(),
+  "endDate": zod.coerce.date().nullish(),
+  "status": zod.enum(['Planned', 'Active', 'Completed']).optional()
+})
+
+export const CreateProjectResourceAssignmentResponse = zod.object({
+  "id": zod.number(),
+  "projectId": zod.number(),
+  "projectName": zod.string().nullish(),
+  "resourceId": zod.number().nullish(),
+  "resourceName": zod.string().nullish(),
+  "department": zod.string().nullish(),
+  "roleDescription": zod.string().nullish(),
+  "allocationPercent": zod.number().nullish(),
+  "plannedHours": zod.number().nullish(),
+  "startDate": zod.coerce.date().nullish(),
+  "endDate": zod.coerce.date().nullish(),
+  "status": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Update a resource assignment
+ */
+export const UpdateProjectResourceAssignmentParams = zod.object({
+  "id": zod.coerce.number(),
+  "assignmentId": zod.coerce.number()
+})
+
+export const updateProjectResourceAssignmentBodyAllocationPercentMin = 0;
+export const updateProjectResourceAssignmentBodyAllocationPercentMax = 500;
+
+export const updateProjectResourceAssignmentBodyPlannedHoursMin = 0;
+
+
+
+export const UpdateProjectResourceAssignmentBody = zod.object({
+  "resourceId": zod.number().nullish(),
+  "department": zod.string().nullish(),
+  "roleDescription": zod.string().nullish(),
+  "allocationPercent": zod.number().min(updateProjectResourceAssignmentBodyAllocationPercentMin).max(updateProjectResourceAssignmentBodyAllocationPercentMax).nullish(),
+  "plannedHours": zod.number().min(updateProjectResourceAssignmentBodyPlannedHoursMin).nullish(),
+  "startDate": zod.coerce.date().nullish(),
+  "endDate": zod.coerce.date().nullish(),
+  "status": zod.enum(['Planned', 'Active', 'Completed']).optional()
+})
+
+export const UpdateProjectResourceAssignmentResponse = zod.object({
+  "id": zod.number(),
+  "projectId": zod.number(),
+  "projectName": zod.string().nullish(),
+  "resourceId": zod.number().nullish(),
+  "resourceName": zod.string().nullish(),
+  "department": zod.string().nullish(),
+  "roleDescription": zod.string().nullish(),
+  "allocationPercent": zod.number().nullish(),
+  "plannedHours": zod.number().nullish(),
+  "startDate": zod.coerce.date().nullish(),
+  "endDate": zod.coerce.date().nullish(),
+  "status": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Remove a resource assignment
+ */
+export const DeleteProjectResourceAssignmentParams = zod.object({
+  "id": zod.coerce.number(),
+  "assignmentId": zod.coerce.number()
+})
+
+export const DeleteProjectResourceAssignmentResponse = zod.void()
+
+
+/**
+ * @summary Report catalog
+ */
+export const ListReportsResponseItem = zod.object({
+  "key": zod.string(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "scope": zod.string().describe('none | project | client | program')
+})
+export const ListReportsResponse = zod.array(ListReportsResponseItem)
+
+
+/**
+ * @summary Generate a report (deterministic, server-side)
+ */
+export const GetReportParams = zod.object({
+  "key": zod.coerce.string()
+})
+
+export const GetReportQueryParams = zod.object({
+  "projectId": zod.coerce.number().optional(),
+  "clientId": zod.coerce.number().optional(),
+  "programId": zod.coerce.number().optional()
+})
+
+export const GetReportResponse = zod.object({
+  "reportKey": zod.string(),
+  "title": zod.string(),
+  "generatedAt": zod.coerce.date(),
+  "appName": zod.string(),
+  "appVersion": zod.string(),
+  "scopeLabel": zod.string().nullish(),
+  "sections": zod.array(zod.object({
+  "key": zod.string(),
+  "title": zod.string(),
+  "kind": zod.string().describe('cards | table | keyValues | note'),
+  "cards": zod.array(zod.object({
+  "label": zod.string(),
+  "value": zod.string(),
+  "tone": zod.string().nullish().describe('default | positive | warning | critical')
+})).optional(),
+  "columns": zod.array(zod.object({
+  "key": zod.string(),
+  "label": zod.string()
+})).optional(),
+  "rows": zod.array(zod.record(zod.string(), zod.string())).optional(),
+  "keyValues": zod.array(zod.object({
+  "label": zod.string(),
+  "value": zod.string(),
+  "tone": zod.string().nullish().describe('default | positive | warning | critical')
+})).optional(),
+  "note": zod.string().nullish(),
+  "emptyMessage": zod.string().nullish()
+}))
+})
+
+
+/**
+ * @summary Export a report as PDF (same report model as web)
+ */
+export const GetReportPdfParams = zod.object({
+  "key": zod.coerce.string()
+})
+
+export const GetReportPdfQueryParams = zod.object({
+  "projectId": zod.coerce.number().optional(),
+  "clientId": zod.coerce.number().optional(),
+  "programId": zod.coerce.number().optional()
+})
+
+export const GetReportPdfResponse = zod.unknown()
 
 
 /**

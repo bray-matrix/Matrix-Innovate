@@ -5,6 +5,19 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and the
 project adheres to semantic versioning (patch = fixes/edits, minor = new
 features, major = breaking or milestone changes).
 
+## [1.2.0] - 2026-08-23
+
+### Compass Consolidation Phase 3 — Reporting / PDF + Resources / Capacity
+- Resources: resources + project_resource_assignments tables (additive), CRUD APIs, /resources page with capacity, allocation, and overallocation filters; deleting a resource converts its assignments to department-only demand.
+- Assignments support both named resources and department-only demand; project detail gains a Resources tab.
+- Deterministic server-side capacity calculation (Overallocated >100%, Near Capacity 85-100%, Available <85%); department demand reported separately from named capacity.
+- Portfolio summary now includes overallocated resources, near-capacity resources, and unfilled department demand with drill-through to /resources.
+- Reporting engine: centralized service producing a structured report model consumed by both the web renderer and the PDF renderer. Catalog: Executive Portfolio, Project Status, Client Portfolio, Program Portfolio, Resource Capacity, Risk & Approval Summary, Go-Live Readiness, Board / Leadership Pack.
+- PDF export for every report (server-side pdfmake, standard fonts) with generated timestamp, Compass branding, version, and scope; identical data model to on-screen view.
+- /reports page with scope selection (project/client/program), on-screen rendering, PDF download, and print-friendly output.
+- Dashboard gains a small quick-links area (Portfolio, Reports, Resources); navigation adds Resources and a REPORTING section.
+- All schema changes additive; no seeded business data; SDK v1.1 auth unchanged.
+
 ## [1.1.0] - 2026-08-23
 
 ### Compass Consolidation Phase 2 — Portfolio, Risks, Approvals, Go-Live Readiness

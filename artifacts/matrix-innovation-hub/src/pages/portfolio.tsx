@@ -275,6 +275,57 @@ export default function PortfolioPage() {
         ))}
       </div>
 
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <Link href="/resources" className="block focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded-xl">
+          <Card className="shadow-sm border-muted hover:border-primary/50 transition-colors cursor-pointer h-full">
+            <CardContent className="p-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-md bg-red-50">
+                  <AlertCircle className="h-5 w-5 text-red-600" />
+                </div>
+                <div>
+                  <div className="text-sm font-medium text-foreground">Overallocated</div>
+                  <div className="text-xs text-muted-foreground">Resources &gt; 100% capacity</div>
+                </div>
+              </div>
+              <div className="text-2xl font-bold text-red-600">{summary.overallocatedResources}</div>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href="/resources" className="block focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded-xl">
+          <Card className="shadow-sm border-muted hover:border-primary/50 transition-colors cursor-pointer h-full">
+            <CardContent className="p-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-md bg-amber-50">
+                  <AlertTriangle className="h-5 w-5 text-amber-500" />
+                </div>
+                <div>
+                  <div className="text-sm font-medium text-foreground">Near Capacity</div>
+                  <div className="text-xs text-muted-foreground">Resources at 90-100% capacity</div>
+                </div>
+              </div>
+              <div className="text-2xl font-bold text-amber-500">{summary.nearCapacityResources}</div>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href="/resources" className="block focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded-xl">
+          <Card className="shadow-sm border-muted hover:border-primary/50 transition-colors cursor-pointer h-full">
+            <CardContent className="p-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-md bg-blue-50">
+                  <Briefcase className="h-5 w-5 text-blue-600" />
+                </div>
+                <div>
+                  <div className="text-sm font-medium text-foreground">Unfilled Demand</div>
+                  <div className="text-xs text-muted-foreground">Department-only assignments</div>
+                </div>
+              </div>
+              <div className="text-2xl font-bold text-blue-600">{summary.unfilledDepartmentDemand}</div>
+            </CardContent>
+          </Card>
+        </Link>
+      </div>
+
       <div className="flex flex-col sm:flex-row gap-3 items-end sm:items-center bg-card p-3 rounded-lg border shadow-sm">
         <div className="flex-1 w-full relative">
           <Input 

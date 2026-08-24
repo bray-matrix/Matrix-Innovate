@@ -7,6 +7,9 @@
  */
 
 export interface PortfolioSummary {
+  overallocatedResources: number;
+  nearCapacityResources: number;
+  unfilledDepartmentDemand: number;
   activeProjects: number;
   atRiskProjects: number;
   offTrackProjects: number;

@@ -65,7 +65,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         { href: "/programs", label: "Programs", icon: FolderKanban },
         { href: "/clients", label: "Clients", icon: Users },
         { href: "/organizations", label: "Organizations", icon: Building2 },
+        { href: "/resources", label: "Resources", icon: Users },
         { href: "/approvals", label: "Approvals", icon: CheckSquare },
+      ]
+    },
+    {
+      label: "REPORTING",
+      items: [
+        { href: "/reports", label: "Reports", icon: FileText },
       ]
     },
     {

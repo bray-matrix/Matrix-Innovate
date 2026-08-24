@@ -100,6 +100,9 @@ async function buildAll() {
       "puppeteer",
       "puppeteer-core",
       "electron",
+      // pdfmake/pdfkit read .afm font metrics from disk relative to their
+      // package dir at runtime — bundling breaks that, so keep external.
+      "pdfmake",
     ],
     sourcemap: "linked",
     plugins: [

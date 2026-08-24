@@ -43,7 +43,10 @@ import {
   AlertCircle,
   CalendarClock,
   Target,
-  Flag
+  Flag,
+  PieChart,
+  FileText,
+  Users
 } from "lucide-react";
 
 const PROTOTYPE_SPRINT_DAYS = 14;
@@ -379,6 +382,25 @@ export default function Dashboard() {
             </Button>
           </Link>
         </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-sm font-medium text-muted-foreground mr-2">Quick Links:</span>
+        <Link href="/portfolio">
+          <Button variant="outline" size="sm" className="h-8">
+            <PieChart className="mr-2 h-4 w-4" /> View Portfolio
+          </Button>
+        </Link>
+        <Link href="/reports">
+          <Button variant="outline" size="sm" className="h-8">
+            <FileText className="mr-2 h-4 w-4" /> View Reports
+          </Button>
+        </Link>
+        <Link href="/resources">
+          <Button variant="outline" size="sm" className="h-8">
+            <Users className="mr-2 h-4 w-4" /> View Resources
+          </Button>
+        </Link>
       </div>
 
       {/* Product Health */}

@@ -5,4 +5,5 @@
 - [Matrix Platform IdP](matrix-platform-idp.md) — real platform issuer is literal "matrix-platform"; discover issuer/JWKS/logout from /.well-known/openid-configuration, never hard-code.
 - [Gateway base-path pattern](gateway-base-path.md) — one build serves standalone root + prefix-stripping gateway via relative assets, runtime <base> tag, and withBase() on all client fetches.
 - [Deterministic health & readiness rules](health-calculation-rules.md) — all health/readiness calc lives in one server lib; overrides and decidedAt stamp only on real transitions.
+- [pdfmake server usage](pdfmake-server-usage.md) — pdfmake 0.3 exports a singleton (setFonts/createPdf), not a Printer class; keep it esbuild-external; local access policy must allow standard font names.
 - [Promotion duplicate guard & zod dates](promotion-duplicate-guard.md) — promote must lock initiative row in a tx; api-zod coerces date-time bodies to Date, string-only parsing nulls them.

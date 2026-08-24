@@ -24,6 +24,11 @@ import {
   useListOrganizations,
   useListClients,
   useListPrograms,
+  useListProjectResourceAssignments,
+  useCreateProjectResourceAssignment,
+  useUpdateProjectResourceAssignment,
+  useDeleteProjectResourceAssignment,
+  useListResources,
   getGetProjectQueryKey,
   getListProjectsQueryKey,
   getListProjectMilestonesQueryKey,
@@ -33,7 +38,9 @@ import {
   getListApprovalsQueryKey,
   getGetPortfolioQueryKey,
   getGetDashboardAttentionQueryKey,
-  getGetExecutionSummaryQueryKey
+  getGetExecutionSummaryQueryKey,
+  getListProjectResourceAssignmentsQueryKey,
+  getListResourcesQueryKey
 } from "@workspace/api-client-react";
 import type { 
   ProjectMilestone, 
@@ -45,7 +52,8 @@ import type {
   ProjectRiskCreate,
   ProjectApprovalCreate,
   ReadinessAssessmentCreate,
-  ReadinessItemCreate
+  ReadinessItemCreate,
+  ResourceAssignment
 } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -58,7 +66,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
-import { Briefcase, ChevronLeft, Trash2, PlusCircle, Pencil, Flag, Link2, AlertCircle, AlertTriangle, ShieldCheck, Target, CheckSquare, Clock } from "lucide-react";
+import { Briefcase, Users, ChevronLeft, Trash2, PlusCircle, Pencil, Flag, Link2, AlertCircle, AlertTriangle, ShieldCheck, Target, CheckSquare, Clock } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PriorityBadge } from "@/components/badges";
 
@@ -122,6 +130,9 @@ export default function ProjectDetailPage() {
   const { data: approvals } = useListProjectApprovals(id, {
     query: { enabled: !!id, queryKey: getListProjectApprovalsQueryKey(id) }
   });
+
+  const { data: resourcesData } = useListProjectResourceAssignments(id, { query: { enabled: !!id, queryKey: getListProjectResourceAssignmentsQueryKey(id) } });
+  const { data: allResources } = useListResources();
 
   const { data: assessments } = useListReadinessAssessments(id, {
     query: { enabled: !!id, queryKey: getListReadinessAssessmentsQueryKey(id) }
@@ -395,6 +406,14 @@ export default function ProjectDetailPage() {
     category: "Requirements", requirement: "", owner: "", status: "Not Tested", required: true
   });
 
+  // Resource Assignment State
+  const [resourceOpen, setResourceOpen] = useState(false);
+  const [editingAssignment, setEditingAssignment] = useState<ResourceAssignment | null>(null);
+  const [assignmentMode, setAssignmentMode] = useState<"named" | "demand">("named");
+  const [assignmentForm, setAssignmentForm] = useState<{resourceId: string, department: string, roleDescription: string, allocationPercent: string, plannedHours: string, startDate: string, endDate: string, status: string}>({
+    resourceId: "", department: "", roleDescription: "", allocationPercent: "100", plannedHours: "", startDate: "", endDate: "", status: "Planned"
+  });
+
   const createItemMutation = useCreateReadinessItem({
     mutation: {
       onSuccess: () => {
@@ -416,6 +435,60 @@ export default function ProjectDetailPage() {
       }
     }
   });
+
+  const createAssignmentMutation = useCreateProjectResourceAssignment({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListProjectResourceAssignmentsQueryKey(id) });
+        queryClient.invalidateQueries({ queryKey: getListResourcesQueryKey() });
+        invalidateGlobal();
+        setResourceOpen(false);
+        toast({ title: "Resource assigned" });
+      }
+    }
+  });
+
+  const updateAssignmentMutation = useUpdateProjectResourceAssignment({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListProjectResourceAssignmentsQueryKey(id) });
+        queryClient.invalidateQueries({ queryKey: getListResourcesQueryKey() });
+        invalidateGlobal();
+        setResourceOpen(false);
+        toast({ title: "Assignment updated" });
+      }
+    }
+  });
+
+  const deleteAssignmentMutation = useDeleteProjectResourceAssignment({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListProjectResourceAssignmentsQueryKey(id) });
+        queryClient.invalidateQueries({ queryKey: getListResourcesQueryKey() });
+        invalidateGlobal();
+        toast({ title: "Assignment removed" });
+      }
+    }
+  });
+
+  const submitAssignment = () => {
+    const data = {
+      resourceId: assignmentMode === "named" && assignmentForm.resourceId ? parseInt(assignmentForm.resourceId) : null,
+      department: assignmentMode === "demand" ? assignmentForm.department : null,
+      roleDescription: assignmentForm.roleDescription || null,
+      allocationPercent: parseInt(assignmentForm.allocationPercent) || null,
+      plannedHours: assignmentForm.plannedHours ? parseInt(assignmentForm.plannedHours) : null,
+      startDate: assignmentForm.startDate || null,
+      endDate: assignmentForm.endDate || null,
+      status: assignmentForm.status as any
+    };
+
+    if (editingAssignment) {
+      updateAssignmentMutation.mutate({ id, assignmentId: editingAssignment.id, data });
+    } else {
+      createAssignmentMutation.mutate({ id, data });
+    }
+  };
 
   const submitItem = () => {
     if (!itemForm.requirement.trim() || !editingItem?.assessmentId) return;
@@ -487,6 +560,7 @@ export default function ProjectDetailPage() {
               <TabsTrigger value="risks">Risks {risks?.filter(r => r.status === "Open" && (r.severity === "Critical" || r.severity === "High")).length ? <span className="ml-1.5 inline-flex h-2 w-2 rounded-full bg-red-500"></span> : null}</TabsTrigger>
               <TabsTrigger value="approvals">Approvals {approvals?.filter(a => a.status === "Pending").length ? <span className="ml-1.5 inline-flex h-2 w-2 rounded-full bg-amber-500"></span> : null}</TabsTrigger>
               <TabsTrigger value="golive">Go-Live Readiness</TabsTrigger>
+              <TabsTrigger value="resources">Resources</TabsTrigger>
             </TabsList>
 
             <TabsContent value="overview">
@@ -788,6 +862,83 @@ export default function ProjectDetailPage() {
                 </CardContent>
               </Card>
             </TabsContent>
+
+            <TabsContent value="resources">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle>Resource Assignments</CardTitle>
+                    <CardDescription>Manage team allocations and role demands for this project.</CardDescription>
+                  </div>
+                  <Button size="sm" onClick={() => {
+                    setEditingAssignment(null);
+                    setAssignmentMode("named");
+                    setAssignmentForm({ resourceId: "", department: "", roleDescription: "", allocationPercent: "100", plannedHours: "", startDate: "", endDate: "", status: "Planned" });
+                    setResourceOpen(true);
+                  }}>
+                    <PlusCircle className="h-4 w-4 mr-2" /> Add Resource
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  {(!resourcesData || resourcesData.length === 0) ? (
+                    <div className="text-center py-8 text-sm text-muted-foreground border rounded-md border-dashed">
+                      No resources assigned to this project.
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {resourcesData.map(assignment => (
+                        <div key={assignment.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-lg hover:bg-muted/30 transition-colors">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              {assignment.resourceName ? (
+                                <span className="font-semibold">{assignment.resourceName}</span>
+                              ) : (
+                                <Badge variant="secondary" className="font-medium bg-blue-100 text-blue-800 hover:bg-blue-100">{assignment.department} Demand</Badge>
+                              )}
+                              <Badge variant="outline" className="text-[10px] uppercase">{assignment.status}</Badge>
+                            </div>
+                            <div className="text-sm text-muted-foreground">{assignment.roleDescription || "No role specified"}</div>
+                            <div className="text-xs text-muted-foreground flex gap-3">
+                              <span>{assignment.allocationPercent}% Allocated</span>
+                              {assignment.plannedHours ? <span>• {assignment.plannedHours} hrs planned</span> : null}
+                              {(assignment.startDate || assignment.endDate) && (
+                                <span>• {formatDate(assignment.startDate)} - {formatDate(assignment.endDate)}</span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex gap-2 mt-4 sm:mt-0">
+                            <Button variant="ghost" size="icon" onClick={() => {
+                              setEditingAssignment(assignment);
+                              setAssignmentMode(assignment.resourceId ? "named" : "demand");
+                              setAssignmentForm({
+                                resourceId: assignment.resourceId?.toString() || "",
+                                department: assignment.department || "",
+                                roleDescription: assignment.roleDescription || "",
+                                allocationPercent: assignment.allocationPercent?.toString() || "100",
+                                plannedHours: assignment.plannedHours?.toString() || "",
+                                startDate: assignment.startDate ? assignment.startDate.split("T")[0] : "",
+                                endDate: assignment.endDate ? assignment.endDate.split("T")[0] : "",
+                                status: assignment.status
+                              });
+                              setResourceOpen(true);
+                            }}>
+                              <Pencil className="h-4 w-4 text-muted-foreground" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => {
+                              if (window.confirm("Remove this assignment?")) {
+                                deleteAssignmentMutation.mutate({ id, assignmentId: assignment.id });
+                              }
+                            }}>
+                              <Trash2 className="h-4 w-4 text-destructive/70 hover:text-destructive" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
           </Tabs>
         </div>
 
@@ -1022,6 +1173,83 @@ export default function ProjectDetailPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setApprovalOpen(false)}>Cancel</Button>
             <Button onClick={submitApproval} disabled={createApprovalMutation.isPending}>Submit Request</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Resource Assignment Dialog */}
+      <Dialog open={resourceOpen} onOpenChange={setResourceOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editingAssignment ? "Edit Assignment" : "Add Resource"}</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <Tabs value={assignmentMode} onValueChange={(v) => setAssignmentMode(v as any)} className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="named">Named Resource</TabsTrigger>
+                <TabsTrigger value="demand">Department Demand</TabsTrigger>
+              </TabsList>
+            </Tabs>
+
+            {assignmentMode === "named" ? (
+              <div className="grid gap-2 mt-2">
+                <Label>Resource</Label>
+                <Select value={assignmentForm.resourceId} onValueChange={(v) => setAssignmentForm(f => ({...f, resourceId: v}))}>
+                  <SelectTrigger><SelectValue placeholder="Select resource" /></SelectTrigger>
+                  <SelectContent>
+                    {allResources?.map(r => <SelectItem key={r.id} value={r.id.toString()}>{r.name} ({r.department})</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (
+              <div className="grid gap-2 mt-2">
+                <Label>Department</Label>
+                <Input value={assignmentForm.department} onChange={(e) => setAssignmentForm(f => ({...f, department: e.target.value}))} placeholder="e.g. Engineering" />
+              </div>
+            )}
+
+            <div className="grid gap-2">
+              <Label>Role Description</Label>
+              <Input value={assignmentForm.roleDescription} onChange={(e) => setAssignmentForm(f => ({...f, roleDescription: e.target.value}))} />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label>Allocation %</Label>
+                <Input type="number" value={assignmentForm.allocationPercent} onChange={(e) => setAssignmentForm(f => ({...f, allocationPercent: e.target.value}))} />
+              </div>
+              <div className="grid gap-2">
+                <Label>Planned Hours (Optional)</Label>
+                <Input type="number" value={assignmentForm.plannedHours} onChange={(e) => setAssignmentForm(f => ({...f, plannedHours: e.target.value}))} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label>Start Date</Label>
+                <Input type="date" value={assignmentForm.startDate} onChange={(e) => setAssignmentForm(f => ({...f, startDate: e.target.value}))} />
+              </div>
+              <div className="grid gap-2">
+                <Label>End Date</Label>
+                <Input type="date" value={assignmentForm.endDate} onChange={(e) => setAssignmentForm(f => ({...f, endDate: e.target.value}))} />
+              </div>
+            </div>
+
+            <div className="grid gap-2">
+              <Label>Status</Label>
+              <Select value={assignmentForm.status} onValueChange={(v) => setAssignmentForm(f => ({...f, status: v}))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Planned">Planned</SelectItem>
+                  <SelectItem value="Active">Active</SelectItem>
+                  <SelectItem value="Completed">Completed</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setResourceOpen(false)}>Cancel</Button>
+            <Button onClick={submitAssignment} disabled={createAssignmentMutation.isPending || updateAssignmentMutation.isPending}>Save Assignment</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
