@@ -1,0 +1,113 @@
+MATRIX INNOVATION HUB — POST-LAUNCH PRODUCTION VERIFICATION
+
+TARGET REPLIT PROJECT:
+Matrix Innovation Hub
+
+DO NOT RUN THIS IN:
+- Legacy Matrix Compass
+- Matrix Platform
+- Finance Hub
+- Infrastructure Hub
+
+IMPORTANT:
+This is the surviving Matrix Innovation Hub application containing the merged Innovation + selected Compass capabilities.
+
+The Matrix Platform RS256 launch fix has now been published.
+
+Observed results:
+- Launching Innovation Hub from Matrix Platform now works
+- The application opens successfully
+- Finance Hub still launches successfully
+
+DO NOT CHANGE CODE.
+DO NOT CHANGE CONFIGURATION.
+DO NOT DEPLOY.
+
+Verify the successful production launch and return only the results.
+
+1. Inspect the most recent successful production launch logs.
+
+Confirm:
+- /matrix/session received the launch token
+- token alg = RS256
+- kid is populated
+- JWKS lookup succeeded
+- signature verification succeeded
+- issuer validation succeeded
+- audience validation succeeded
+- subject validation succeeded
+- session cookie was issued
+- authenticated API requests succeeded
+
+Do not print the token or secrets.
+
+2. Verify production endpoints directly:
+
+/matrix/app-info
+
+CURRENTLY EXPECTED:
+- name = Compass
+- version = v1.2.0
+- sdkVersion = 1.1
+
+NOTE:
+The current name "Compass" is temporary from the consolidation work.
+We have now decided the surviving product will remain Matrix Innovation Hub.
+Do NOT change it during this verification.
+
+/matrix/health
+
+Expected:
+- healthy/ok
+- version = v1.2.0
+- production database connectivity successful
+
+3. Confirm production application state:
+- Dashboard loads
+- Portfolio loads
+- Resources loads
+- Reports loads
+- PDF generation works
+- existing Innovation functionality loads
+
+4. Return:
+
+WORKSPACE
+Replit project: Matrix Innovation Hub
+Surviving application: YES/NO
+
+LAUNCH TOKEN
+Algorithm:
+Kid populated: YES/NO
+JWKS verification: PASS/FAIL
+Issuer: PASS/FAIL
+Audience: PASS/FAIL
+Subject: PASS/FAIL
+
+SESSION
+/matrix/session: PASS/FAIL
+Cookie issued: YES/NO
+Authenticated API: PASS/FAIL
+
+PRODUCTION
+/matrix/app-info: PASS/FAIL
+Current reported name:
+Version:
+SDK version:
+
+/matrix/health: PASS/FAIL
+Database: PASS/FAIL
+
+SMOKE TEST
+Dashboard:
+Portfolio:
+Resources:
+Reports:
+PDF:
+Original Innovation functionality:
+
+CHANGES MADE: NO
+
+End with:
+
+MATRIX INNOVATION HUB PRODUCTION LAUNCH VERIFIED
