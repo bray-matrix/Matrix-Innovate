@@ -1,0 +1,361 @@
+COMPASS v1.2.0 — PRODUCTION DEPLOYMENT PREP + PUBLISH
+
+IMPORTANT:
+You are in the SURVIVING codebase for the Innovation Hub + Compass consolidation.
+
+Expected current state:
+- Original Replit project/codebase: Matrix Innovation Hub
+- Current user-facing application name: Compass
+- Current version: v1.2.0
+- Matrix SDK v1.1
+- Real PostgreSQL persistence
+- Phase 1, Phase 2, and Phase 3 functionality complete
+- Current technical slug/audience may still be matrix-innovation-hub
+- Application is NOT yet deployed at v1.2.0
+
+Do NOT modify the legacy/donor Compass project.
+
+GOAL
+
+Safely prepare and publish Compass v1.2.0 to production.
+
+This includes synchronizing the additive production database schema required by Phases 1–3 before application traffic depends on it.
+
+--------------------------------------------------
+1. PRE-DEPLOYMENT IDENTITY CHECK
+--------------------------------------------------
+
+Before changing production, confirm:
+
+- This workspace originated as Matrix Innovation Hub
+- User-facing application name = Compass
+- Version = v1.2.0
+- /matrix/app-info in development reports Compass v1.2.0
+- /matrix/health in development is healthy
+- Phase 3 validation passes
+- Phase 2 regression validation passes
+
+If any fail, STOP.
+
+--------------------------------------------------
+2. IDENTIFY DEVELOPMENT VS PRODUCTION DATABASE
+--------------------------------------------------
+
+Determine exactly how this Replit application connects to:
+
+- development PostgreSQL
+- production PostgreSQL
+
+Do not assume they are the same database.
+
+Report internally before proceeding:
+- whether development and production use separate databases
+- which environment/configuration controls each connection
+- how schema synchronization is normally performed for this project
+
+Never print database passwords, tokens, full connection strings, or secrets.
+
+--------------------------------------------------
+3. PRODUCTION DATA SAFETY BASELINE
+--------------------------------------------------
+
+Before schema synchronization, connect to the PRODUCTION database using the application's normal secure deployment mechanism.
+
+Record counts for all EXISTING relevant tables that are present, including at minimum:
+
+- initiatives
+- initiative_versions
+- calculation_events
+- backlog_items
+- validation_records
+
+If Phase 1–3 tables already exist, also record counts for:
+
+- organizations
+- clients
+- programs
+- projects
+- project_milestones
+- project_risks
+- project_approvals
+- readiness_assessments
+- readiness_items
+- resources
+- project_resource_assignments
+
+Do not modify or delete business records.
+
+--------------------------------------------------
+4. PRODUCTION SCHEMA GAP CHECK
+--------------------------------------------------
+
+Compare the production PostgreSQL schema against the current v1.2.0 Drizzle schema.
+
+Expected additive Phase 1–3 objects include:
+
+Phase 1:
+- organizations
+- clients
+- programs
+- projects
+- project_milestones
+
+Phase 2:
+- project_risks
+- project_approvals
+- readiness_assessments
+- readiness_items
+- health override fields on projects
+
+Phase 3:
+- resources
+- project_resource_assignments
+
+Determine exactly which objects/columns are missing in production.
+
+Do NOT make destructive changes.
+
+If synchronization would:
+- drop a table
+- drop a column
+- change an existing column incompatibly
+- truncate data
+- recreate existing tables
+- alter IDs destructively
+
+STOP and report before proceeding.
+
+--------------------------------------------------
+5. SYNC PRODUCTION SCHEMA
+--------------------------------------------------
+
+Apply ONLY the additive schema changes necessary to bring production to the current v1.2.0 Drizzle schema.
+
+Use the project's supported Drizzle/Replit production migration mechanism.
+
+Requirements:
+
+- create missing tables
+- create required indexes/foreign keys
+- add missing Phase 2 project health override columns
+- preserve all existing production data
+- no table drops
+- no column drops
+- no truncation
+- no reseeding
+- no database recreation
+
+If the normal `drizzle push` workflow cannot safely target production without exposing or replacing environment configuration, STOP and explain the exact blocker rather than improvising.
+
+--------------------------------------------------
+6. POST-SCHEMA DATA SAFETY CHECK
+--------------------------------------------------
+
+Immediately after schema sync:
+
+Recount all tables recorded in Step 3.
+
+Verify:
+- existing initiative count unchanged
+- initiative_versions unchanged
+- calculation_events unchanged
+- backlog_items unchanged
+- validation_records unchanged
+- no existing business-table count unexpectedly decreased
+
+New tables may correctly contain 0 rows.
+
+Verify the production schema now contains all Phase 1–3 required tables and columns.
+
+--------------------------------------------------
+7. PUBLISH v1.2.0
+--------------------------------------------------
+
+Only after production schema validation passes:
+
+Publish/deploy the current v1.2.0 application using the existing Replit production deployment.
+
+Do not:
+- change the technical slug/audience
+- rename the production Replit URL
+- alter Matrix Platform registration
+- retire the old Compass
+- deploy any uncommitted experimental changes
+
+--------------------------------------------------
+8. PRODUCTION HEALTH VERIFICATION
+--------------------------------------------------
+
+After deployment verify against the PRODUCTION application:
+
+A. Application loads successfully
+B. /matrix/app-info returns:
+   - name = Compass
+   - version = v1.2.0
+   - sdkVersion = 1.1
+
+C. /matrix/health:
+   - returns healthy/ok
+   - confirms production DB connectivity
+   - reports v1.2.0
+
+D. No startup/database schema errors appear in production logs
+
+--------------------------------------------------
+9. MATRIX PLATFORM LAUNCH
+--------------------------------------------------
+
+Verify the production application still works through the EXISTING Matrix Platform registration.
+
+Confirm:
+
+- Platform can launch it
+- launch token exchange works
+- authenticated session is established
+- application loads after launch
+- no audience/issuer errors
+- gateway route still works if currently configured
+
+Do NOT change matrix-innovation-hub slug/audience in this deployment.
+
+--------------------------------------------------
+10. PRODUCTION SMOKE TEST
+--------------------------------------------------
+
+Perform non-destructive production smoke testing.
+
+Verify:
+
+1. Dashboard loads
+2. Initiatives loads
+3. Initiative detail loads if an initiative exists
+4. Projects loads
+5. Portfolio loads
+6. Approvals loads
+7. Resources loads
+8. Reports catalog loads
+9. Board / Leadership Pack renders
+10. PDF generation succeeds
+11. Admin loads
+12. Existing Innovation routes still work
+
+For any test requiring creation of data:
+- avoid creating production test records if possible
+- if a temporary test record is absolutely required, clearly identify it and clean it up immediately
+
+Do not alter legitimate production business data.
+
+--------------------------------------------------
+11. FINAL PRODUCTION DATA CHECK
+--------------------------------------------------
+
+After deployment and smoke testing:
+
+Recount the original production business tables again.
+
+Confirm no existing records were lost.
+
+--------------------------------------------------
+12. GIT / RELEASE STATE
+--------------------------------------------------
+
+Confirm:
+
+- v1.2.0 code is committed to Git
+- production deployment corresponds to the intended v1.2.0 commit
+- working tree does not contain accidental deployment-only source changes
+
+If Git tags are already part of this project's release process, create/use the appropriate v1.2.0 tag.
+
+Do not invent a new tagging convention if the project does not currently use one.
+
+--------------------------------------------------
+13. DO NOT DO
+--------------------------------------------------
+
+Do NOT:
+
+- modify legacy/donor Compass
+- rename this Replit project
+- rename technical slug/audience
+- change Matrix Platform registration
+- retire Innovation Hub or Compass entries in Matrix Platform
+- start Phase 4
+- change application version beyond v1.2.0
+- delete or seed production data
+
+--------------------------------------------------
+14. COMPLETION REPORT
+--------------------------------------------------
+
+Return:
+
+WORKSPACE
+Original Replit application:
+Current user-facing application:
+Version:
+
+DATABASE
+Development and production DB separate: YES/NO
+Production schema sync method:
+Schema gap found: YES/NO
+Additive changes applied:
+Destructive changes required: YES/NO
+
+PRODUCTION DATA SAFETY
+Initiatives before/after:
+Initiative versions before/after:
+Calculation events before/after:
+Backlog items before/after:
+Validation records before/after:
+Other existing business data preserved: YES/NO
+
+PHASE 1-3 TABLES
+organizations:
+clients:
+programs:
+projects:
+project_milestones:
+project_risks:
+project_approvals:
+readiness_assessments:
+readiness_items:
+resources:
+project_resource_assignments:
+
+DEPLOYMENT
+v1.2.0 published: YES/NO
+Production URL:
+Production commit:
+
+PLATFORM
+/matrix/app-info: PASS/FAIL
+/matrix/health: PASS/FAIL
+Matrix Platform launch: PASS/FAIL
+Authentication/session: PASS/FAIL
+Legacy technical slug/audience unchanged: YES/NO
+
+PRODUCTION SMOKE TEST
+Dashboard:
+Initiatives:
+Projects:
+Portfolio:
+Approvals:
+Resources:
+Reports:
+Board / Leadership Pack:
+PDF:
+Admin:
+Legacy Innovation routes:
+
+GIT
+v1.2.0 committed: YES/NO
+Tag used if applicable:
+Working tree clean: YES/NO
+
+KNOWN ISSUES
+[list only actual issues]
+
+End with:
+
+COMPASS v1.2.0 PRODUCTION DEPLOYMENT COMPLETE
