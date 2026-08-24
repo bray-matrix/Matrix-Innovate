@@ -22,6 +22,8 @@ import ProjectDetailPage from "@/pages/project-detail";
 import OrganizationsPage from "@/pages/organizations";
 import ClientsPage from "@/pages/clients";
 import ProgramsPage from "@/pages/programs";
+import PortfolioPage from "@/pages/portfolio";
+import ApprovalsPage from "@/pages/approvals";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
@@ -47,6 +49,8 @@ function Router() {
         <Route path="/organizations" component={OrganizationsPage} />
         <Route path="/clients" component={ClientsPage} />
         <Route path="/programs" component={ProgramsPage} />
+        <Route path="/portfolio" component={PortfolioPage} />
+        <Route path="/approvals" component={ApprovalsPage} />
         <Route component={NotFound} />
       </Switch>
     </AppLayout>

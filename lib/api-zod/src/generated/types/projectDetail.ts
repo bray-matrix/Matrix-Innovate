@@ -11,4 +11,9 @@ import type { ProjectMilestone } from './projectMilestone';
 export type ProjectDetail = Project & ({
   milestones: ProjectMilestone[];
   initiativeTitle?: string | null;
+  /** Deterministic server-side health */
+  calculatedHealth: string;
+  /** Manual override when set, otherwise calculated */
+  effectiveHealth: string;
+  healthOverridden: boolean;
 });

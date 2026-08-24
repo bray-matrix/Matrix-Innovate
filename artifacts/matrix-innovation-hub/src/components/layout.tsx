@@ -31,7 +31,9 @@ import {
   Briefcase,
   FolderKanban,
   Users,
-  Building2
+  Building2,
+  PieChart,
+  CheckSquare
 } from "lucide-react";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
@@ -44,6 +46,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       label: "HOME",
       items: [
         { href: "/", label: "Dashboard", icon: LayoutDashboard },
+        { href: "/portfolio", label: "Portfolio", icon: PieChart },
       ]
     },
     {
@@ -62,6 +65,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         { href: "/programs", label: "Programs", icon: FolderKanban },
         { href: "/clients", label: "Clients", icon: Users },
         { href: "/organizations", label: "Organizations", icon: Building2 },
+        { href: "/approvals", label: "Approvals", icon: CheckSquare },
       ]
     },
     {

@@ -3,6 +3,7 @@ import {
   useListInitiatives,
   useGetProductHealth,
   useGetExecutionSummary,
+  useGetDashboardAttention
 } from "@workspace/api-client-react";
 import type { Initiative } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -41,7 +42,8 @@ import {
   Briefcase,
   AlertCircle,
   CalendarClock,
-  Target
+  Target,
+  Flag
 } from "lucide-react";
 
 const PROTOTYPE_SPRINT_DAYS = 14;
@@ -691,7 +693,10 @@ function ProductHealthWidget() {
 
 
 function ExecutionSummaryWidget() {
-  const { data: summary, isLoading } = useGetExecutionSummary();
+  const { data: summary, isLoading: summaryLoading } = useGetExecutionSummary();
+  const { data: attention, isLoading: attentionLoading } = useGetDashboardAttention();
+
+  const isLoading = summaryLoading || attentionLoading;
 
   const stats = [
     {
@@ -699,25 +704,43 @@ function ExecutionSummaryWidget() {
       value: summary?.activeProjects,
       icon: Briefcase,
       iconColor: "text-blue-600",
+      link: "/projects"
     },
     {
       title: "At Risk Projects",
       value: summary?.atRiskProjects,
       icon: AlertCircle,
       iconColor: "text-amber-500",
+      link: "/portfolio"
     },
     {
-      title: "Due Soon (30d)",
-      value: summary?.dueSoonProjects,
-      icon: CalendarClock,
-      iconColor: "text-red-500",
+      title: "Crit/High Risks",
+      value: attention?.openCriticalHighRisks,
+      icon: AlertTriangle,
+      iconColor: "text-orange-500",
+      link: "/portfolio"
     },
     {
-      title: "Approved / Unpromoted",
-      value: summary?.approvedUnpromotedInitiatives,
+      title: "Pending Approvals",
+      value: attention?.pendingApprovals,
+      icon: Flag,
+      iconColor: "text-indigo-500",
+      link: "/approvals"
+    },
+    {
+      title: "Not Ready (Go-Live)",
+      value: attention?.notReadyProjects,
       icon: Target,
-      iconColor: "text-purple-600",
+      iconColor: "text-pink-500",
+      link: "/portfolio"
     },
+    {
+      title: "Overdue Milestones",
+      value: attention?.overdueMilestones,
+      icon: Clock,
+      iconColor: "text-red-500",
+      link: "/projects"
+    }
   ];
 
   return (
@@ -728,31 +751,33 @@ function ExecutionSummaryWidget() {
             <Briefcase className="h-4 w-4 text-[#002D72]" />
             Execution Summary
           </span>
-          <Link href="/projects">
+          <Link href="/portfolio">
             <Button variant="ghost" size="sm" className="h-7 text-xs">
-              View Projects
+              View Portfolio
             </Button>
           </Link>
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
           {stats.map((s) => (
-            <div key={s.title} className="flex items-center gap-3">
-              <s.icon className={`h-6 w-6 shrink-0 ${s.iconColor}`} />
-              <div className="min-w-0">
-                {isLoading ? (
-                  <Skeleton className="h-6 w-14" />
-                ) : (
-                  <div className="text-xl font-bold leading-tight">
-                    {s.value ?? "—"}
+            <Link href={s.link} key={s.title}>
+              <div className="flex items-center gap-3 p-2 rounded hover:bg-muted/50 transition-colors cursor-pointer">
+                <s.icon className={`h-6 w-6 shrink-0 ${s.iconColor}`} />
+                <div className="min-w-0">
+                  {isLoading ? (
+                    <Skeleton className="h-6 w-14" />
+                  ) : (
+                    <div className="text-xl font-bold leading-tight">
+                      {s.value ?? "—"}
+                    </div>
+                  )}
+                  <div className="text-xs text-muted-foreground truncate">
+                    {s.title}
                   </div>
-                )}
-                <div className="text-xs text-muted-foreground truncate">
-                  {s.title}
                 </div>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       </CardContent>

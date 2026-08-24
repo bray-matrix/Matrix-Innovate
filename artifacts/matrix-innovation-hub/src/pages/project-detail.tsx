@@ -9,25 +9,56 @@ import {
   useCreateProjectMilestone,
   useUpdateProjectMilestone,
   useDeleteProjectMilestone,
+  useListProjectRisks,
+  useCreateProjectRisk,
+  useUpdateProjectRisk,
+  useDeleteProjectRisk,
+  useListProjectApprovals,
+  useCreateProjectApproval,
+  useUpdateProjectApproval,
+  useListReadinessAssessments,
+  useCreateReadinessAssessment,
+  useCreateReadinessItem,
+  useUpdateReadinessItem,
+  useDeleteReadinessItem,
   useListOrganizations,
   useListClients,
   useListPrograms,
   getGetProjectQueryKey,
   getListProjectsQueryKey,
   getListProjectMilestonesQueryKey,
+  getListProjectRisksQueryKey,
+  getListProjectApprovalsQueryKey,
+  getListReadinessAssessmentsQueryKey,
+  getListApprovalsQueryKey,
+  getGetPortfolioQueryKey,
+  getGetDashboardAttentionQueryKey,
+  getGetExecutionSummaryQueryKey
 } from "@workspace/api-client-react";
-import type { ProjectMilestone, ProjectMilestoneCreate, ProjectUpdate } from "@workspace/api-client-react";
+import type { 
+  ProjectMilestone, 
+  ProjectRisk,
+  ProjectApproval,
+  ReadinessAssessment,
+  ReadinessItem,
+  ProjectMilestoneCreate, 
+  ProjectRiskCreate,
+  ProjectApprovalCreate,
+  ReadinessAssessmentCreate,
+  ReadinessItemCreate
+} from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
-import { Briefcase, ChevronLeft, Trash2, PlusCircle, Pencil, Flag, Link2 } from "lucide-react";
+import { Briefcase, ChevronLeft, Trash2, PlusCircle, Pencil, Flag, Link2, AlertCircle, AlertTriangle, ShieldCheck, Target, CheckSquare, Clock } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PriorityBadge } from "@/components/badges";
 
@@ -48,6 +79,27 @@ const STATES = ["Active", "On Hold", "Closed"];
 const HEALTHS = ["On Track", "At Risk", "Off Track", "Unknown"];
 const PRIORITIES = ["Low", "Medium", "High", "Critical"];
 const MILESTONE_STATUSES = ["Not Started", "In Progress", "Completed", "Missed"];
+const RISK_SEVERITIES = ["Low", "Medium", "High", "Critical"];
+const RISK_PROBABILITIES = ["Low", "Medium", "High"];
+const RISK_IMPACTS = ["Low", "Medium", "High"];
+const RISK_STATUSES = ["Open", "Mitigating", "Mitigated", "Closed"];
+const APPROVAL_TYPES = ["Go-Live Sign-Off", "Scope Change", "Stage Gate", "Hold", "Resource Request", "Other"];
+const READINESS_CATEGORIES = ["Requirements", "Development", "Testing", "Data", "Operations", "Client", "Security / Compliance", "Production", "Training / Documentation"];
+const READINESS_ITEM_STATUSES = ["Not Tested", "Pass", "Fail", "Not Applicable"];
+
+const RISK_SEVERITY_COLORS: Record<string, string> = {
+  "Critical": "bg-red-100 text-red-700 border-red-200",
+  "High": "bg-orange-100 text-orange-700 border-orange-200",
+  "Medium": "bg-amber-100 text-amber-700 border-amber-200",
+  "Low": "bg-slate-100 text-slate-600 border-slate-200",
+};
+
+const READINESS_COLORS: Record<string, string> = {
+  "Ready": "bg-green-100 text-green-700 border-green-200",
+  "At Risk": "bg-amber-100 text-amber-700 border-amber-200",
+  "Not Ready": "bg-red-100 text-red-700 border-red-200",
+  "Not Started": "bg-slate-100 text-slate-600 border-slate-200",
+};
 
 export default function ProjectDetailPage() {
   const [, params] = useRoute("/projects/:id");
@@ -63,15 +115,35 @@ export default function ProjectDetailPage() {
     query: { enabled: !!id, queryKey: getListProjectMilestonesQueryKey(id) }
   });
 
+  const { data: risks } = useListProjectRisks(id, {
+    query: { enabled: !!id, queryKey: getListProjectRisksQueryKey(id) }
+  });
+
+  const { data: approvals } = useListProjectApprovals(id, {
+    query: { enabled: !!id, queryKey: getListProjectApprovalsQueryKey(id) }
+  });
+
+  const { data: assessments } = useListReadinessAssessments(id, {
+    query: { enabled: !!id, queryKey: getListReadinessAssessmentsQueryKey(id) }
+  });
+
   const { data: organizations } = useListOrganizations();
   const { data: clients } = useListClients();
   const { data: programs } = useListPrograms();
+
+  const invalidateGlobal = () => {
+    queryClient.invalidateQueries({ queryKey: getGetPortfolioQueryKey() });
+    queryClient.invalidateQueries({ queryKey: getGetDashboardAttentionQueryKey() });
+    queryClient.invalidateQueries({ queryKey: getGetExecutionSummaryQueryKey() });
+  };
 
   const updateMutation = useUpdateProject({
     mutation: {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(id) });
+        invalidateGlobal();
         toast({ title: "Project updated" });
+        setHealthReasonDialog(false);
       },
       onError: () => toast({ title: "Failed to update project", variant: "destructive" }),
     }
@@ -88,7 +160,32 @@ export default function ProjectDetailPage() {
     }
   });
 
-  // Milestone Dialog State
+  const handleDeleteProject = () => {
+    if (window.confirm("Are you sure you want to delete this project? This cannot be undone.")) {
+      deleteMutation.mutate({ id });
+    }
+  };
+
+  // Health Override
+  const [healthReasonDialog, setHealthReasonDialog] = useState(false);
+  const [pendingHealth, setPendingHealth] = useState("");
+  const [healthReason, setHealthReason] = useState("");
+
+  const handleHealthChange = (newHealth: string) => {
+    if (newHealth === "Unknown") {
+      updateMutation.mutate({ id, data: { health: "Unknown", healthOverrideReason: null } });
+    } else {
+      setPendingHealth(newHealth);
+      setHealthReason("");
+      setHealthReasonDialog(true);
+    }
+  };
+
+  const submitHealthOverride = () => {
+    updateMutation.mutate({ id, data: { health: pendingHealth, healthOverrideReason: healthReason } });
+  };
+
+  // Milestone State
   const [milestoneOpen, setMilestoneOpen] = useState(false);
   const [editingMilestone, setEditingMilestone] = useState<ProjectMilestone | null>(null);
   const [msForm, setMsForm] = useState<{name: string, description: string, owner: string, dueDate: string, status: string, stageGate: boolean, sequence: string}>({
@@ -99,10 +196,10 @@ export default function ProjectDetailPage() {
     mutation: {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getListProjectMilestonesQueryKey(id) });
+        invalidateGlobal();
         toast({ title: "Milestone created" });
         setMilestoneOpen(false);
-      },
-      onError: () => toast({ title: "Failed to create milestone", variant: "destructive" })
+      }
     }
   });
 
@@ -110,10 +207,10 @@ export default function ProjectDetailPage() {
     mutation: {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getListProjectMilestonesQueryKey(id) });
+        invalidateGlobal();
         toast({ title: "Milestone updated" });
         setMilestoneOpen(false);
-      },
-      onError: () => toast({ title: "Failed to update milestone", variant: "destructive" })
+      }
     }
   });
 
@@ -121,97 +218,215 @@ export default function ProjectDetailPage() {
     mutation: {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getListProjectMilestonesQueryKey(id) });
+        invalidateGlobal();
         toast({ title: "Milestone deleted" });
         setMilestoneOpen(false);
-      },
-      onError: () => toast({ title: "Failed to delete milestone", variant: "destructive" })
+      }
     }
   });
+
+  const submitMilestone = () => {
+    if (!msForm.name.trim()) return;
+    const data = {
+      name: msForm.name.trim(), description: msForm.description, owner: msForm.owner,
+      dueDate: msForm.dueDate || null, status: msForm.status, stageGate: msForm.stageGate,
+      sequence: parseInt(msForm.sequence, 10) || 1, projectId: id
+    };
+    if (editingMilestone) {
+      updateMsMutation.mutate({ id, milestoneId: editingMilestone.id, data });
+    } else {
+      (createMsMutation.mutate as any)({ id, data });
+    }
+  };
 
   const openMilestoneDialog = (ms: ProjectMilestone | null) => {
     setEditingMilestone(ms);
     if (ms) {
       setMsForm({
-        name: ms.name,
-        description: ms.description,
-        owner: ms.owner,
-        dueDate: toDateInput(ms.dueDate),
-        status: ms.status,
-        stageGate: ms.stageGate,
-        sequence: String(ms.sequence)
+        name: ms.name, description: ms.description, owner: ms.owner,
+        dueDate: toDateInput(ms.dueDate), status: ms.status, stageGate: ms.stageGate, sequence: String(ms.sequence)
       });
     } else {
-      const nextSeq = (milestones?.length ?? 0) + 1;
-      setMsForm({
-        name: "", description: "", owner: "", dueDate: "", status: "Not Started", stageGate: false, sequence: String(nextSeq)
-      });
+      setMsForm({ name: "", description: "", owner: "", dueDate: "", status: "Not Started", stageGate: false, sequence: String((milestones?.length || 0) + 1) });
     }
     setMilestoneOpen(true);
   };
 
-  const submitMilestone = () => {
-    if (!msForm.name.trim()) {
-      toast({ title: "Name is required", variant: "destructive" });
-      return;
+  // Risk State
+  const [riskOpen, setRiskOpen] = useState(false);
+  const [editingRisk, setEditingRisk] = useState<ProjectRisk | null>(null);
+  const [riskForm, setRiskForm] = useState<{title: string, description: string, severity: string, probability: string, impact: string, status: string, owner: string, mitigationPlan: string, dueDate: string}>({
+    title: "", description: "", severity: "Medium", probability: "Medium", impact: "Medium", status: "Open", owner: "", mitigationPlan: "", dueDate: ""
+  });
+
+  const createRiskMutation = useCreateProjectRisk({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListProjectRisksQueryKey(id) });
+        queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(id) });
+        invalidateGlobal();
+        toast({ title: "Risk created" });
+        setRiskOpen(false);
+      }
     }
-    const data: ProjectMilestoneCreate = {
-      name: msForm.name.trim(),
-      description: msForm.description,
-      owner: msForm.owner,
-      dueDate: msForm.dueDate || null,
-      status: msForm.status,
-      stageGate: msForm.stageGate,
-      sequence: parseInt(msForm.sequence, 10) || 1
-    };
-    if (editingMilestone) {
-      updateMsMutation.mutate({ id, milestoneId: editingMilestone.id, data });
+  });
+
+  const updateRiskMutation = useUpdateProjectRisk({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListProjectRisksQueryKey(id) });
+        queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(id) });
+        invalidateGlobal();
+        toast({ title: "Risk updated" });
+        setRiskOpen(false);
+      }
+    }
+  });
+
+  const deleteRiskMutation = useDeleteProjectRisk({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListProjectRisksQueryKey(id) });
+        queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(id) });
+        invalidateGlobal();
+        toast({ title: "Risk deleted" });
+        setRiskOpen(false);
+      }
+    }
+  });
+
+  const submitRisk = () => {
+    if (!riskForm.title.trim()) return;
+    const data = { ...riskForm, projectId: id, dueDate: riskForm.dueDate || null };
+    if (editingRisk) {
+      updateRiskMutation.mutate({ id, riskId: editingRisk.id, data });
     } else {
-      // The API definition likely needs the project id in the URL or payload.
-      // Wait, let's check useCreateProjectMilestone signature.
-      // Assuming it's `(data: ProjectMilestoneCreate)` or `(projectId: number, data: ProjectMilestoneCreate)`.
-      // The path is usually /api/projects/{projectId}/milestones.
-      // Wait, api.ts says `export const useCreateProjectMilestone` ... Let's assume it takes `{ id, data }` or similar. Let me just use standard mutation. 
-      // ACTUALLY, api-client-react `useCreateProjectMilestone({ id: projectId, data })` or just `{data}`? Let's check codegen if we can...
-      // Since it's nested under projects, it likely takes `id: number` as the projectId.
-      // Let's assume `createMsMutation.mutate({ id: id, data });`
-      // Wait, looking at the schema, maybe `projectId: number` is in `ProjectMilestoneCreate`? Yes, wait no. ProjectMilestoneCreate might not have projectId.
-      // If it takes `id`, I will pass `id`.
+      (createRiskMutation.mutate as any)({ id, data });
     }
   };
 
-  const submitMilestoneSafe = () => {
-    if (!msForm.name.trim()) {
-      toast({ title: "Name is required", variant: "destructive" });
-      return;
-    }
-    
-    // Fallback: If `useCreateProjectMilestone` requires projectId in URL, we pass `id` (project ID).
-    // Orval usually generates `useCreateProjectMilestone({ id, data })`.
-    const data = {
-      name: msForm.name.trim(),
-      description: msForm.description,
-      owner: msForm.owner,
-      dueDate: msForm.dueDate || null,
-      status: msForm.status,
-      stageGate: msForm.stageGate,
-      sequence: parseInt(msForm.sequence, 10) || 1,
-      projectId: id // In case it's in the body
-    };
-
-    if (editingMilestone) {
-      updateMsMutation.mutate({ id, milestoneId: editingMilestone.id, data });
+  const openRiskDialog = (r: ProjectRisk | null) => {
+    setEditingRisk(r);
+    if (r) {
+      setRiskForm({
+        title: r.title, description: r.description, severity: r.severity, probability: r.probability, impact: r.impact,
+        status: r.status, owner: r.owner, mitigationPlan: r.mitigationPlan, dueDate: toDateInput(r.dueDate)
+      });
     } else {
-      // Hacky pass for both URL param id and body data if Orval needs it
-      (createMsMutation.mutate as any)({ id, data });
+      setRiskForm({ title: "", description: "", severity: "Medium", probability: "Medium", impact: "Medium", status: "Open", owner: "", mitigationPlan: "", dueDate: "" });
+    }
+    setRiskOpen(true);
+  };
+
+  // Approval State
+  const [approvalOpen, setApprovalOpen] = useState(false);
+  const [approvalForm, setApprovalForm] = useState<{type: string, title: string, description: string, requestedBy: string, approver: string}>({
+    type: "Go-Live Sign-Off", title: "", description: "", requestedBy: "", approver: ""
+  });
+
+  const createApprovalMutation = useCreateProjectApproval({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListProjectApprovalsQueryKey(id) });
+        queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(id) });
+        queryClient.invalidateQueries({ queryKey: getListApprovalsQueryKey() });
+        invalidateGlobal();
+        toast({ title: "Approval requested" });
+        setApprovalOpen(false);
+      }
+    }
+  });
+
+  const updateApprovalMutation = useUpdateProjectApproval({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListProjectApprovalsQueryKey(id) });
+        queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(id) });
+        queryClient.invalidateQueries({ queryKey: getListApprovalsQueryKey() });
+        invalidateGlobal();
+        toast({ title: "Approval updated" });
+      }
+    }
+  });
+
+  const submitApproval = () => {
+    if (!approvalForm.title.trim()) return;
+    const data = { ...approvalForm, projectId: id };
+    (createApprovalMutation.mutate as any)({ id, data });
+  };
+
+  // Readiness State
+  const [readinessOpen, setReadinessOpen] = useState(false);
+  const [readinessForm, setReadinessForm] = useState<{name: string, targetDate: string, seedStandardItems: boolean}>({
+    name: "Go-Live Assessment", targetDate: "", seedStandardItems: true
+  });
+
+  const createReadinessMutation = useCreateReadinessAssessment({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListReadinessAssessmentsQueryKey(id) });
+        queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(id) });
+        invalidateGlobal();
+        toast({ title: "Assessment created" });
+        setReadinessOpen(false);
+      }
+    }
+  });
+
+  const submitReadiness = () => {
+    if (!readinessForm.name.trim()) return;
+    const data = { name: readinessForm.name, targetDate: readinessForm.targetDate || null, seedStandardItems: readinessForm.seedStandardItems, projectId: id };
+    (createReadinessMutation.mutate as any)({ id, data });
+  };
+
+  const updateReadinessItemMutation = useUpdateReadinessItem({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListReadinessAssessmentsQueryKey(id) });
+        queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(id) });
+        invalidateGlobal();
+      }
+    }
+  });
+
+  const [itemOpen, setItemOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<{item: ReadinessItem, assessmentId: number} | null>(null);
+  const [itemForm, setItemForm] = useState<{category: string, requirement: string, owner: string, status: string, required: boolean}>({
+    category: "Requirements", requirement: "", owner: "", status: "Not Tested", required: true
+  });
+
+  const createItemMutation = useCreateReadinessItem({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListReadinessAssessmentsQueryKey(id) });
+        queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(id) });
+        invalidateGlobal();
+        setItemOpen(false);
+      }
+    }
+  });
+
+  const deleteItemMutation = useDeleteReadinessItem({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListReadinessAssessmentsQueryKey(id) });
+        queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(id) });
+        invalidateGlobal();
+        setItemOpen(false);
+      }
+    }
+  });
+
+  const submitItem = () => {
+    if (!itemForm.requirement.trim() || !editingItem?.assessmentId) return;
+    const data = { ...itemForm };
+    if (editingItem.item.id) {
+      updateReadinessItemMutation.mutate({ id, assessmentId: editingItem.assessmentId, itemId: editingItem.item.id, data });
+    } else {
+      (createItemMutation.mutate as any)({ id, assessmentId: editingItem.assessmentId, data });
     }
   };
 
-
-  const handleDeleteProject = () => {
-    if (window.confirm("Are you sure you want to delete this project? This cannot be undone.")) {
-      deleteMutation.mutate({ id });
-    }
-  };
 
   if (isLoading) {
     return (
@@ -222,22 +437,15 @@ export default function ProjectDetailPage() {
     );
   }
 
-  if (!project) {
-    return <div>Project not found.</div>;
-  }
+  if (!project) return <div>Project not found.</div>;
 
   const contextParts = [];
-  if (project.organizationId) {
-    contextParts.push(organizations?.find(o => o.id === project.organizationId)?.name || "Org");
-  }
-  if (project.clientId) {
-    contextParts.push(clients?.find(c => c.id === project.clientId)?.name || "Client");
-  }
-  if (project.programId) {
-    contextParts.push(programs?.find(p => p.id === project.programId)?.name || "Program");
-  }
+  if (project.organizationId) contextParts.push(organizations?.find(o => o.id === project.organizationId)?.name || "Org");
+  if (project.clientId) contextParts.push(clients?.find(c => c.id === project.clientId)?.name || "Client");
+  if (project.programId) contextParts.push(programs?.find(p => p.id === project.programId)?.name || "Program");
 
   const sortedMilestones = (milestones ?? []).slice().sort((a, b) => a.sequence - b.sequence);
+  const sortedApprovals = (approvals ?? []).slice().sort((a, b) => (a.status === "Pending" ? -1 : 1));
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-12">
@@ -270,72 +478,317 @@ export default function ProjectDetailPage() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="md:col-span-2 space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Overview</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label className="text-xs text-muted-foreground">Description</Label>
-                <div className="text-sm mt-1 whitespace-pre-wrap">{project.description || "—"}</div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-xs text-muted-foreground">Primary Owner</Label>
-                  <div className="text-sm mt-1 font-medium">{project.primaryOwner || "—"}</div>
-                </div>
-                <div>
-                  <Label className="text-xs text-muted-foreground">Supporting Owners</Label>
-                  <div className="text-sm mt-1">{project.supportingOwners || "—"}</div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="md:col-span-3 space-y-6">
+          <Tabs defaultValue="overview" className="w-full">
+            <TabsList className="mb-4">
+              <TabsTrigger value="overview">Overview</TabsTrigger>
+              <TabsTrigger value="milestones">Milestones</TabsTrigger>
+              <TabsTrigger value="risks">Risks {risks?.filter(r => r.status === "Open" && (r.severity === "Critical" || r.severity === "High")).length ? <span className="ml-1.5 inline-flex h-2 w-2 rounded-full bg-red-500"></span> : null}</TabsTrigger>
+              <TabsTrigger value="approvals">Approvals {approvals?.filter(a => a.status === "Pending").length ? <span className="ml-1.5 inline-flex h-2 w-2 rounded-full bg-amber-500"></span> : null}</TabsTrigger>
+              <TabsTrigger value="golive">Go-Live Readiness</TabsTrigger>
+            </TabsList>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Milestones</CardTitle>
-              <Button size="sm" onClick={() => openMilestoneDialog(null)}>
-                <PlusCircle className="h-4 w-4 mr-2" /> Add Milestone
-              </Button>
-            </CardHeader>
-            <CardContent>
-              {sortedMilestones.length === 0 ? (
-                <div className="text-center py-8 text-sm text-muted-foreground border rounded-md border-dashed">
-                  No milestones defined yet.
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {sortedMilestones.map((ms) => (
-                    <div key={ms.id} className="flex items-start justify-between p-4 border rounded-md relative hover:bg-muted/30 transition-colors group">
-                      {ms.stageGate && (
-                        <div className="absolute -left-1.5 -top-1.5 bg-primary text-primary-foreground p-1 rounded-full shadow-sm" title="Stage Gate">
-                          <Flag className="h-3 w-3" />
-                        </div>
-                      )}
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono text-xs text-muted-foreground bg-muted px-1.5 rounded">#{ms.sequence}</span>
-                          <span className="font-medium text-sm">{ms.name}</span>
-                          <Badge variant="outline" className={ms.status === "Completed" ? "bg-green-100 text-green-700 border-green-200" : ""}>{ms.status}</Badge>
-                        </div>
-                        {ms.description && <div className="text-xs text-muted-foreground mt-1">{ms.description}</div>}
-                        <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-                          {ms.owner && <span>Owner: {ms.owner}</span>}
-                          {ms.dueDate && <span>Due: {formatDate(ms.dueDate)}</span>}
-                        </div>
-                      </div>
-                      <Button variant="ghost" size="icon" onClick={() => openMilestoneDialog(ms)} className="opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Pencil className="h-4 w-4 text-muted-foreground" />
-                      </Button>
+            <TabsContent value="overview">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Overview</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Description</Label>
+                    <div className="text-sm mt-1 whitespace-pre-wrap">{project.description || "—"}</div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Primary Owner</Label>
+                      <div className="text-sm mt-1 font-medium">{project.primaryOwner || "—"}</div>
                     </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Supporting Owners</Label>
+                      <div className="text-sm mt-1">{project.supportingOwners || "—"}</div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="milestones">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle>Milestones</CardTitle>
+                    <CardDescription>Track project phases and stage gates.</CardDescription>
+                  </div>
+                  <Button size="sm" onClick={() => openMilestoneDialog(null)}>
+                    <PlusCircle className="h-4 w-4 mr-2" /> Add Milestone
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  {sortedMilestones.length === 0 ? (
+                    <div className="text-center py-8 text-sm text-muted-foreground border rounded-md border-dashed">
+                      No milestones defined yet.
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {sortedMilestones.map((ms) => (
+                        <div key={ms.id} className="flex items-start justify-between p-4 border rounded-md relative hover:bg-muted/30 transition-colors group">
+                          {ms.stageGate && (
+                            <div className="absolute -left-1.5 -top-1.5 bg-primary text-primary-foreground p-1 rounded-full shadow-sm" title="Stage Gate">
+                              <Flag className="h-3 w-3" />
+                            </div>
+                          )}
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono text-xs text-muted-foreground bg-muted px-1.5 rounded">#{ms.sequence}</span>
+                              <span className="font-medium text-sm">{ms.name}</span>
+                              <Badge variant="outline" className={ms.status === "Completed" ? "bg-green-100 text-green-700 border-green-200" : ""}>{ms.status}</Badge>
+                            </div>
+                            {ms.description && <div className="text-xs text-muted-foreground mt-1">{ms.description}</div>}
+                            <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+                              {ms.owner && <span>Owner: {ms.owner}</span>}
+                              {ms.dueDate && <span>Due: {formatDate(ms.dueDate)}</span>}
+                            </div>
+                          </div>
+                          <Button variant="ghost" size="icon" onClick={() => openMilestoneDialog(ms)} className="opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Pencil className="h-4 w-4 text-muted-foreground" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="risks">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle>Project Risks</CardTitle>
+                    <CardDescription>Identify and mitigate threats to delivery.</CardDescription>
+                  </div>
+                  <Button size="sm" onClick={() => openRiskDialog(null)}>
+                    <AlertTriangle className="h-4 w-4 mr-2" /> Add Risk
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  {(!risks || risks.length === 0) ? (
+                    <div className="text-center py-8 text-sm text-muted-foreground border rounded-md border-dashed">
+                      No risks logged.
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {risks.map((r) => (
+                        <div key={r.id} className="p-4 border rounded-md relative hover:bg-muted/30 transition-colors group">
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium text-sm">{r.title}</span>
+                                <Badge variant="outline" className={RISK_SEVERITY_COLORS[r.severity] ?? ""}>{r.severity} Severity</Badge>
+                                <Badge variant="secondary">{r.status}</Badge>
+                              </div>
+                              <div className="text-xs text-muted-foreground mt-1">{r.description}</div>
+                              
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+                                <div>
+                                  <div className="text-[10px] uppercase text-muted-foreground">Probability</div>
+                                  <div className="text-xs font-medium">{r.probability}</div>
+                                </div>
+                                <div>
+                                  <div className="text-[10px] uppercase text-muted-foreground">Impact</div>
+                                  <div className="text-xs font-medium">{r.impact}</div>
+                                </div>
+                                <div>
+                                  <div className="text-[10px] uppercase text-muted-foreground">Owner</div>
+                                  <div className="text-xs font-medium">{r.owner || "—"}</div>
+                                </div>
+                                <div>
+                                  <div className="text-[10px] uppercase text-muted-foreground">Due Date</div>
+                                  <div className="text-xs font-medium">{formatDate(r.dueDate)}</div>
+                                </div>
+                              </div>
+                              
+                              {r.mitigationPlan && (
+                                <div className="mt-4 bg-muted/50 p-2 rounded text-xs border">
+                                  <div className="font-medium mb-1">Mitigation Plan</div>
+                                  <div className="text-muted-foreground">{r.mitigationPlan}</div>
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                              {r.status !== "Closed" && (
+                                <Button variant="outline" size="sm" className="h-8" onClick={() => updateRiskMutation.mutate({id, riskId: r.id, data: {status: "Closed"}})}>
+                                  Close
+                                </Button>
+                              )}
+                              <Button variant="ghost" size="icon" onClick={() => openRiskDialog(r)}>
+                                <Pencil className="h-4 w-4 text-muted-foreground" />
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="approvals">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle>Approvals</CardTitle>
+                    <CardDescription>Manage formal requests for sign-off or changes.</CardDescription>
+                  </div>
+                  <Button size="sm" onClick={() => setApprovalOpen(true)}>
+                    <CheckSquare className="h-4 w-4 mr-2" /> Request Approval
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  {sortedApprovals.length === 0 ? (
+                    <div className="text-center py-8 text-sm text-muted-foreground border rounded-md border-dashed">
+                      No approvals requested yet.
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {sortedApprovals.map((a) => (
+                        <div key={a.id} className="flex flex-col md:flex-row items-start justify-between p-4 border rounded-md relative hover:bg-muted/30 transition-colors">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline">{a.type}</Badge>
+                              <span className="font-medium text-sm">{a.title}</span>
+                              <Badge variant={a.status === "Pending" ? "default" : a.status === "Approved" ? "outline" : "secondary"} className={a.status === "Approved" ? "bg-green-100 text-green-700 border-green-200" : a.status === "Rejected" ? "bg-red-100 text-red-700" : ""}>
+                                {a.status}
+                              </Badge>
+                            </div>
+                            {a.description && <div className="text-xs text-muted-foreground mt-1">{a.description}</div>}
+                            <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+                              {a.requestedBy && <span>Requested By: {a.requestedBy}</span>}
+                              {a.approver && <span>Approver: {a.approver}</span>}
+                              <span>Age: {formatDate(a.requestedAt)}</span>
+                            </div>
+                            
+                            {a.status !== "Pending" && a.decisionNotes && (
+                              <div className="mt-3 bg-muted/50 p-2 rounded text-xs border">
+                                <div className="font-medium mb-1 flex items-center justify-between">
+                                  <span>Decision Notes</span>
+                                  {a.decidedAt && <span>{formatDate(a.decidedAt)}</span>}
+                                </div>
+                                <div className="text-muted-foreground">{a.decisionNotes}</div>
+                              </div>
+                            )}
+                          </div>
+                          
+                          {a.status === "Pending" && (
+                            <div className="mt-4 md:mt-0 flex items-center gap-2 md:ml-4 shrink-0">
+                               <Button variant="outline" size="sm" onClick={() => updateApprovalMutation.mutate({id, approvalId: a.id, data: {status: "Cancelled"}})}>
+                                Cancel
+                               </Button>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="golive">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle>Go-Live Readiness</CardTitle>
+                    <CardDescription>Assess operational readiness against standard checklists.</CardDescription>
+                  </div>
+                  <Button size="sm" onClick={() => setReadinessOpen(true)}>
+                    <Target className="h-4 w-4 mr-2" /> New Assessment
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  {(!assessments || assessments.length === 0) ? (
+                    <div className="text-center py-8 text-sm text-muted-foreground border rounded-md border-dashed">
+                      No readiness assessments created.
+                    </div>
+                  ) : (
+                    <div className="space-y-8">
+                      {assessments.map((assessment) => {
+                        const items = assessment.items || [];
+                        const categories = Array.from(new Set(items.map(i => i.category)));
+
+                        return (
+                          <div key={assessment.id} className="border rounded-lg overflow-hidden">
+                            <div className="bg-muted p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                              <div>
+                                <h3 className="font-bold text-lg">{assessment.name}</h3>
+                                {assessment.targetDate && <p className="text-sm text-muted-foreground">Target Date: {formatDate(assessment.targetDate)}</p>}
+                              </div>
+                              <div className="flex items-center gap-4">
+                                <Badge className={READINESS_COLORS[assessment.readinessStatus] ?? ""}>{assessment.readinessStatus}</Badge>
+                                <Button size="sm" variant="outline" onClick={() => {
+                                  setItemForm({category: "Requirements", requirement: "", owner: "", status: "Not Tested", required: true});
+                                  setEditingItem({item: {} as ReadinessItem, assessmentId: assessment.id});
+                                  setItemOpen(true);
+                                }}>
+                                  <PlusCircle className="h-4 w-4 mr-2" /> Add Item
+                                </Button>
+                              </div>
+                            </div>
+                            
+                            <div className="p-4 space-y-6">
+                              {categories.length === 0 ? (
+                                <p className="text-sm text-muted-foreground text-center">No checklist items.</p>
+                              ) : (
+                                categories.map(cat => (
+                                  <div key={cat} className="space-y-2">
+                                    <h4 className="font-medium text-sm text-foreground/80 border-b pb-1">{cat}</h4>
+                                    <div className="space-y-2">
+                                      {items.filter(i => i.category === cat).map(i => (
+                                        <div key={i.id} className="flex flex-col md:flex-row gap-4 items-start md:items-center text-sm p-2 hover:bg-muted/30 rounded border border-transparent hover:border-border transition-colors group">
+                                          <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2">
+                                              {i.required && <span className="text-[10px] bg-red-100 text-red-700 px-1 rounded uppercase tracking-wider font-semibold">Req</span>}
+                                              <span className="font-medium">{i.requirement}</span>
+                                            </div>
+                                            {i.notes && <div className="text-xs text-muted-foreground mt-1 truncate">{i.notes}</div>}
+                                          </div>
+                                          <div className="flex items-center gap-4 w-full md:w-auto shrink-0">
+                                            <span className="text-xs text-muted-foreground w-24 truncate">{i.owner || "Unassigned"}</span>
+                                            <Select 
+                                              value={i.status} 
+                                              onValueChange={(v) => updateReadinessItemMutation.mutate({id, assessmentId: assessment.id, itemId: i.id, data: {status: v}})}
+                                            >
+                                              <SelectTrigger className="w-[130px] h-8"><SelectValue /></SelectTrigger>
+                                              <SelectContent>
+                                                {READINESS_ITEM_STATUSES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                                              </SelectContent>
+                                            </Select>
+                                            <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 h-8 w-8" onClick={() => {
+                                              setItemForm({category: i.category, requirement: i.requirement, owner: i.owner, status: i.status, required: i.required});
+                                              setEditingItem({item: i, assessmentId: assessment.id});
+                                              setItemOpen(true);
+                                            }}>
+                                              <Pencil className="h-4 w-4" />
+                                            </Button>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
         </div>
 
         <div className="space-y-6">
@@ -358,13 +811,28 @@ export default function ProjectDetailPage() {
                   <SelectContent>{STATES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Health</Label>
-                <Select value={project.health} onValueChange={(v) => updateMutation.mutate({id, data: {health: v}})}>
-                  <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+              
+              <div className="space-y-1 p-2 rounded bg-muted/30 border">
+                <Label className="text-xs text-muted-foreground flex justify-between">
+                  <span>Health</span>
+                  {project.healthOverridden && <span className="text-[10px] text-amber-600 bg-amber-100 px-1 rounded font-semibold uppercase">Override</span>}
+                </Label>
+                <Select value={project.effectiveHealth} onValueChange={handleHealthChange}>
+                  <SelectTrigger className="h-8 font-semibold"><SelectValue /></SelectTrigger>
                   <SelectContent>{HEALTHS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
                 </Select>
+                {project.healthOverridden && (
+                  <div className="mt-2 text-[10px] text-muted-foreground space-y-1 pt-1 border-t">
+                    <div><span className="font-medium">Calculated:</span> {project.calculatedHealth}</div>
+                    {project.healthOverrideReason && <div><span className="font-medium">Reason:</span> {project.healthOverrideReason}</div>}
+                    <div className="flex justify-between">
+                      <span>{project.healthOverrideBy}</span>
+                      <span>{formatDate(project.healthOverrideAt)}</span>
+                    </div>
+                  </div>
+                )}
               </div>
+
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Priority</Label>
                 <Select value={project.priority} onValueChange={(v) => updateMutation.mutate({id, data: {priority: v}})}>
@@ -381,11 +849,11 @@ export default function ProjectDetailPage() {
         </div>
       </div>
 
+      {/* Milestone Dialog */}
       <Dialog open={milestoneOpen} onOpenChange={setMilestoneOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{editingMilestone ? "Edit Milestone" : "Add Milestone"}</DialogTitle>
-            <DialogDescription>Define a specific milestone or stage gate for this project.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
@@ -436,10 +904,227 @@ export default function ProjectDetailPage() {
             </div>
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => setMilestoneOpen(false)}>Cancel</Button>
-              <Button onClick={submitMilestoneSafe} disabled={createMsMutation.isPending || updateMsMutation.isPending}>
-                Save Milestone
-              </Button>
+              <Button onClick={submitMilestone} disabled={createMsMutation.isPending || updateMsMutation.isPending}>Save</Button>
             </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Risk Dialog */}
+      <Dialog open={riskOpen} onOpenChange={setRiskOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{editingRisk ? "Edit Risk" : "Add Risk"}</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label>Title</Label>
+              <Input value={riskForm.title} onChange={(e) => setRiskForm(f => ({...f, title: e.target.value}))} />
+            </div>
+            <div className="grid gap-2">
+              <Label>Description</Label>
+              <Textarea value={riskForm.description} onChange={(e) => setRiskForm(f => ({...f, description: e.target.value}))} rows={2} />
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="grid gap-2">
+                <Label>Severity</Label>
+                <Select value={riskForm.severity} onValueChange={(v) => setRiskForm(f => ({...f, severity: v}))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>{RISK_SEVERITIES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2">
+                <Label>Probability</Label>
+                <Select value={riskForm.probability} onValueChange={(v) => setRiskForm(f => ({...f, probability: v}))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>{RISK_PROBABILITIES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2">
+                <Label>Impact</Label>
+                <Select value={riskForm.impact} onValueChange={(v) => setRiskForm(f => ({...f, impact: v}))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>{RISK_IMPACTS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2">
+                <Label>Status</Label>
+                <Select value={riskForm.status} onValueChange={(v) => setRiskForm(f => ({...f, status: v}))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>{RISK_STATUSES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label>Owner</Label>
+                <Input value={riskForm.owner} onChange={(e) => setRiskForm(f => ({...f, owner: e.target.value}))} />
+              </div>
+              <div className="grid gap-2">
+                <Label>Due Date</Label>
+                <Input type="date" value={riskForm.dueDate} onChange={(e) => setRiskForm(f => ({...f, dueDate: e.target.value}))} />
+              </div>
+            </div>
+            <div className="grid gap-2">
+              <Label>Mitigation Plan</Label>
+              <Textarea value={riskForm.mitigationPlan} onChange={(e) => setRiskForm(f => ({...f, mitigationPlan: e.target.value}))} rows={2} />
+            </div>
+          </div>
+          <DialogFooter className="justify-between">
+            <div>
+              {editingRisk && (
+                <Button variant="destructive" onClick={() => deleteRiskMutation.mutate({ id, riskId: editingRisk.id })}>
+                  Delete
+                </Button>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setRiskOpen(false)}>Cancel</Button>
+              <Button onClick={submitRisk} disabled={createRiskMutation.isPending || updateRiskMutation.isPending}>Save</Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Approval Dialog */}
+      <Dialog open={approvalOpen} onOpenChange={setApprovalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Request Approval</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label>Type</Label>
+              <Select value={approvalForm.type} onValueChange={(v) => setApprovalForm(f => ({...f, type: v}))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{APPROVAL_TYPES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label>Title</Label>
+              <Input value={approvalForm.title} onChange={(e) => setApprovalForm(f => ({...f, title: e.target.value}))} />
+            </div>
+            <div className="grid gap-2">
+              <Label>Description / Justification</Label>
+              <Textarea value={approvalForm.description} onChange={(e) => setApprovalForm(f => ({...f, description: e.target.value}))} rows={3} />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label>Requested By</Label>
+                <Input value={approvalForm.requestedBy} onChange={(e) => setApprovalForm(f => ({...f, requestedBy: e.target.value}))} />
+              </div>
+              <div className="grid gap-2">
+                <Label>Approver (Optional)</Label>
+                <Input value={approvalForm.approver} onChange={(e) => setApprovalForm(f => ({...f, approver: e.target.value}))} />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setApprovalOpen(false)}>Cancel</Button>
+            <Button onClick={submitApproval} disabled={createApprovalMutation.isPending}>Submit Request</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Readiness Assessment Dialog */}
+      <Dialog open={readinessOpen} onOpenChange={setReadinessOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>New Go-Live Assessment</DialogTitle>
+            <DialogDescription>Initialize a readiness checklist.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label>Assessment Name</Label>
+              <Input value={readinessForm.name} onChange={(e) => setReadinessForm(f => ({...f, name: e.target.value}))} />
+            </div>
+            <div className="grid gap-2">
+              <Label>Target Date</Label>
+              <Input type="date" value={readinessForm.targetDate} onChange={(e) => setReadinessForm(f => ({...f, targetDate: e.target.value}))} />
+            </div>
+            <div className="flex items-center gap-2 pt-2">
+              <Checkbox id="seed" checked={readinessForm.seedStandardItems} onCheckedChange={(c) => setReadinessForm(f => ({...f, seedStandardItems: !!c}))} />
+              <Label htmlFor="seed" className="font-normal cursor-pointer">Seed standard checklist items by category</Label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReadinessOpen(false)}>Cancel</Button>
+            <Button onClick={submitReadiness} disabled={createReadinessMutation.isPending}>Create Assessment</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Readiness Item Dialog */}
+      <Dialog open={itemOpen} onOpenChange={setItemOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editingItem?.item?.id ? "Edit Checklist Item" : "Add Checklist Item"}</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label>Category</Label>
+              <Select value={itemForm.category} onValueChange={(v) => setItemForm(f => ({...f, category: v}))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{READINESS_CATEGORIES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label>Requirement</Label>
+              <Input value={itemForm.requirement} onChange={(e) => setItemForm(f => ({...f, requirement: e.target.value}))} />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label>Owner</Label>
+                <Input value={itemForm.owner} onChange={(e) => setItemForm(f => ({...f, owner: e.target.value}))} />
+              </div>
+              <div className="grid gap-2">
+                <Label>Status</Label>
+                <Select value={itemForm.status} onValueChange={(v) => setItemForm(f => ({...f, status: v}))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>{READINESS_ITEM_STATUSES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 pt-2">
+              <Checkbox id="required" checked={itemForm.required} onCheckedChange={(c) => setItemForm(f => ({...f, required: !!c}))} />
+              <Label htmlFor="required" className="font-normal cursor-pointer">This requirement is mandatory for Go-Live</Label>
+            </div>
+          </div>
+          <DialogFooter className="justify-between">
+            <div>
+              {editingItem?.item?.id && (
+                <Button variant="destructive" onClick={() => {
+                  deleteItemMutation.mutate({ id, assessmentId: editingItem.assessmentId, itemId: editingItem.item.id });
+                }}>
+                  Delete
+                </Button>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setItemOpen(false)}>Cancel</Button>
+              <Button onClick={submitItem} disabled={createItemMutation.isPending || updateReadinessItemMutation.isPending}>Save Item</Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Health Override Reason Dialog */}
+      <Dialog open={healthReasonDialog} onOpenChange={setHealthReasonDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Override Project Health</DialogTitle>
+            <DialogDescription>
+              Provide an optional reason for overriding the calculated project health to <strong>{pendingHealth}</strong>.
+              Setting it to "Unknown" will clear any existing overrides and revert to automatic calculation.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Label>Reason (Optional)</Label>
+            <Textarea className="mt-2" value={healthReason} onChange={(e) => setHealthReason(e.target.value)} rows={3} placeholder="Briefly explain why health is being set manually..." />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setHealthReasonDialog(false)}>Cancel</Button>
+            <Button onClick={submitHealthOverride} disabled={updateMutation.isPending}>Confirm Update</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

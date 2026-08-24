@@ -809,8 +809,11 @@ export interface Project {
   lifecycleStage: string;
   /** Active | On Hold | Closed */
   state: string;
-  /** On Track | At Risk | Off Track | Unknown */
+  /** Manually stored health (On Track | At Risk | Off Track | Unknown). Treated as a manual override when healthOverrideAt is set. */
   health: string;
+  healthOverrideReason?: string | null;
+  healthOverrideBy?: string | null;
+  healthOverrideAt?: string | null;
   /** Low | Medium | High | Critical */
   priority: string;
   primaryOwner: string;
@@ -839,6 +842,11 @@ export interface ProjectMilestone {
 export type ProjectDetail = Project & ({
   milestones: ProjectMilestone[];
   initiativeTitle?: string | null;
+  /** Deterministic server-side health */
+  calculatedHealth: string;
+  /** Manual override when set, otherwise calculated */
+  effectiveHealth: string;
+  healthOverridden: boolean;
 });
 
 export interface ProjectCreate {
@@ -871,7 +879,9 @@ export interface ProjectUpdate {
   projectType?: string;
   lifecycleStage?: string;
   state?: string;
+  /** Setting health records a manual override (who/when/reason); setting it to "Unknown" clears the override. */
   health?: string;
+  healthOverrideReason?: string | null;
   priority?: string;
   primaryOwner?: string;
   supportingOwners?: string;
@@ -921,6 +931,216 @@ export interface ExecutionSummary {
   dueSoonProjects: number;
   /** Initiatives in Approved status (or beyond) with no linked project */
   approvedUnpromotedInitiatives: number;
+}
+
+export interface ProjectRisk {
+  id: number;
+  projectId: number;
+  title: string;
+  description: string;
+  /** Critical | High | Medium | Low */
+  severity: string;
+  /** High | Medium | Low */
+  probability: string;
+  /** High | Medium | Low */
+  impact: string;
+  /** Open | Mitigating | Mitigated | Closed */
+  status: string;
+  owner: string;
+  mitigationPlan: string;
+  dueDate?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProjectRiskCreate {
+  /** @minLength 1 */
+  title: string;
+  description?: string;
+  /** @minLength 1 */
+  severity: string;
+  probability?: string;
+  impact?: string;
+  status?: string;
+  owner?: string;
+  mitigationPlan?: string;
+  dueDate?: string | null;
+}
+
+export interface ProjectRiskUpdate {
+  /** @minLength 1 */
+  title?: string;
+  description?: string;
+  severity?: string;
+  probability?: string;
+  impact?: string;
+  status?: string;
+  owner?: string;
+  mitigationPlan?: string;
+  dueDate?: string | null;
+}
+
+export interface ProjectApproval {
+  id: number;
+  projectId: number;
+  /** Go-Live Sign-Off | Scope Change | Stage Gate | Hold | Resource Request | Other */
+  type: string;
+  title: string;
+  description: string;
+  /** Pending | Approved | Rejected | Cancelled */
+  status: string;
+  requestedBy: string;
+  approver: string;
+  decisionNotes?: string | null;
+  requestedAt: string;
+  decidedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProjectApprovalCreate {
+  /** @minLength 1 */
+  type: string;
+  /** @minLength 1 */
+  title: string;
+  description?: string;
+  requestedBy?: string;
+  approver?: string;
+}
+
+/**
+ * Setting status to Approved/Rejected/Cancelled stamps decidedAt server-side; reverting to Pending clears it.
+ */
+export interface ProjectApprovalUpdate {
+  /** @minLength 1 */
+  type?: string;
+  /** @minLength 1 */
+  title?: string;
+  description?: string;
+  status?: string;
+  approver?: string;
+  decisionNotes?: string | null;
+}
+
+export type ApprovalQueueEntry = ProjectApproval & {
+  projectName: string;
+};
+
+export interface ReadinessItem {
+  id: number;
+  assessmentId: number;
+  /** Requirements | Development | Testing | Data | Operations | Client | Security / Compliance | Production | Training / Documentation (extensible) */
+  category: string;
+  requirement: string;
+  owner: string;
+  /** Not Tested | Pass | Fail | Not Applicable */
+  status: string;
+  notes: string;
+  required: boolean;
+  sequence: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ReadinessItemCreate {
+  /** @minLength 1 */
+  category: string;
+  /** @minLength 1 */
+  requirement: string;
+  owner?: string;
+  status?: string;
+  notes?: string;
+  required?: boolean;
+  sequence?: number;
+}
+
+export interface ReadinessItemUpdate {
+  /** @minLength 1 */
+  category?: string;
+  /** @minLength 1 */
+  requirement?: string;
+  owner?: string;
+  status?: string;
+  notes?: string;
+  required?: boolean;
+  sequence?: number;
+}
+
+export interface ReadinessAssessment {
+  id: number;
+  projectId: number;
+  name: string;
+  targetDate?: string | null;
+  /** Server-computed — Ready | At Risk | Not Ready | Not Started */
+  readinessStatus: string;
+  items: ReadinessItem[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ReadinessAssessmentCreate {
+  /** @minLength 1 */
+  name: string;
+  targetDate?: string | null;
+  /** Seed one required checklist item per standard category */
+  seedStandardItems?: boolean;
+}
+
+export interface ReadinessAssessmentUpdate {
+  /** @minLength 1 */
+  name?: string;
+  targetDate?: string | null;
+}
+
+export interface PortfolioSummary {
+  activeProjects: number;
+  atRiskProjects: number;
+  offTrackProjects: number;
+  onHoldProjects: number;
+  dueSoonProjects: number;
+  openCriticalHighRisks: number;
+  pendingApprovals: number;
+  notReadyProjects: number;
+}
+
+export interface PortfolioRow {
+  id: number;
+  name: string;
+  projectType: string;
+  /** Client/program/org display name, or "Internal" */
+  context: string;
+  clientId?: number | null;
+  primaryOwner: string;
+  lifecycleStage: string;
+  state: string;
+  /** Manually stored health (compatibility/override) */
+  health: string;
+  /** Deterministic server-side health */
+  calculatedHealth: string;
+  /** Manual override when set, otherwise calculated */
+  effectiveHealth: string;
+  healthOverridden?: boolean;
+  priority: string;
+  targetDate?: string | null;
+  milestonesTotal: number;
+  milestonesCompleted: number;
+  /** Highest open risk severity or "None" */
+  topOpenRiskSeverity: string;
+  pendingApprovals: number;
+  /** Latest assessment status or "Not Started" */
+  readinessStatus: string;
+}
+
+export interface Portfolio {
+  summary: PortfolioSummary;
+  rows: PortfolioRow[];
+}
+
+export interface DashboardAttention {
+  openCriticalHighRisks: number;
+  pendingApprovals: number;
+  notReadyProjects: number;
+  overdueMilestones: number;
 }
 
 export type ListProjectsParams = {

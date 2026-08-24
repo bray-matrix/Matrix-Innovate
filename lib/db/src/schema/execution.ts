@@ -83,8 +83,13 @@ export const projectsTable = pgTable("projects", {
   lifecycleStage: text("lifecycle_stage").notNull().default("Planning"),
   // Active | On Hold | Closed — kept separate from health
   state: text("state").notNull().default("Active"),
-  // On Track | At Risk | Off Track | Unknown
+  // On Track | At Risk | Off Track | Unknown — manually stored value.
+  // Treated as a manual override when health_override_at is set; effective
+  // health is otherwise calculated deterministically server-side (Phase 2).
   health: text("health").notNull().default("Unknown"),
+  healthOverrideReason: text("health_override_reason"),
+  healthOverrideBy: text("health_override_by"),
+  healthOverrideAt: timestamp("health_override_at"),
   // Low | Medium | High | Critical
   priority: text("priority").notNull().default("Medium"),
   primaryOwner: text("primary_owner").notNull().default(""),
@@ -145,3 +150,101 @@ export type ProjectMilestone = typeof projectMilestonesTable.$inferSelect;
 export type InsertProjectMilestone = z.infer<
   typeof insertProjectMilestoneSchema
 >;
+
+// --- Phase 2: governance (risks, approvals, go-live readiness) -------------
+
+export const projectRisksTable = pgTable("project_risks", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id")
+    .notNull()
+    .references(() => projectsTable.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  description: text("description").notNull().default(""),
+  // Critical | High | Medium | Low
+  severity: text("severity").notNull().default("Medium"),
+  // High | Medium | Low
+  probability: text("probability").notNull().default("Medium"),
+  // High | Medium | Low
+  impact: text("impact").notNull().default("Medium"),
+  // Open | Mitigating | Mitigated | Closed
+  status: text("status").notNull().default("Open"),
+  owner: text("owner").notNull().default(""),
+  mitigationPlan: text("mitigation_plan").notNull().default(""),
+  dueDate: timestamp("due_date"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const projectApprovalsTable = pgTable("project_approvals", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id")
+    .notNull()
+    .references(() => projectsTable.id, { onDelete: "cascade" }),
+  // Go-Live Sign-Off | Scope Change | Stage Gate | Hold | Resource Request | Other
+  type: text("type").notNull().default("Other"),
+  title: text("title").notNull(),
+  description: text("description").notNull().default(""),
+  // Pending | Approved | Rejected | Cancelled
+  status: text("status").notNull().default("Pending"),
+  requestedBy: text("requested_by").notNull().default(""),
+  approver: text("approver").notNull().default(""),
+  decisionNotes: text("decision_notes"),
+  requestedAt: timestamp("requested_at").notNull().defaultNow(),
+  decidedAt: timestamp("decided_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const readinessAssessmentsTable = pgTable("readiness_assessments", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id")
+    .notNull()
+    .references(() => projectsTable.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  targetDate: timestamp("target_date"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const readinessItemsTable = pgTable("readiness_items", {
+  id: serial("id").primaryKey(),
+  assessmentId: integer("assessment_id")
+    .notNull()
+    .references(() => readinessAssessmentsTable.id, { onDelete: "cascade" }),
+  // Extensible text convention; standard categories seeded from constants.
+  category: text("category").notNull(),
+  requirement: text("requirement").notNull(),
+  owner: text("owner").notNull().default(""),
+  // Not Tested | Pass | Fail | Not Applicable
+  status: text("status").notNull().default("Not Tested"),
+  notes: text("notes").notNull().default(""),
+  required: boolean("required").notNull().default(true),
+  sequence: integer("sequence").notNull().default(0),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertProjectRiskSchema = createInsertSchema(
+  projectRisksTable,
+).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertProjectApprovalSchema = createInsertSchema(
+  projectApprovalsTable,
+).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertReadinessAssessmentSchema = createInsertSchema(
+  readinessAssessmentsTable,
+).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertReadinessItemSchema = createInsertSchema(
+  readinessItemsTable,
+).omit({ id: true, createdAt: true, updatedAt: true });
+
+export type ProjectRisk = typeof projectRisksTable.$inferSelect;
+export type InsertProjectRisk = z.infer<typeof insertProjectRiskSchema>;
+export type ProjectApproval = typeof projectApprovalsTable.$inferSelect;
+export type InsertProjectApproval = z.infer<typeof insertProjectApprovalSchema>;
+export type ReadinessAssessment =
+  typeof readinessAssessmentsTable.$inferSelect;
+export type InsertReadinessAssessment = z.infer<
+  typeof insertReadinessAssessmentSchema
+>;
+export type ReadinessItem = typeof readinessItemsTable.$inferSelect;
+export type InsertReadinessItem = z.infer<typeof insertReadinessItemSchema>;

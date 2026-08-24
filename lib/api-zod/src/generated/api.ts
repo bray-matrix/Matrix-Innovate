@@ -1393,7 +1393,10 @@ export const ListProjectsResponseItem = zod.object({
   "projectType": zod.string().describe('Client Implementation | Internal Technology | Internal Operations | Executive Initiative | Innovation | Other (extensible)'),
   "lifecycleStage": zod.string().describe('Planning | Ready | In Progress | On Hold | Completed | Cancelled'),
   "state": zod.string().describe('Active | On Hold | Closed'),
-  "health": zod.string().describe('On Track | At Risk | Off Track | Unknown'),
+  "health": zod.string().describe('Manually stored health (On Track | At Risk | Off Track | Unknown). Treated as a manual override when healthOverrideAt is set.'),
+  "healthOverrideReason": zod.string().nullish(),
+  "healthOverrideBy": zod.string().nullish(),
+  "healthOverrideAt": zod.coerce.date().nullish(),
   "priority": zod.string().describe('Low | Medium | High | Critical'),
   "primaryOwner": zod.string(),
   "supportingOwners": zod.string().describe('Comma-separated supporting owners'),
@@ -1439,7 +1442,10 @@ export const CreateProjectResponse = zod.object({
   "projectType": zod.string().describe('Client Implementation | Internal Technology | Internal Operations | Executive Initiative | Innovation | Other (extensible)'),
   "lifecycleStage": zod.string().describe('Planning | Ready | In Progress | On Hold | Completed | Cancelled'),
   "state": zod.string().describe('Active | On Hold | Closed'),
-  "health": zod.string().describe('On Track | At Risk | Off Track | Unknown'),
+  "health": zod.string().describe('Manually stored health (On Track | At Risk | Off Track | Unknown). Treated as a manual override when healthOverrideAt is set.'),
+  "healthOverrideReason": zod.string().nullish(),
+  "healthOverrideBy": zod.string().nullish(),
+  "healthOverrideAt": zod.coerce.date().nullish(),
   "priority": zod.string().describe('Low | Medium | High | Critical'),
   "primaryOwner": zod.string(),
   "supportingOwners": zod.string().describe('Comma-separated supporting owners'),
@@ -1467,7 +1473,10 @@ export const GetProjectResponse = zod.object({
   "projectType": zod.string().describe('Client Implementation | Internal Technology | Internal Operations | Executive Initiative | Innovation | Other (extensible)'),
   "lifecycleStage": zod.string().describe('Planning | Ready | In Progress | On Hold | Completed | Cancelled'),
   "state": zod.string().describe('Active | On Hold | Closed'),
-  "health": zod.string().describe('On Track | At Risk | Off Track | Unknown'),
+  "health": zod.string().describe('Manually stored health (On Track | At Risk | Off Track | Unknown). Treated as a manual override when healthOverrideAt is set.'),
+  "healthOverrideReason": zod.string().nullish(),
+  "healthOverrideBy": zod.string().nullish(),
+  "healthOverrideAt": zod.coerce.date().nullish(),
   "priority": zod.string().describe('Low | Medium | High | Critical'),
   "primaryOwner": zod.string(),
   "supportingOwners": zod.string().describe('Comma-separated supporting owners'),
@@ -1488,7 +1497,10 @@ export const GetProjectResponse = zod.object({
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 })),
-  "initiativeTitle": zod.string().nullish()
+  "initiativeTitle": zod.string().nullish(),
+  "calculatedHealth": zod.string().describe('Deterministic server-side health'),
+  "effectiveHealth": zod.string().describe('Manual override when set, otherwise calculated'),
+  "healthOverridden": zod.boolean()
 }))
 
 
@@ -1512,7 +1524,8 @@ export const UpdateProjectBody = zod.object({
   "projectType": zod.string().min(1).optional(),
   "lifecycleStage": zod.string().optional(),
   "state": zod.string().optional(),
-  "health": zod.string().optional(),
+  "health": zod.string().optional().describe('Setting health records a manual override (who\/when\/reason); setting it to \"Unknown\" clears the override.'),
+  "healthOverrideReason": zod.string().nullish(),
   "priority": zod.string().optional(),
   "primaryOwner": zod.string().optional(),
   "supportingOwners": zod.string().optional(),
@@ -1530,7 +1543,10 @@ export const UpdateProjectResponse = zod.object({
   "projectType": zod.string().describe('Client Implementation | Internal Technology | Internal Operations | Executive Initiative | Innovation | Other (extensible)'),
   "lifecycleStage": zod.string().describe('Planning | Ready | In Progress | On Hold | Completed | Cancelled'),
   "state": zod.string().describe('Active | On Hold | Closed'),
-  "health": zod.string().describe('On Track | At Risk | Off Track | Unknown'),
+  "health": zod.string().describe('Manually stored health (On Track | At Risk | Off Track | Unknown). Treated as a manual override when healthOverrideAt is set.'),
+  "healthOverrideReason": zod.string().nullish(),
+  "healthOverrideBy": zod.string().nullish(),
+  "healthOverrideAt": zod.coerce.date().nullish(),
   "priority": zod.string().describe('Low | Medium | High | Critical'),
   "primaryOwner": zod.string(),
   "supportingOwners": zod.string().describe('Comma-separated supporting owners'),
@@ -1687,13 +1703,524 @@ export const PromoteInitiativeResponse = zod.object({
   "projectType": zod.string().describe('Client Implementation | Internal Technology | Internal Operations | Executive Initiative | Innovation | Other (extensible)'),
   "lifecycleStage": zod.string().describe('Planning | Ready | In Progress | On Hold | Completed | Cancelled'),
   "state": zod.string().describe('Active | On Hold | Closed'),
-  "health": zod.string().describe('On Track | At Risk | Off Track | Unknown'),
+  "health": zod.string().describe('Manually stored health (On Track | At Risk | Off Track | Unknown). Treated as a manual override when healthOverrideAt is set.'),
+  "healthOverrideReason": zod.string().nullish(),
+  "healthOverrideBy": zod.string().nullish(),
+  "healthOverrideAt": zod.coerce.date().nullish(),
   "priority": zod.string().describe('Low | Medium | High | Critical'),
   "primaryOwner": zod.string(),
   "supportingOwners": zod.string().describe('Comma-separated supporting owners'),
   "targetDate": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary List risks for a project
+ */
+export const ListProjectRisksParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const ListProjectRisksResponseItem = zod.object({
+  "id": zod.number(),
+  "projectId": zod.number(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "severity": zod.string().describe('Critical | High | Medium | Low'),
+  "probability": zod.string().describe('High | Medium | Low'),
+  "impact": zod.string().describe('High | Medium | Low'),
+  "status": zod.string().describe('Open | Mitigating | Mitigated | Closed'),
+  "owner": zod.string(),
+  "mitigationPlan": zod.string(),
+  "dueDate": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListProjectRisksResponse = zod.array(ListProjectRisksResponseItem)
+
+
+/**
+ * @summary Add a risk to a project
+ */
+export const CreateProjectRiskParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+
+
+
+export const CreateProjectRiskBody = zod.object({
+  "title": zod.string().min(1),
+  "description": zod.string().optional(),
+  "severity": zod.string().min(1),
+  "probability": zod.string().optional(),
+  "impact": zod.string().optional(),
+  "status": zod.string().optional(),
+  "owner": zod.string().optional(),
+  "mitigationPlan": zod.string().optional(),
+  "dueDate": zod.coerce.date().nullish()
+})
+
+export const CreateProjectRiskResponse = zod.object({
+  "id": zod.number(),
+  "projectId": zod.number(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "severity": zod.string().describe('Critical | High | Medium | Low'),
+  "probability": zod.string().describe('High | Medium | Low'),
+  "impact": zod.string().describe('High | Medium | Low'),
+  "status": zod.string().describe('Open | Mitigating | Mitigated | Closed'),
+  "owner": zod.string(),
+  "mitigationPlan": zod.string(),
+  "dueDate": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Update a risk
+ */
+export const UpdateProjectRiskParams = zod.object({
+  "id": zod.coerce.number(),
+  "riskId": zod.coerce.number()
+})
+
+
+
+
+export const UpdateProjectRiskBody = zod.object({
+  "title": zod.string().min(1).optional(),
+  "description": zod.string().optional(),
+  "severity": zod.string().optional(),
+  "probability": zod.string().optional(),
+  "impact": zod.string().optional(),
+  "status": zod.string().optional(),
+  "owner": zod.string().optional(),
+  "mitigationPlan": zod.string().optional(),
+  "dueDate": zod.coerce.date().nullish()
+})
+
+export const UpdateProjectRiskResponse = zod.object({
+  "id": zod.number(),
+  "projectId": zod.number(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "severity": zod.string().describe('Critical | High | Medium | Low'),
+  "probability": zod.string().describe('High | Medium | Low'),
+  "impact": zod.string().describe('High | Medium | Low'),
+  "status": zod.string().describe('Open | Mitigating | Mitigated | Closed'),
+  "owner": zod.string(),
+  "mitigationPlan": zod.string(),
+  "dueDate": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Delete a risk
+ */
+export const DeleteProjectRiskParams = zod.object({
+  "id": zod.coerce.number(),
+  "riskId": zod.coerce.number()
+})
+
+export const DeleteProjectRiskResponse = zod.void()
+
+
+/**
+ * @summary List approvals for a project
+ */
+export const ListProjectApprovalsParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const ListProjectApprovalsResponseItem = zod.object({
+  "id": zod.number(),
+  "projectId": zod.number(),
+  "type": zod.string().describe('Go-Live Sign-Off | Scope Change | Stage Gate | Hold | Resource Request | Other'),
+  "title": zod.string(),
+  "description": zod.string(),
+  "status": zod.string().describe('Pending | Approved | Rejected | Cancelled'),
+  "requestedBy": zod.string(),
+  "approver": zod.string(),
+  "decisionNotes": zod.string().nullish(),
+  "requestedAt": zod.coerce.date(),
+  "decidedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListProjectApprovalsResponse = zod.array(ListProjectApprovalsResponseItem)
+
+
+/**
+ * @summary Request an approval on a project
+ */
+export const CreateProjectApprovalParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+
+
+
+export const CreateProjectApprovalBody = zod.object({
+  "type": zod.string().min(1),
+  "title": zod.string().min(1),
+  "description": zod.string().optional(),
+  "requestedBy": zod.string().optional(),
+  "approver": zod.string().optional()
+})
+
+export const CreateProjectApprovalResponse = zod.object({
+  "id": zod.number(),
+  "projectId": zod.number(),
+  "type": zod.string().describe('Go-Live Sign-Off | Scope Change | Stage Gate | Hold | Resource Request | Other'),
+  "title": zod.string(),
+  "description": zod.string(),
+  "status": zod.string().describe('Pending | Approved | Rejected | Cancelled'),
+  "requestedBy": zod.string(),
+  "approver": zod.string(),
+  "decisionNotes": zod.string().nullish(),
+  "requestedAt": zod.coerce.date(),
+  "decidedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Update or decide an approval (server stamps decidedAt on decision)
+ */
+export const UpdateProjectApprovalParams = zod.object({
+  "id": zod.coerce.number(),
+  "approvalId": zod.coerce.number()
+})
+
+
+
+
+
+export const UpdateProjectApprovalBody = zod.object({
+  "type": zod.string().min(1).optional(),
+  "title": zod.string().min(1).optional(),
+  "description": zod.string().optional(),
+  "status": zod.string().optional(),
+  "approver": zod.string().optional(),
+  "decisionNotes": zod.string().nullish()
+}).describe('Setting status to Approved\/Rejected\/Cancelled stamps decidedAt server-side; reverting to Pending clears it.')
+
+export const UpdateProjectApprovalResponse = zod.object({
+  "id": zod.number(),
+  "projectId": zod.number(),
+  "type": zod.string().describe('Go-Live Sign-Off | Scope Change | Stage Gate | Hold | Resource Request | Other'),
+  "title": zod.string(),
+  "description": zod.string(),
+  "status": zod.string().describe('Pending | Approved | Rejected | Cancelled'),
+  "requestedBy": zod.string(),
+  "approver": zod.string(),
+  "decisionNotes": zod.string().nullish(),
+  "requestedAt": zod.coerce.date(),
+  "decidedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Delete an approval request
+ */
+export const DeleteProjectApprovalParams = zod.object({
+  "id": zod.coerce.number(),
+  "approvalId": zod.coerce.number()
+})
+
+export const DeleteProjectApprovalResponse = zod.void()
+
+
+/**
+ * @summary Global approval queue (pending first, then most recent)
+ */
+export const ListApprovalsResponseItem = zod.object({
+  "id": zod.number(),
+  "projectId": zod.number(),
+  "type": zod.string().describe('Go-Live Sign-Off | Scope Change | Stage Gate | Hold | Resource Request | Other'),
+  "title": zod.string(),
+  "description": zod.string(),
+  "status": zod.string().describe('Pending | Approved | Rejected | Cancelled'),
+  "requestedBy": zod.string(),
+  "approver": zod.string(),
+  "decisionNotes": zod.string().nullish(),
+  "requestedAt": zod.coerce.date(),
+  "decidedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}).and(zod.object({
+  "projectName": zod.string()
+}))
+export const ListApprovalsResponse = zod.array(ListApprovalsResponseItem)
+
+
+/**
+ * @summary List go-live readiness assessments (with items and computed summary)
+ */
+export const ListReadinessAssessmentsParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const ListReadinessAssessmentsResponseItem = zod.object({
+  "id": zod.number(),
+  "projectId": zod.number(),
+  "name": zod.string(),
+  "targetDate": zod.coerce.date().nullish(),
+  "readinessStatus": zod.string().describe('Server-computed — Ready | At Risk | Not Ready | Not Started'),
+  "items": zod.array(zod.object({
+  "id": zod.number(),
+  "assessmentId": zod.number(),
+  "category": zod.string().describe('Requirements | Development | Testing | Data | Operations | Client | Security \/ Compliance | Production | Training \/ Documentation (extensible)'),
+  "requirement": zod.string(),
+  "owner": zod.string(),
+  "status": zod.string().describe('Not Tested | Pass | Fail | Not Applicable'),
+  "notes": zod.string(),
+  "required": zod.boolean(),
+  "sequence": zod.number(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListReadinessAssessmentsResponse = zod.array(ListReadinessAssessmentsResponseItem)
+
+
+/**
+ * @summary Create a readiness assessment (optionally seeded with standard category items)
+ */
+export const CreateReadinessAssessmentParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+
+
+export const CreateReadinessAssessmentBody = zod.object({
+  "name": zod.string().min(1),
+  "targetDate": zod.coerce.date().nullish(),
+  "seedStandardItems": zod.boolean().optional().describe('Seed one required checklist item per standard category')
+})
+
+export const CreateReadinessAssessmentResponse = zod.object({
+  "id": zod.number(),
+  "projectId": zod.number(),
+  "name": zod.string(),
+  "targetDate": zod.coerce.date().nullish(),
+  "readinessStatus": zod.string().describe('Server-computed — Ready | At Risk | Not Ready | Not Started'),
+  "items": zod.array(zod.object({
+  "id": zod.number(),
+  "assessmentId": zod.number(),
+  "category": zod.string().describe('Requirements | Development | Testing | Data | Operations | Client | Security \/ Compliance | Production | Training \/ Documentation (extensible)'),
+  "requirement": zod.string(),
+  "owner": zod.string(),
+  "status": zod.string().describe('Not Tested | Pass | Fail | Not Applicable'),
+  "notes": zod.string(),
+  "required": zod.boolean(),
+  "sequence": zod.number(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Update a readiness assessment
+ */
+export const UpdateReadinessAssessmentParams = zod.object({
+  "id": zod.coerce.number(),
+  "assessmentId": zod.coerce.number()
+})
+
+
+
+
+export const UpdateReadinessAssessmentBody = zod.object({
+  "name": zod.string().min(1).optional(),
+  "targetDate": zod.coerce.date().nullish()
+})
+
+export const UpdateReadinessAssessmentResponse = zod.object({
+  "id": zod.number(),
+  "projectId": zod.number(),
+  "name": zod.string(),
+  "targetDate": zod.coerce.date().nullish(),
+  "readinessStatus": zod.string().describe('Server-computed — Ready | At Risk | Not Ready | Not Started'),
+  "items": zod.array(zod.object({
+  "id": zod.number(),
+  "assessmentId": zod.number(),
+  "category": zod.string().describe('Requirements | Development | Testing | Data | Operations | Client | Security \/ Compliance | Production | Training \/ Documentation (extensible)'),
+  "requirement": zod.string(),
+  "owner": zod.string(),
+  "status": zod.string().describe('Not Tested | Pass | Fail | Not Applicable'),
+  "notes": zod.string(),
+  "required": zod.boolean(),
+  "sequence": zod.number(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Delete a readiness assessment and its items
+ */
+export const DeleteReadinessAssessmentParams = zod.object({
+  "id": zod.coerce.number(),
+  "assessmentId": zod.coerce.number()
+})
+
+export const DeleteReadinessAssessmentResponse = zod.void()
+
+
+/**
+ * @summary Add a checklist item to a readiness assessment
+ */
+export const CreateReadinessItemParams = zod.object({
+  "id": zod.coerce.number(),
+  "assessmentId": zod.coerce.number()
+})
+
+
+
+
+
+export const CreateReadinessItemBody = zod.object({
+  "category": zod.string().min(1),
+  "requirement": zod.string().min(1),
+  "owner": zod.string().optional(),
+  "status": zod.string().optional(),
+  "notes": zod.string().optional(),
+  "required": zod.boolean().optional(),
+  "sequence": zod.number().optional()
+})
+
+export const CreateReadinessItemResponse = zod.object({
+  "id": zod.number(),
+  "assessmentId": zod.number(),
+  "category": zod.string().describe('Requirements | Development | Testing | Data | Operations | Client | Security \/ Compliance | Production | Training \/ Documentation (extensible)'),
+  "requirement": zod.string(),
+  "owner": zod.string(),
+  "status": zod.string().describe('Not Tested | Pass | Fail | Not Applicable'),
+  "notes": zod.string(),
+  "required": zod.boolean(),
+  "sequence": zod.number(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Update a readiness checklist item
+ */
+export const UpdateReadinessItemParams = zod.object({
+  "id": zod.coerce.number(),
+  "assessmentId": zod.coerce.number(),
+  "itemId": zod.coerce.number()
+})
+
+
+
+
+
+export const UpdateReadinessItemBody = zod.object({
+  "category": zod.string().min(1).optional(),
+  "requirement": zod.string().min(1).optional(),
+  "owner": zod.string().optional(),
+  "status": zod.string().optional(),
+  "notes": zod.string().optional(),
+  "required": zod.boolean().optional(),
+  "sequence": zod.number().optional()
+})
+
+export const UpdateReadinessItemResponse = zod.object({
+  "id": zod.number(),
+  "assessmentId": zod.number(),
+  "category": zod.string().describe('Requirements | Development | Testing | Data | Operations | Client | Security \/ Compliance | Production | Training \/ Documentation (extensible)'),
+  "requirement": zod.string(),
+  "owner": zod.string(),
+  "status": zod.string().describe('Not Tested | Pass | Fail | Not Applicable'),
+  "notes": zod.string(),
+  "required": zod.boolean(),
+  "sequence": zod.number(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Delete a readiness checklist item
+ */
+export const DeleteReadinessItemParams = zod.object({
+  "id": zod.coerce.number(),
+  "assessmentId": zod.coerce.number(),
+  "itemId": zod.coerce.number()
+})
+
+export const DeleteReadinessItemResponse = zod.void()
+
+
+/**
+ * @summary Portfolio summary and per-project rollup (real DB aggregation)
+ */
+export const GetPortfolioResponse = zod.object({
+  "summary": zod.object({
+  "activeProjects": zod.number(),
+  "atRiskProjects": zod.number(),
+  "offTrackProjects": zod.number(),
+  "onHoldProjects": zod.number(),
+  "dueSoonProjects": zod.number(),
+  "openCriticalHighRisks": zod.number(),
+  "pendingApprovals": zod.number(),
+  "notReadyProjects": zod.number()
+}),
+  "rows": zod.array(zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "projectType": zod.string(),
+  "context": zod.string().describe('Client\/program\/org display name, or \"Internal\"'),
+  "clientId": zod.number().nullish(),
+  "primaryOwner": zod.string(),
+  "lifecycleStage": zod.string(),
+  "state": zod.string(),
+  "health": zod.string().describe('Manually stored health (compatibility\/override)'),
+  "calculatedHealth": zod.string().describe('Deterministic server-side health'),
+  "effectiveHealth": zod.string().describe('Manual override when set, otherwise calculated'),
+  "healthOverridden": zod.boolean().optional(),
+  "priority": zod.string(),
+  "targetDate": zod.coerce.date().nullish(),
+  "milestonesTotal": zod.number(),
+  "milestonesCompleted": zod.number(),
+  "topOpenRiskSeverity": zod.string().describe('Highest open risk severity or \"None\"'),
+  "pendingApprovals": zod.number(),
+  "readinessStatus": zod.string().describe('Latest assessment status or \"Not Started\"')
+}))
+})
+
+
+/**
+ * @summary Execution attention indicators for the dashboard
+ */
+export const GetDashboardAttentionResponse = zod.object({
+  "openCriticalHighRisks": zod.number(),
+  "pendingApprovals": zod.number(),
+  "notReadyProjects": zod.number(),
+  "overdueMilestones": zod.number()
 })
 
 

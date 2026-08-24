@@ -17,7 +17,9 @@ export interface ProjectUpdate {
   projectType?: string;
   lifecycleStage?: string;
   state?: string;
+  /** Setting health records a manual override (who/when/reason); setting it to "Unknown" clears the override. */
   health?: string;
+  healthOverrideReason?: string | null;
   priority?: string;
   primaryOwner?: string;
   supportingOwners?: string;

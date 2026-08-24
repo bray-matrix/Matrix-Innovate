@@ -1,6 +1,16 @@
 import { Router, type IRouter } from "express";
-import { db, initiativesTable, projectsTable } from "@workspace/db";
-import { desc, isNotNull } from "drizzle-orm";
+import {
+  db,
+  initiativesTable,
+  projectsTable,
+  projectMilestonesTable,
+  projectRisksTable,
+  projectApprovalsTable,
+  readinessAssessmentsTable,
+  readinessItemsTable,
+} from "@workspace/db";
+import { desc, isNotNull, eq, ne, and, lt, inArray } from "drizzle-orm";
+import { computeReadinessStatus } from "../lib/project-health";
 
 const router: IRouter = Router();
 
@@ -110,6 +120,85 @@ router.get("/dashboard/execution-summary", async (_req, res, next) => {
       atRiskProjects,
       dueSoonProjects,
       approvedUnpromotedInitiatives,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Execution attention indicators (Phase 2): items needing action now.
+router.get("/dashboard/attention", async (_req, res, next) => {
+  try {
+    const now = new Date();
+    const [risks, pendingApprovals, overdue, assessments, activeProjects] =
+      await Promise.all([
+        db
+          .select({ id: projectRisksTable.id })
+          .from(projectRisksTable)
+          .where(
+            and(
+              inArray(projectRisksTable.status, ["Open", "Mitigating"]),
+              inArray(projectRisksTable.severity, ["Critical", "High"]),
+            ),
+          ),
+        db
+          .select({ id: projectApprovalsTable.id })
+          .from(projectApprovalsTable)
+          .where(eq(projectApprovalsTable.status, "Pending")),
+        db
+          .select({ id: projectMilestonesTable.id })
+          .from(projectMilestonesTable)
+          .where(
+            and(
+              ne(projectMilestonesTable.status, "Completed"),
+              lt(projectMilestonesTable.dueDate, now),
+            ),
+          ),
+        db.select().from(readinessAssessmentsTable),
+        db
+          .select({
+            id: projectsTable.id,
+            lifecycleStage: projectsTable.lifecycleStage,
+            state: projectsTable.state,
+          })
+          .from(projectsTable),
+      ]);
+    const items =
+      assessments.length > 0
+        ? await db
+            .select()
+            .from(readinessItemsTable)
+            .where(
+              inArray(
+                readinessItemsTable.assessmentId,
+                assessments.map((a) => a.id),
+              ),
+            )
+        : [];
+    const closed = new Set(["Completed", "Cancelled"]);
+    const activeIds = new Set(
+      activeProjects
+        .filter((p) => !closed.has(p.lifecycleStage) && p.state !== "Closed")
+        .map((p) => p.id),
+    );
+    const notReadyProjects = new Set(
+      assessments
+        .filter(
+          (a) =>
+            activeIds.has(a.projectId) &&
+            computeReadinessStatus(
+              items.filter((i) => i.assessmentId === a.id),
+              a.targetDate,
+              now,
+            ) === "Not Ready",
+        )
+        .map((a) => a.projectId),
+    ).size;
+    res.json({
+      openCriticalHighRisks: risks.length,
+      pendingApprovals: pendingApprovals.length,
+      notReadyProjects,
+      overdueMilestones: overdue.length,
     });
   } catch (err) {
     next(err);

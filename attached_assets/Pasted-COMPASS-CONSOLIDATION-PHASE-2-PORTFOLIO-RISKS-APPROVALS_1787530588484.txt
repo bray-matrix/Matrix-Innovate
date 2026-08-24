@@ -1,0 +1,543 @@
+COMPASS CONSOLIDATION
+PHASE 2: PORTFOLIO + RISKS + APPROVALS + GO-LIVE READINESS
+
+IMPORTANT:
+You are in the surviving Compass application, formerly Matrix Innovation Hub.
+
+Expected current version:
+v1.0.0
+
+Expected architecture:
+- React 18 + Vite
+- Express 5
+- PostgreSQL + Drizzle
+- OpenAPI -> Orval -> Zod -> Express -> Drizzle
+- Matrix SDK v1.1 integration
+- Real database persistence for all business data
+
+Before making changes, confirm:
+- Application reports name = Compass
+- Version = v1.0.0
+- Existing Initiative functionality is intact
+- Projects, Programs, Clients, Organizations, and Project Milestones exist
+- No new Compass business functionality uses mock/in-memory data
+
+If any assumption is false, STOP and report the discrepancy.
+
+GOAL
+
+Port the next highest-value capabilities from the previous Compass application into the surviving Compass codebase:
+
+1. Portfolio
+2. Risks
+3. Approvals
+4. Go-Live Readiness
+
+All new functionality must use real PostgreSQL persistence.
+
+Do NOT copy old Compass mock-data architecture.
+
+--------------------------------------------------
+1. VERSION
+--------------------------------------------------
+
+This is a MINOR feature release.
+
+Set version:
+
+v1.1.0
+
+Update version consistently in:
+- centralized version constant
+- /matrix/app-info
+- /matrix/manifest
+- /matrix/health
+- Admin/About/version display
+- package metadata where currently maintained
+- CHANGELOG
+
+--------------------------------------------------
+2. RISKS
+--------------------------------------------------
+
+Add a real database-backed risk register.
+
+Create project_risks with at minimum:
+
+- id
+- projectId
+- title
+- description
+- severity
+- probability
+- impact
+- status
+- owner
+- mitigationPlan
+- dueDate nullable
+- createdAt
+- updatedAt
+
+Severity:
+- Critical
+- High
+- Medium
+- Low
+
+Status:
+- Open
+- Mitigating
+- Mitigated
+- Closed
+
+Probability and impact may initially use:
+- High
+- Medium
+- Low
+
+Add:
+- project risk CRUD APIs
+- risk section on Project Detail
+- create/edit/close actions
+- visual severity/status indicators
+
+Risks must persist in PostgreSQL.
+
+--------------------------------------------------
+3. APPROVALS
+--------------------------------------------------
+
+Add formal project approvals.
+
+Create project_approvals with at minimum:
+
+- id
+- projectId
+- type
+- title
+- description
+- status
+- requestedBy
+- approver
+- decisionNotes nullable
+- requestedAt
+- decidedAt nullable
+- createdAt
+- updatedAt
+
+Approval types:
+
+- Go-Live Sign-Off
+- Scope Change
+- Stage Gate
+- Hold
+- Resource Request
+- Other
+
+Status:
+- Pending
+- Approved
+- Rejected
+- Cancelled
+
+Add:
+- approval CRUD APIs
+- approve/reject actions
+- pending approvals section on Project Detail
+
+Also add a global page:
+
+/approvals
+
+Show:
+- pending approvals first
+- project
+- type
+- requested by
+- approver
+- age
+- status
+
+All approval actions must persist.
+
+--------------------------------------------------
+4. GO-LIVE READINESS
+--------------------------------------------------
+
+Reuse and extend the existing Validation architecture rather than building an unrelated checklist engine.
+
+Create a project-specific Go-Live Readiness capability.
+
+A project may have one or more readiness assessments.
+
+Add entities as appropriate using the existing validation/checklist patterns.
+
+Each readiness assessment should support checklist items with:
+
+- category
+- requirement
+- owner
+- status
+- notes
+- required boolean
+- sequence/order
+
+Status:
+- Not Tested
+- Pass
+- Fail
+- Not Applicable
+
+Readiness categories should initially support:
+
+- Requirements
+- Development
+- Testing
+- Data
+- Operations
+- Client
+- Security / Compliance
+- Production
+- Training / Documentation
+
+Do not hard-code the architecture so these categories cannot change later.
+
+Calculate a readiness summary:
+
+- Ready
+- At Risk
+- Not Ready
+- Not Started
+
+Rules should be deterministic and server-side.
+
+At minimum:
+
+NOT READY:
+one or more required checklist items = Fail
+
+AT RISK:
+required items remain Not Tested near target/go-live date
+
+READY:
+all required items Pass or Not Applicable
+
+NOT STARTED:
+no readiness work has begun
+
+Add Go-Live Readiness to Project Detail.
+
+--------------------------------------------------
+5. PORTFOLIO
+--------------------------------------------------
+
+Add route:
+
+/portfolio
+
+This must use real database data from:
+- projects
+- milestones
+- risks
+- approvals
+- clients
+- programs
+- initiatives
+- go-live readiness
+
+Do not port the old Compass page blindly.
+
+Use the old Compass capability as a functional reference, but rebuild the data access against the surviving Compass architecture.
+
+Portfolio should initially show:
+
+SUMMARY
+- Active Projects
+- At Risk Projects
+- Off Track Projects
+- Projects On Hold
+- Projects due within 30 days
+- Open Critical/High Risks
+- Pending Approvals
+- Projects Not Ready for Go-Live
+
+PROJECT PORTFOLIO TABLE
+Columns at minimum:
+- Project
+- Type
+- Client/Internal
+- Owner
+- Stage
+- Health
+- Priority
+- Target Date
+- Milestone Progress
+- Risk Severity
+- Pending Approvals
+- Readiness
+
+Allow:
+- search
+- project type filter
+- health filter
+- owner filter
+- client/internal filter
+- priority filter
+
+Clicking a project opens Project Detail.
+
+--------------------------------------------------
+6. PORTFOLIO HEALTH
+--------------------------------------------------
+
+Implement deterministic server-side project health calculation.
+
+Do not make AI responsible for health.
+
+Recommended initial rules:
+
+OFF TRACK if:
+- any open Critical risk
+OR
+- required Go-Live Readiness item has failed near target date
+OR
+- critical/stage-gate milestone significantly overdue
+
+AT RISK if not Off Track and:
+- any open High risk
+OR
+- milestone overdue
+OR
+- pending critical approval
+OR
+- readiness is At Risk
+OR
+- target date is approaching with incomplete milestones
+
+ON TRACK otherwise for active projects with sufficient data.
+
+UNKNOWN if insufficient data exists.
+
+Preserve a manually stored health field only if required for compatibility, but clearly distinguish calculated health from manual override.
+
+If adding manual override:
+- store reason
+- store who changed it
+- store timestamp
+
+Do not silently overwrite an explicit manual override.
+
+--------------------------------------------------
+7. PROJECT DETAIL
+--------------------------------------------------
+
+Extend /projects/:id with logical sections/tabs:
+
+- Overview
+- Milestones
+- Risks
+- Approvals
+- Go-Live Readiness
+
+Preserve:
+- Initiative link
+- organization/client/program context
+- ownership
+- lifecycle
+- target date
+- health
+- priority
+
+Do not redesign unrelated Innovation functionality.
+
+--------------------------------------------------
+8. DASHBOARD
+--------------------------------------------------
+
+Extend the existing Compass Dashboard modestly.
+
+Add execution attention indicators for:
+
+- Critical/High open risks
+- Pending approvals
+- Not Ready Go-Live projects
+- Overdue milestones
+
+Do not turn Dashboard into a duplicate Portfolio page.
+
+--------------------------------------------------
+9. NAVIGATION
+--------------------------------------------------
+
+Update navigation:
+
+HOME
+- Dashboard
+- Portfolio
+
+INNOVATION
+- AI Innovation Interview
+- Submit Initiative
+- Initiatives
+- Kanban
+
+EXECUTION
+- Projects
+- Programs
+- Clients
+- Organizations
+- Approvals
+
+GOVERNANCE
+- Validation
+- Documents
+
+PRODUCT MANAGEMENT
+- Product Backlog
+
+ADMINISTRATION
+- Admin
+
+--------------------------------------------------
+10. DATA SAFETY
+--------------------------------------------------
+
+All schema changes must be additive.
+
+Do not:
+- rename existing tables
+- delete existing initiative data
+- delete existing project data
+- change existing IDs
+- recreate databases
+- seed fake projects/risks/approvals
+
+Existing Phase 1 data must remain valid.
+
+--------------------------------------------------
+11. SECURITY
+--------------------------------------------------
+
+Preserve:
+- Matrix Platform authentication
+- requireMatrixSession
+- server-side secrets
+- SDK v1.1 integration
+
+Do not implement full RBAC yet.
+
+However, all mutations must require an authenticated Matrix session.
+
+Do not introduce frontend API keys.
+
+--------------------------------------------------
+12. DO NOT PORT YET
+--------------------------------------------------
+
+Do NOT migrate these donor Compass features in this phase:
+
+- Resources / capacity planning
+- Board Pack
+- PDF reporting
+- Matrix Advisor
+- Jira Portfolio
+- Jira Connector
+- Global Search
+- advanced Client Workspace
+- AI Operations donor implementation
+
+Those are later phases.
+
+--------------------------------------------------
+13. VALIDATION
+--------------------------------------------------
+
+Verify:
+
+A. Version reports v1.1.0
+B. Existing initiatives remain intact
+C. Existing projects remain intact
+D. Risk CRUD works
+E. Risks persist after reload
+F. Approval CRUD works
+G. Approve/reject persists
+H. Global approval queue works
+I. Go-Live Readiness persists
+J. Readiness status calculates correctly
+K. Portfolio uses real DB data
+L. Portfolio filters work
+M. Project health calculation works
+N. Project Detail shows milestones/risks/approvals/readiness
+O. Dashboard attention metrics work
+P. Platform authentication still works
+Q. /matrix/app-info works
+R. /matrix/health passes
+S. No new business page uses mock/in-memory data
+T. Existing initiative/project counts remain unchanged except records explicitly created during testing
+
+--------------------------------------------------
+14. COMPLETION REPORT
+--------------------------------------------------
+
+Return:
+
+VERSION
+Before:
+After:
+
+DATABASE ENTITIES ADDED
+[list]
+
+API ROUTES ADDED
+[list]
+
+UI ROUTES ADDED/CHANGED
+[list]
+
+PORTFOLIO
+Implemented: YES/NO
+Real DB data only: YES/NO
+
+RISKS
+Implemented: YES/NO
+
+APPROVALS
+Implemented: YES/NO
+
+GO-LIVE READINESS
+Implemented: YES/NO
+
+PROJECT HEALTH
+Server-side deterministic calculation: YES/NO
+
+DATA SAFETY
+Initiatives before:
+Initiatives after:
+Projects before:
+Projects after:
+Existing data preserved: YES/NO
+
+PLATFORM
+SDK v1.1 preserved: YES/NO
+Authentication verified: YES/NO
+App-info verified: YES/NO
+Health verified: YES/NO
+
+VALIDATION
+[list A-T PASS/FAIL]
+
+FILES CHANGED
+[list]
+
+DATABASE MIGRATIONS
+[list]
+
+KNOWN ISSUES
+[list only actual issues]
+
+DEPLOYED
+NO
+
+End with:
+
+COMPASS CONSOLIDATION PHASE 2 COMPLETE

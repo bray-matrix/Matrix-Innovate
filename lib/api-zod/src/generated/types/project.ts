@@ -20,8 +20,11 @@ export interface Project {
   lifecycleStage: string;
   /** Active | On Hold | Closed */
   state: string;
-  /** On Track | At Risk | Off Track | Unknown */
+  /** Manually stored health (On Track | At Risk | Off Track | Unknown). Treated as a manual override when healthOverrideAt is set. */
   health: string;
+  healthOverrideReason?: string | null;
+  healthOverrideBy?: string | null;
+  healthOverrideAt?: Date | null;
   /** Low | Medium | High | Critical */
   priority: string;
   primaryOwner: string;

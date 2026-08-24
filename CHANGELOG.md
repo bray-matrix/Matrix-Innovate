@@ -5,6 +5,18 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and the
 project adheres to semantic versioning (patch = fixes/edits, minor = new
 features, major = breaking or milestone changes).
 
+## [1.1.0] - 2026-08-23
+
+### Compass Consolidation Phase 2 — Portfolio, Risks, Approvals, Go-Live Readiness
+- Risk register: project_risks table + CRUD, severity/probability/impact/status, Risks tab on Project Detail.
+- Formal approvals: project_approvals table + CRUD, approve/reject with decision notes (server stamps decidedAt), pending-first project section and global /approvals queue.
+- Go-Live Readiness: readiness_assessments + readiness_items (extends the validation/checklist pattern), optional standard-category seeding, deterministic server-computed readiness status (Ready / At Risk / Not Ready / Not Started).
+- Portfolio (/portfolio): real-DB summary + per-project rollup (milestone progress, top open risk, pending approvals, readiness) with search and filters.
+- Deterministic server-side project health (On Track / At Risk / Off Track / Unknown) from risks, milestones, approvals, and readiness; manual health overrides tracked with reason/who/timestamp and never silently overwritten.
+- Dashboard execution attention indicators (open Critical/High risks, pending approvals, not-ready go-live projects, overdue milestones).
+- Navigation: Portfolio under HOME, Approvals under EXECUTION.
+- All schema changes additive; SDK v1.1 integration unchanged.
+
 ## [1.0.0] - 2026-08-23
 
 ### Compass Consolidation Phase 1 (surviving foundation)

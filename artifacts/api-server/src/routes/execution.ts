@@ -15,6 +15,20 @@ import {
 } from "@workspace/db";
 import { eq, desc, asc, and } from "drizzle-orm";
 import {
+  projectRisksTable,
+  projectApprovalsTable,
+  readinessAssessmentsTable,
+  readinessItemsTable,
+} from "@workspace/db";
+import {
+  computeCalculatedHealth,
+  computeReadinessStatus,
+  effectiveHealth,
+  isHealthOverridden,
+  type ReadinessStatus,
+} from "../lib/project-health";
+import type { AuthenticatedRequest } from "../matrix/auth";
+import {
   CreateOrganizationBody,
   UpdateOrganizationBody,
   CreateClientBody,
@@ -469,10 +483,46 @@ router.get("/projects/:id", async (req, res, next) => {
         .where(eq(initiativesTable.id, row.initiativeId));
       initiativeTitle = initiative?.title ?? null;
     }
+    // Deterministic health (Phase 2): calculated server-side from risks,
+    // milestones, approvals, and readiness; manual override honored.
+    const [risks, approvals, assessments] = await Promise.all([
+      db
+        .select()
+        .from(projectRisksTable)
+        .where(eq(projectRisksTable.projectId, id)),
+      db
+        .select()
+        .from(projectApprovalsTable)
+        .where(eq(projectApprovalsTable.projectId, id)),
+      db
+        .select()
+        .from(readinessAssessmentsTable)
+        .where(eq(readinessAssessmentsTable.projectId, id))
+        .orderBy(desc(readinessAssessmentsTable.id)),
+    ]);
+    const readinessStatuses: ReadinessStatus[] = await Promise.all(
+      assessments.map(async (a) => {
+        const items = await db
+          .select()
+          .from(readinessItemsTable)
+          .where(eq(readinessItemsTable.assessmentId, a.id));
+        return computeReadinessStatus(items, a.targetDate);
+      }),
+    );
+    const calculated = computeCalculatedHealth({
+      project: row,
+      risks,
+      milestones,
+      approvals,
+      readinessStatuses,
+    });
     res.json({
       ...serializeProject(row),
       milestones: milestones.map(serializeMilestone),
       initiativeTitle,
+      calculatedHealth: calculated,
+      effectiveHealth: effectiveHealth(row, calculated),
+      healthOverridden: isHealthOverridden(row),
     });
   } catch (err) {
     next(err);
@@ -491,9 +541,25 @@ router.patch("/projects/:id", async (req, res, next) => {
       res.status(400).json({ error: parsed.error.message });
       return;
     }
-    const { targetDate, ...rest } = parsed.data;
+    const { targetDate, healthOverrideReason, ...rest } = parsed.data;
     const patch: Record<string, unknown> = { ...rest, updatedAt: new Date() };
     if (targetDate !== undefined) patch["targetDate"] = toDate(targetDate);
+    // Setting health records an explicit manual override (who/when/why);
+    // setting it back to "Unknown" clears the override so calculated health
+    // applies again. Overrides are never silently overwritten server-side.
+    if (parsed.data.health !== undefined) {
+      if (parsed.data.health === "Unknown") {
+        patch["healthOverrideReason"] = null;
+        patch["healthOverrideBy"] = null;
+        patch["healthOverrideAt"] = null;
+      } else {
+        const identity = (req as AuthenticatedRequest).matrixIdentity;
+        patch["healthOverrideReason"] = healthOverrideReason ?? null;
+        patch["healthOverrideBy"] =
+          identity?.name ?? identity?.email ?? identity?.sub ?? "unknown";
+        patch["healthOverrideAt"] = new Date();
+      }
+    }
     const [updated] = await db
       .update(projectsTable)
       .set(patch)

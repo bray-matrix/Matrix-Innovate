@@ -22,6 +22,10 @@ tags:
     description: Validation review checklist operations
   - name: execution
     description: Execution domain — organizations, clients, programs, projects, milestones
+  - name: governance
+    description: Risks, approvals, and go-live readiness
+  - name: portfolio
+    description: Portfolio rollup across execution and governance data
 paths:
   /healthz:
     get:
@@ -1211,6 +1215,430 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /projects/{id}/risks:
+    get:
+      operationId: listProjectRisks
+      tags: [governance]
+      summary: List risks for a project
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Risks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProjectRisk"
+        "404":
+          description: Project not found
+    post:
+      operationId: createProjectRisk
+      tags: [governance]
+      summary: Add a risk to a project
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectRiskCreate"
+      responses:
+        "201":
+          description: Created risk
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectRisk"
+        "404":
+          description: Project not found
+  /projects/{id}/risks/{riskId}:
+    patch:
+      operationId: updateProjectRisk
+      tags: [governance]
+      summary: Update a risk
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: riskId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectRiskUpdate"
+      responses:
+        "200":
+          description: Updated risk
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectRisk"
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteProjectRisk
+      tags: [governance]
+      summary: Delete a risk
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: riskId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+  /projects/{id}/approvals:
+    get:
+      operationId: listProjectApprovals
+      tags: [governance]
+      summary: List approvals for a project
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Approvals
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProjectApproval"
+        "404":
+          description: Project not found
+    post:
+      operationId: createProjectApproval
+      tags: [governance]
+      summary: Request an approval on a project
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectApprovalCreate"
+      responses:
+        "201":
+          description: Created approval
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectApproval"
+        "404":
+          description: Project not found
+  /projects/{id}/approvals/{approvalId}:
+    patch:
+      operationId: updateProjectApproval
+      tags: [governance]
+      summary: Update or decide an approval (server stamps decidedAt on decision)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: approvalId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectApprovalUpdate"
+      responses:
+        "200":
+          description: Updated approval
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectApproval"
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteProjectApproval
+      tags: [governance]
+      summary: Delete an approval request
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: approvalId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+  /approvals:
+    get:
+      operationId: listApprovals
+      tags: [governance]
+      summary: Global approval queue (pending first, then most recent)
+      responses:
+        "200":
+          description: Approvals with project context
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ApprovalQueueEntry"
+  /projects/{id}/readiness:
+    get:
+      operationId: listReadinessAssessments
+      tags: [governance]
+      summary: List go-live readiness assessments (with items and computed summary)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Assessments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ReadinessAssessment"
+        "404":
+          description: Project not found
+    post:
+      operationId: createReadinessAssessment
+      tags: [governance]
+      summary: Create a readiness assessment (optionally seeded with standard category items)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReadinessAssessmentCreate"
+      responses:
+        "201":
+          description: Created assessment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadinessAssessment"
+        "404":
+          description: Project not found
+  /projects/{id}/readiness/{assessmentId}:
+    patch:
+      operationId: updateReadinessAssessment
+      tags: [governance]
+      summary: Update a readiness assessment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: assessmentId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReadinessAssessmentUpdate"
+      responses:
+        "200":
+          description: Updated assessment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadinessAssessment"
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteReadinessAssessment
+      tags: [governance]
+      summary: Delete a readiness assessment and its items
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: assessmentId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+  /projects/{id}/readiness/{assessmentId}/items:
+    post:
+      operationId: createReadinessItem
+      tags: [governance]
+      summary: Add a checklist item to a readiness assessment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: assessmentId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReadinessItemCreate"
+      responses:
+        "201":
+          description: Created item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadinessItem"
+        "404":
+          description: Not found
+  /projects/{id}/readiness/{assessmentId}/items/{itemId}:
+    patch:
+      operationId: updateReadinessItem
+      tags: [governance]
+      summary: Update a readiness checklist item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: assessmentId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReadinessItemUpdate"
+      responses:
+        "200":
+          description: Updated item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadinessItem"
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteReadinessItem
+      tags: [governance]
+      summary: Delete a readiness checklist item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: assessmentId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+  /portfolio:
+    get:
+      operationId: getPortfolio
+      tags: [portfolio]
+      summary: Portfolio summary and per-project rollup (real DB aggregation)
+      responses:
+        "200":
+          description: Portfolio
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Portfolio"
+  /dashboard/attention:
+    get:
+      operationId: getDashboardAttention
+      tags: [dashboard]
+      summary: Execution attention indicators for the dashboard
+      responses:
+        "200":
+          description: Attention metrics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardAttention"
   /dashboard/execution-summary:
     get:
       operationId: getExecutionSummary
@@ -2633,7 +3061,19 @@ components:
           description: Active | On Hold | Closed
         health:
           type: string
-          description: On Track | At Risk | Off Track | Unknown
+          description: >-
+            Manually stored health (On Track | At Risk | Off Track | Unknown).
+            Treated as a manual override when healthOverrideAt is set.
+        healthOverrideReason:
+          type: string
+          nullable: true
+        healthOverrideBy:
+          type: string
+          nullable: true
+        healthOverrideAt:
+          type: string
+          format: date-time
+          nullable: true
         priority:
           type: string
           description: Low | Medium | High | Critical
@@ -2656,7 +3096,7 @@ components:
       allOf:
         - $ref: "#/components/schemas/Project"
         - type: object
-          required: [milestones]
+          required: [milestones, calculatedHealth, effectiveHealth, healthOverridden]
           properties:
             milestones:
               type: array
@@ -2665,6 +3105,14 @@ components:
             initiativeTitle:
               type: string
               nullable: true
+            calculatedHealth:
+              type: string
+              description: Deterministic server-side health
+            effectiveHealth:
+              type: string
+              description: Manual override when set, otherwise calculated
+            healthOverridden:
+              type: boolean
     ProjectCreate:
       type: object
       required: [name, projectType]
@@ -2731,6 +3179,12 @@ components:
           type: string
         health:
           type: string
+          description: >-
+            Setting health records a manual override (who/when/reason);
+            setting it to "Unknown" clears the override.
+        healthOverrideReason:
+          type: string
+          nullable: true
         priority:
           type: string
         primaryOwner:
@@ -2863,3 +3317,468 @@ components:
         approvedUnpromotedInitiatives:
           type: integer
           description: Initiatives in Approved status (or beyond) with no linked project
+    ProjectRisk:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          title,
+          description,
+          severity,
+          probability,
+          impact,
+          status,
+          owner,
+          mitigationPlan,
+          createdAt,
+          updatedAt,
+        ]
+      properties:
+        id:
+          type: integer
+        projectId:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        severity:
+          type: string
+          description: Critical | High | Medium | Low
+        probability:
+          type: string
+          description: High | Medium | Low
+        impact:
+          type: string
+          description: High | Medium | Low
+        status:
+          type: string
+          description: Open | Mitigating | Mitigated | Closed
+        owner:
+          type: string
+        mitigationPlan:
+          type: string
+        dueDate:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    ProjectRiskCreate:
+      type: object
+      required: [title, severity]
+      properties:
+        title:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        severity:
+          type: string
+          minLength: 1
+        probability:
+          type: string
+        impact:
+          type: string
+        status:
+          type: string
+        owner:
+          type: string
+        mitigationPlan:
+          type: string
+        dueDate:
+          type: string
+          format: date-time
+          nullable: true
+    ProjectRiskUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        severity:
+          type: string
+        probability:
+          type: string
+        impact:
+          type: string
+        status:
+          type: string
+        owner:
+          type: string
+        mitigationPlan:
+          type: string
+        dueDate:
+          type: string
+          format: date-time
+          nullable: true
+    ProjectApproval:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          type,
+          title,
+          description,
+          status,
+          requestedBy,
+          approver,
+          requestedAt,
+          createdAt,
+          updatedAt,
+        ]
+      properties:
+        id:
+          type: integer
+        projectId:
+          type: integer
+        type:
+          type: string
+          description: >-
+            Go-Live Sign-Off | Scope Change | Stage Gate | Hold | Resource
+            Request | Other
+        title:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+          description: Pending | Approved | Rejected | Cancelled
+        requestedBy:
+          type: string
+        approver:
+          type: string
+        decisionNotes:
+          type: string
+          nullable: true
+        requestedAt:
+          type: string
+          format: date-time
+        decidedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    ProjectApprovalCreate:
+      type: object
+      required: [type, title]
+      properties:
+        type:
+          type: string
+          minLength: 1
+        title:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        requestedBy:
+          type: string
+        approver:
+          type: string
+    ProjectApprovalUpdate:
+      type: object
+      description: >-
+        Setting status to Approved/Rejected/Cancelled stamps decidedAt
+        server-side; reverting to Pending clears it.
+      properties:
+        type:
+          type: string
+          minLength: 1
+        title:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        status:
+          type: string
+        approver:
+          type: string
+        decisionNotes:
+          type: string
+          nullable: true
+    ApprovalQueueEntry:
+      allOf:
+        - $ref: "#/components/schemas/ProjectApproval"
+        - type: object
+          required: [projectName]
+          properties:
+            projectName:
+              type: string
+    ReadinessItem:
+      type: object
+      required:
+        [
+          id,
+          assessmentId,
+          category,
+          requirement,
+          owner,
+          status,
+          notes,
+          required,
+          sequence,
+          createdAt,
+          updatedAt,
+        ]
+      properties:
+        id:
+          type: integer
+        assessmentId:
+          type: integer
+        category:
+          type: string
+          description: >-
+            Requirements | Development | Testing | Data | Operations | Client |
+            Security / Compliance | Production | Training / Documentation
+            (extensible)
+        requirement:
+          type: string
+        owner:
+          type: string
+        status:
+          type: string
+          description: Not Tested | Pass | Fail | Not Applicable
+        notes:
+          type: string
+        required:
+          type: boolean
+        sequence:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    ReadinessItemCreate:
+      type: object
+      required: [category, requirement]
+      properties:
+        category:
+          type: string
+          minLength: 1
+        requirement:
+          type: string
+          minLength: 1
+        owner:
+          type: string
+        status:
+          type: string
+        notes:
+          type: string
+        required:
+          type: boolean
+        sequence:
+          type: integer
+    ReadinessItemUpdate:
+      type: object
+      properties:
+        category:
+          type: string
+          minLength: 1
+        requirement:
+          type: string
+          minLength: 1
+        owner:
+          type: string
+        status:
+          type: string
+        notes:
+          type: string
+        required:
+          type: boolean
+        sequence:
+          type: integer
+    ReadinessAssessment:
+      type: object
+      required:
+        [id, projectId, name, readinessStatus, items, createdAt, updatedAt]
+      properties:
+        id:
+          type: integer
+        projectId:
+          type: integer
+        name:
+          type: string
+        targetDate:
+          type: string
+          format: date-time
+          nullable: true
+        readinessStatus:
+          type: string
+          description: >-
+            Server-computed — Ready | At Risk | Not Ready | Not Started
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReadinessItem"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    ReadinessAssessmentCreate:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        targetDate:
+          type: string
+          format: date-time
+          nullable: true
+        seedStandardItems:
+          type: boolean
+          description: Seed one required checklist item per standard category
+    ReadinessAssessmentUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        targetDate:
+          type: string
+          format: date-time
+          nullable: true
+    PortfolioSummary:
+      type: object
+      required:
+        [
+          activeProjects,
+          atRiskProjects,
+          offTrackProjects,
+          onHoldProjects,
+          dueSoonProjects,
+          openCriticalHighRisks,
+          pendingApprovals,
+          notReadyProjects,
+        ]
+      properties:
+        activeProjects:
+          type: integer
+        atRiskProjects:
+          type: integer
+        offTrackProjects:
+          type: integer
+        onHoldProjects:
+          type: integer
+        dueSoonProjects:
+          type: integer
+        openCriticalHighRisks:
+          type: integer
+        pendingApprovals:
+          type: integer
+        notReadyProjects:
+          type: integer
+    PortfolioRow:
+      type: object
+      required:
+        [
+          id,
+          name,
+          projectType,
+          context,
+          primaryOwner,
+          lifecycleStage,
+          state,
+          health,
+          calculatedHealth,
+          effectiveHealth,
+          priority,
+          milestonesTotal,
+          milestonesCompleted,
+          topOpenRiskSeverity,
+          pendingApprovals,
+          readinessStatus,
+        ]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        projectType:
+          type: string
+        context:
+          type: string
+          description: Client/program/org display name, or "Internal"
+        clientId:
+          type: integer
+          nullable: true
+        primaryOwner:
+          type: string
+        lifecycleStage:
+          type: string
+        state:
+          type: string
+        health:
+          type: string
+          description: Manually stored health (compatibility/override)
+        calculatedHealth:
+          type: string
+          description: Deterministic server-side health
+        effectiveHealth:
+          type: string
+          description: Manual override when set, otherwise calculated
+        healthOverridden:
+          type: boolean
+        priority:
+          type: string
+        targetDate:
+          type: string
+          format: date-time
+          nullable: true
+        milestonesTotal:
+          type: integer
+        milestonesCompleted:
+          type: integer
+        topOpenRiskSeverity:
+          type: string
+          description: Highest open risk severity or "None"
+        pendingApprovals:
+          type: integer
+        readinessStatus:
+          type: string
+          description: Latest assessment status or "Not Started"
+    Portfolio:
+      type: object
+      required: [summary, rows]
+      properties:
+        summary:
+          $ref: "#/components/schemas/PortfolioSummary"
+        rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/PortfolioRow"
+    DashboardAttention:
+      type: object
+      required:
+        [
+          openCriticalHighRisks,
+          pendingApprovals,
+          notReadyProjects,
+          overdueMilestones,
+        ]
+      properties:
+        openCriticalHighRisks:
+          type: integer
+        pendingApprovals:
+          type: integer
+        notReadyProjects:
+          type: integer
+        overdueMilestones:
+          type: integer

@@ -8,6 +8,8 @@ import validationsRouter from "./validations";
 import backlogRouter from "./backlog";
 import environmentRouter from "./environment";
 import executionRouter from "./execution";
+import governanceRouter from "./governance";
+import portfolioRouter from "./portfolio";
 
 const router: IRouter = Router();
 
@@ -20,5 +22,7 @@ router.use(validationsRouter);
 router.use(backlogRouter);
 router.use(environmentRouter);
 router.use(executionRouter);
+router.use(governanceRouter);
+router.use(portfolioRouter);
 
 export default router;
