@@ -1,0 +1,119 @@
+POST-PUBLISH AUTH VERIFICATION — DIAGNOSE ONLY
+
+IMPORTANT:
+This is the Surviving Innovation Replit, currently serving the new combined application through:
+
+https://matrix-platform.replit.app/innovation/
+
+A new production publish was completed after changing launch-token verification to support asymmetric JWS algorithms beyond RS256.
+
+I just launched the Innovation entry from Matrix Platform again.
+
+VISIBLE RESULT:
+No change. The browser still displays:
+
+"Matrix Platform sign-in required
+This application is managed by Matrix Platform. Launch it from Matrix Platform to continue."
+
+DO NOT CHANGE ANY CODE YET.
+DO NOT CHANGE ENVIRONMENT VARIABLES.
+DO NOT CHANGE MATRIX PLATFORM REGISTRATION.
+DO NOT CHANGE SLUG, AUDIENCE, URL, OR BASE PATH.
+
+Diagnose ONLY the most recent production launch attempt.
+
+1. Confirm the currently running production deployment contains the new auth.ts algorithm fix.
+
+Report:
+- deployed commit/hash
+- whether production code contains the asymmetric JWS algorithm handling
+- production application version
+
+2. Inspect production logs from the MOST RECENT launch attempt.
+
+For POST /matrix/session report:
+
+- Was the request received? YES/NO
+- HTTP status
+- token alg from protected header
+- token kid
+- exact rejection reason, if rejected
+- whether JWKS lookup succeeded
+- whether signature verification succeeded
+- whether issuer validation succeeded
+- whether audience validation succeeded
+- whether subject validation succeeded
+
+DO NOT expose or log the token itself.
+
+3. If /matrix/session returned 200:
+
+Report:
+- whether matrix_session cookie was created
+- cookie Path
+- cookie Domain if set
+- Secure value
+- SameSite value
+- whether the browser subsequently sent the cookie on /api requests
+- first authenticated /api request and its result
+
+4. If /matrix/session did NOT receive the request:
+
+Trace:
+Platform launch
+-> #matrix_token capture
+-> frontend scrub
+-> resolved session endpoint URL
+
+Report the exact resolved endpoint URL.
+
+5. Compare the most recent failure to the PREVIOUS failure.
+
+Previous confirmed failure:
+Launch token rejected because alg was not RS256.
+
+State explicitly whether:
+A. It is STILL failing on algorithm validation
+B. Algorithm validation now passes and a NEW failure exists
+C. Session succeeds but cookie/session persistence fails
+D. The new production deployment does not actually contain the fix
+
+6. Do not make a fix yet.
+
+Return exactly:
+
+PRODUCTION DEPLOYMENT
+Commit:
+Version:
+New algorithm fix present: YES/NO
+
+LATEST LAUNCH
+/matrix/session received: YES/NO
+HTTP status:
+Token alg:
+Token kid:
+JWKS lookup:
+Signature verification:
+Issuer validation:
+Audience validation:
+Subject validation:
+Session cookie issued: YES/NO
+
+CURRENT ROOT CAUSE
+[exact current failure]
+
+FAILURE STAGE
+Choose one:
+DEPLOYMENT
+TOKEN CAPTURE
+SESSION ROUTING
+ALGORITHM
+JWKS/SIGNATURE
+ISSUER
+AUDIENCE
+SUBJECT
+COOKIE
+SESSION PERSISTENCE
+OTHER
+
+NO CHANGES MADE: YES
