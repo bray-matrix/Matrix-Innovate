@@ -1,6 +1,10 @@
-# Matrix Innovation Hub
+# Compass (formerly Matrix Innovation Hub)
 
-An internal web application (v0.4.0) for Matrix employees to submit AI innovation ideas — either through a conversational AI Innovation Interview or a classic form — auto-structure them into an AI Opportunity Canvas, score them on a 100-point model, and move them through a lightweight innovation pipeline (Idea → Review → Approved → Prototype → Pilot → Production → Closed/Declined).
+Compass (v1.0.0) is the combined innovation + execution management product for Matrix, created in the Phase 1 consolidation of Matrix Innovation Hub (surviving foundation) and Matrix Compass. User-facing branding is "Compass"; the technical slug/audience remain `matrix-innovation-hub` (Matrix Platform registration unchanged — migrating them is tracked technical debt).
+
+Execution layer (Phase 1): organizations, clients, programs, projects, and project milestones (all additive tables; org/client/program optional on projects so internal work needs no client). Initiatives can be promoted to projects via POST /api/initiatives/{id}/promote — the initiative is preserved and linked, with duplicate protection (409 unless allowDuplicate). Pages: /projects, /projects/new, /projects/:id, /organizations, /clients, /programs; sidebar navigation is grouped (HOME / INNOVATION / EXECUTION / GOVERNANCE / PRODUCT MANAGEMENT / ADMINISTRATION); dashboard has an execution summary strip.
+
+The innovation core: an internal web application for Matrix employees to submit AI innovation ideas — either through a conversational AI Innovation Interview or a classic form — auto-structure them into an AI Opportunity Canvas, score them on a 100-point model, and move them through a lightweight innovation pipeline (Idea → Review → Approved → Prototype → Pilot → Production → Closed/Declined).
 
 ## Run & Operate
 

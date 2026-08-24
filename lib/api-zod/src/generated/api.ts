@@ -1096,3 +1096,616 @@ export const UpdateValidationItemResponse = zod.object({
 }))
 
 
+/**
+ * @summary List organizations
+ */
+export const ListOrganizationsResponseItem = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "status": zod.string().describe('Active | Inactive'),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListOrganizationsResponse = zod.array(ListOrganizationsResponseItem)
+
+
+/**
+ * @summary Create an organization
+ */
+
+
+
+export const CreateOrganizationBody = zod.object({
+  "name": zod.string().min(1),
+  "status": zod.string().optional()
+})
+
+export const CreateOrganizationResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "status": zod.string().describe('Active | Inactive'),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Get an organization
+ */
+export const GetOrganizationParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetOrganizationResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "status": zod.string().describe('Active | Inactive'),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Update an organization
+ */
+export const UpdateOrganizationParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+
+
+export const UpdateOrganizationBody = zod.object({
+  "name": zod.string().min(1).optional(),
+  "status": zod.string().optional()
+})
+
+export const UpdateOrganizationResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "status": zod.string().describe('Active | Inactive'),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Delete an organization
+ */
+export const DeleteOrganizationParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const DeleteOrganizationResponse = zod.void()
+
+
+/**
+ * @summary List clients
+ */
+export const ListClientsResponseItem = zod.object({
+  "id": zod.number(),
+  "organizationId": zod.number().nullish(),
+  "name": zod.string(),
+  "status": zod.string().describe('Active | Inactive'),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListClientsResponse = zod.array(ListClientsResponseItem)
+
+
+/**
+ * @summary Create a client
+ */
+
+
+
+export const CreateClientBody = zod.object({
+  "organizationId": zod.number().nullish(),
+  "name": zod.string().min(1),
+  "status": zod.string().optional()
+})
+
+export const CreateClientResponse = zod.object({
+  "id": zod.number(),
+  "organizationId": zod.number().nullish(),
+  "name": zod.string(),
+  "status": zod.string().describe('Active | Inactive'),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Get a client
+ */
+export const GetClientParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetClientResponse = zod.object({
+  "id": zod.number(),
+  "organizationId": zod.number().nullish(),
+  "name": zod.string(),
+  "status": zod.string().describe('Active | Inactive'),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Update a client
+ */
+export const UpdateClientParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+
+
+export const UpdateClientBody = zod.object({
+  "organizationId": zod.number().nullish(),
+  "name": zod.string().min(1).optional(),
+  "status": zod.string().optional()
+})
+
+export const UpdateClientResponse = zod.object({
+  "id": zod.number(),
+  "organizationId": zod.number().nullish(),
+  "name": zod.string(),
+  "status": zod.string().describe('Active | Inactive'),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Delete a client
+ */
+export const DeleteClientParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const DeleteClientResponse = zod.void()
+
+
+/**
+ * @summary List programs
+ */
+export const ListProgramsResponseItem = zod.object({
+  "id": zod.number(),
+  "clientId": zod.number().nullish(),
+  "organizationId": zod.number().nullish(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "status": zod.string().describe('Active | On Hold | Completed | Cancelled'),
+  "owner": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListProgramsResponse = zod.array(ListProgramsResponseItem)
+
+
+/**
+ * @summary Create a program
+ */
+
+
+
+export const CreateProgramBody = zod.object({
+  "clientId": zod.number().nullish(),
+  "organizationId": zod.number().nullish(),
+  "name": zod.string().min(1),
+  "description": zod.string().optional(),
+  "status": zod.string().optional(),
+  "owner": zod.string().optional()
+})
+
+export const CreateProgramResponse = zod.object({
+  "id": zod.number(),
+  "clientId": zod.number().nullish(),
+  "organizationId": zod.number().nullish(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "status": zod.string().describe('Active | On Hold | Completed | Cancelled'),
+  "owner": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Get a program
+ */
+export const GetProgramParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetProgramResponse = zod.object({
+  "id": zod.number(),
+  "clientId": zod.number().nullish(),
+  "organizationId": zod.number().nullish(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "status": zod.string().describe('Active | On Hold | Completed | Cancelled'),
+  "owner": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Update a program
+ */
+export const UpdateProgramParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+
+
+export const UpdateProgramBody = zod.object({
+  "clientId": zod.number().nullish(),
+  "organizationId": zod.number().nullish(),
+  "name": zod.string().min(1).optional(),
+  "description": zod.string().optional(),
+  "status": zod.string().optional(),
+  "owner": zod.string().optional()
+})
+
+export const UpdateProgramResponse = zod.object({
+  "id": zod.number(),
+  "clientId": zod.number().nullish(),
+  "organizationId": zod.number().nullish(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "status": zod.string().describe('Active | On Hold | Completed | Cancelled'),
+  "owner": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Delete a program
+ */
+export const DeleteProgramParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const DeleteProgramResponse = zod.void()
+
+
+/**
+ * @summary List projects, newest first
+ */
+export const ListProjectsQueryParams = zod.object({
+  "initiativeId": zod.coerce.number().optional().describe('Filter to projects originating from a given initiative')
+})
+
+export const ListProjectsResponseItem = zod.object({
+  "id": zod.number(),
+  "initiativeId": zod.number().nullish(),
+  "organizationId": zod.number().nullish(),
+  "clientId": zod.number().nullish(),
+  "programId": zod.number().nullish(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "projectType": zod.string().describe('Client Implementation | Internal Technology | Internal Operations | Executive Initiative | Innovation | Other (extensible)'),
+  "lifecycleStage": zod.string().describe('Planning | Ready | In Progress | On Hold | Completed | Cancelled'),
+  "state": zod.string().describe('Active | On Hold | Closed'),
+  "health": zod.string().describe('On Track | At Risk | Off Track | Unknown'),
+  "priority": zod.string().describe('Low | Medium | High | Critical'),
+  "primaryOwner": zod.string(),
+  "supportingOwners": zod.string().describe('Comma-separated supporting owners'),
+  "targetDate": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListProjectsResponse = zod.array(ListProjectsResponseItem)
+
+
+/**
+ * @summary Create a project (client or internal — no client/program required)
+ */
+
+
+
+
+export const CreateProjectBody = zod.object({
+  "initiativeId": zod.number().nullish(),
+  "organizationId": zod.number().nullish(),
+  "clientId": zod.number().nullish(),
+  "programId": zod.number().nullish(),
+  "name": zod.string().min(1),
+  "description": zod.string().optional(),
+  "projectType": zod.string().min(1),
+  "lifecycleStage": zod.string().optional(),
+  "state": zod.string().optional(),
+  "health": zod.string().optional(),
+  "priority": zod.string().optional(),
+  "primaryOwner": zod.string().optional(),
+  "supportingOwners": zod.string().optional(),
+  "targetDate": zod.coerce.date().nullish()
+})
+
+export const CreateProjectResponse = zod.object({
+  "id": zod.number(),
+  "initiativeId": zod.number().nullish(),
+  "organizationId": zod.number().nullish(),
+  "clientId": zod.number().nullish(),
+  "programId": zod.number().nullish(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "projectType": zod.string().describe('Client Implementation | Internal Technology | Internal Operations | Executive Initiative | Innovation | Other (extensible)'),
+  "lifecycleStage": zod.string().describe('Planning | Ready | In Progress | On Hold | Completed | Cancelled'),
+  "state": zod.string().describe('Active | On Hold | Closed'),
+  "health": zod.string().describe('On Track | At Risk | Off Track | Unknown'),
+  "priority": zod.string().describe('Low | Medium | High | Critical'),
+  "primaryOwner": zod.string(),
+  "supportingOwners": zod.string().describe('Comma-separated supporting owners'),
+  "targetDate": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Get a project with its milestones
+ */
+export const GetProjectParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetProjectResponse = zod.object({
+  "id": zod.number(),
+  "initiativeId": zod.number().nullish(),
+  "organizationId": zod.number().nullish(),
+  "clientId": zod.number().nullish(),
+  "programId": zod.number().nullish(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "projectType": zod.string().describe('Client Implementation | Internal Technology | Internal Operations | Executive Initiative | Innovation | Other (extensible)'),
+  "lifecycleStage": zod.string().describe('Planning | Ready | In Progress | On Hold | Completed | Cancelled'),
+  "state": zod.string().describe('Active | On Hold | Closed'),
+  "health": zod.string().describe('On Track | At Risk | Off Track | Unknown'),
+  "priority": zod.string().describe('Low | Medium | High | Critical'),
+  "primaryOwner": zod.string(),
+  "supportingOwners": zod.string().describe('Comma-separated supporting owners'),
+  "targetDate": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}).and(zod.object({
+  "milestones": zod.array(zod.object({
+  "id": zod.number(),
+  "projectId": zod.number(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "owner": zod.string(),
+  "dueDate": zod.coerce.date().nullish(),
+  "status": zod.string().describe('Not Started | In Progress | Completed | Missed'),
+  "stageGate": zod.boolean(),
+  "sequence": zod.number(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})),
+  "initiativeTitle": zod.string().nullish()
+}))
+
+
+/**
+ * @summary Update a project
+ */
+export const UpdateProjectParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+
+
+
+export const UpdateProjectBody = zod.object({
+  "organizationId": zod.number().nullish(),
+  "clientId": zod.number().nullish(),
+  "programId": zod.number().nullish(),
+  "name": zod.string().min(1).optional(),
+  "description": zod.string().optional(),
+  "projectType": zod.string().min(1).optional(),
+  "lifecycleStage": zod.string().optional(),
+  "state": zod.string().optional(),
+  "health": zod.string().optional(),
+  "priority": zod.string().optional(),
+  "primaryOwner": zod.string().optional(),
+  "supportingOwners": zod.string().optional(),
+  "targetDate": zod.coerce.date().nullish()
+})
+
+export const UpdateProjectResponse = zod.object({
+  "id": zod.number(),
+  "initiativeId": zod.number().nullish(),
+  "organizationId": zod.number().nullish(),
+  "clientId": zod.number().nullish(),
+  "programId": zod.number().nullish(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "projectType": zod.string().describe('Client Implementation | Internal Technology | Internal Operations | Executive Initiative | Innovation | Other (extensible)'),
+  "lifecycleStage": zod.string().describe('Planning | Ready | In Progress | On Hold | Completed | Cancelled'),
+  "state": zod.string().describe('Active | On Hold | Closed'),
+  "health": zod.string().describe('On Track | At Risk | Off Track | Unknown'),
+  "priority": zod.string().describe('Low | Medium | High | Critical'),
+  "primaryOwner": zod.string(),
+  "supportingOwners": zod.string().describe('Comma-separated supporting owners'),
+  "targetDate": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Delete a project
+ */
+export const DeleteProjectParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const DeleteProjectResponse = zod.void()
+
+
+/**
+ * @summary List milestones for a project in sequence order
+ */
+export const ListProjectMilestonesParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const ListProjectMilestonesResponseItem = zod.object({
+  "id": zod.number(),
+  "projectId": zod.number(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "owner": zod.string(),
+  "dueDate": zod.coerce.date().nullish(),
+  "status": zod.string().describe('Not Started | In Progress | Completed | Missed'),
+  "stageGate": zod.boolean(),
+  "sequence": zod.number(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListProjectMilestonesResponse = zod.array(ListProjectMilestonesResponseItem)
+
+
+/**
+ * @summary Add a milestone to a project
+ */
+export const CreateProjectMilestoneParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+
+
+export const CreateProjectMilestoneBody = zod.object({
+  "name": zod.string().min(1),
+  "description": zod.string().optional(),
+  "owner": zod.string().optional(),
+  "dueDate": zod.coerce.date().nullish(),
+  "status": zod.string().optional(),
+  "stageGate": zod.boolean().optional(),
+  "sequence": zod.number().optional()
+})
+
+export const CreateProjectMilestoneResponse = zod.object({
+  "id": zod.number(),
+  "projectId": zod.number(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "owner": zod.string(),
+  "dueDate": zod.coerce.date().nullish(),
+  "status": zod.string().describe('Not Started | In Progress | Completed | Missed'),
+  "stageGate": zod.boolean(),
+  "sequence": zod.number(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Update a milestone
+ */
+export const UpdateProjectMilestoneParams = zod.object({
+  "id": zod.coerce.number(),
+  "milestoneId": zod.coerce.number()
+})
+
+
+
+
+export const UpdateProjectMilestoneBody = zod.object({
+  "name": zod.string().min(1).optional(),
+  "description": zod.string().optional(),
+  "owner": zod.string().optional(),
+  "dueDate": zod.coerce.date().nullish(),
+  "status": zod.string().optional(),
+  "stageGate": zod.boolean().optional(),
+  "sequence": zod.number().optional()
+})
+
+export const UpdateProjectMilestoneResponse = zod.object({
+  "id": zod.number(),
+  "projectId": zod.number(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "owner": zod.string(),
+  "dueDate": zod.coerce.date().nullish(),
+  "status": zod.string().describe('Not Started | In Progress | Completed | Missed'),
+  "stageGate": zod.boolean(),
+  "sequence": zod.number(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Delete a milestone
+ */
+export const DeleteProjectMilestoneParams = zod.object({
+  "id": zod.coerce.number(),
+  "milestoneId": zod.coerce.number()
+})
+
+export const DeleteProjectMilestoneResponse = zod.void()
+
+
+/**
+ * @summary Promote an initiative into an execution project (initiative is preserved)
+ */
+export const PromoteInitiativeParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+
+
+
+export const PromoteInitiativeBody = zod.object({
+  "projectType": zod.string().min(1),
+  "organizationId": zod.number().nullish(),
+  "clientId": zod.number().nullish(),
+  "programId": zod.number().nullish(),
+  "primaryOwner": zod.string().min(1),
+  "targetDate": zod.coerce.date().nullish(),
+  "allowDuplicate": zod.boolean().optional().describe('Must be true to create an additional project for an already-promoted initiative')
+})
+
+export const PromoteInitiativeResponse = zod.object({
+  "id": zod.number(),
+  "initiativeId": zod.number().nullish(),
+  "organizationId": zod.number().nullish(),
+  "clientId": zod.number().nullish(),
+  "programId": zod.number().nullish(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "projectType": zod.string().describe('Client Implementation | Internal Technology | Internal Operations | Executive Initiative | Innovation | Other (extensible)'),
+  "lifecycleStage": zod.string().describe('Planning | Ready | In Progress | On Hold | Completed | Cancelled'),
+  "state": zod.string().describe('Active | On Hold | Closed'),
+  "health": zod.string().describe('On Track | At Risk | Off Track | Unknown'),
+  "priority": zod.string().describe('Low | Medium | High | Critical'),
+  "primaryOwner": zod.string(),
+  "supportingOwners": zod.string().describe('Comma-separated supporting owners'),
+  "targetDate": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Execution summary for the dashboard (projects + unpromoted approved initiatives)
+ */
+export const GetExecutionSummaryResponse = zod.object({
+  "totalProjects": zod.number(),
+  "activeProjects": zod.number(),
+  "atRiskProjects": zod.number(),
+  "dueSoonProjects": zod.number().describe('Projects with a target date within the next 30 days and not completed\/cancelled'),
+  "approvedUnpromotedInitiatives": zod.number().describe('Initiatives in Approved status (or beyond) with no linked project')
+})
+
+

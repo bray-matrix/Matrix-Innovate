@@ -20,6 +20,8 @@ tags:
     description: Admin settings operations
   - name: validations
     description: Validation review checklist operations
+  - name: execution
+    description: Execution domain — organizations, clients, programs, projects, milestones
 paths:
   /healthz:
     get:
@@ -708,6 +710,519 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /organizations:
+    get:
+      operationId: listOrganizations
+      tags: [execution]
+      summary: List organizations
+      responses:
+        "200":
+          description: A list of organizations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Organization"
+    post:
+      operationId: createOrganization
+      tags: [execution]
+      summary: Create an organization
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrganizationCreate"
+      responses:
+        "201":
+          description: Created organization
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Organization"
+  /organizations/{id}:
+    get:
+      operationId: getOrganization
+      tags: [execution]
+      summary: Get an organization
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Organization
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Organization"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateOrganization
+      tags: [execution]
+      summary: Update an organization
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrganizationUpdate"
+      responses:
+        "200":
+          description: Updated organization
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Organization"
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteOrganization
+      tags: [execution]
+      summary: Delete an organization
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+  /clients:
+    get:
+      operationId: listClients
+      tags: [execution]
+      summary: List clients
+      responses:
+        "200":
+          description: A list of clients
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Client"
+    post:
+      operationId: createClient
+      tags: [execution]
+      summary: Create a client
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClientCreate"
+      responses:
+        "201":
+          description: Created client
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Client"
+  /clients/{id}:
+    get:
+      operationId: getClient
+      tags: [execution]
+      summary: Get a client
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Client
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Client"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateClient
+      tags: [execution]
+      summary: Update a client
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClientUpdate"
+      responses:
+        "200":
+          description: Updated client
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Client"
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteClient
+      tags: [execution]
+      summary: Delete a client
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+  /programs:
+    get:
+      operationId: listPrograms
+      tags: [execution]
+      summary: List programs
+      responses:
+        "200":
+          description: A list of programs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Program"
+    post:
+      operationId: createProgram
+      tags: [execution]
+      summary: Create a program
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProgramCreate"
+      responses:
+        "201":
+          description: Created program
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Program"
+  /programs/{id}:
+    get:
+      operationId: getProgram
+      tags: [execution]
+      summary: Get a program
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Program
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Program"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateProgram
+      tags: [execution]
+      summary: Update a program
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProgramUpdate"
+      responses:
+        "200":
+          description: Updated program
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Program"
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteProgram
+      tags: [execution]
+      summary: Delete a program
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+  /projects:
+    get:
+      operationId: listProjects
+      tags: [execution]
+      summary: List projects, newest first
+      parameters:
+        - name: initiativeId
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Filter to projects originating from a given initiative
+      responses:
+        "200":
+          description: A list of projects
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Project"
+    post:
+      operationId: createProject
+      tags: [execution]
+      summary: Create a project (client or internal — no client/program required)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectCreate"
+      responses:
+        "201":
+          description: Created project
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+  /projects/{id}:
+    get:
+      operationId: getProject
+      tags: [execution]
+      summary: Get a project with its milestones
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Project detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectDetail"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateProject
+      tags: [execution]
+      summary: Update a project
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectUpdate"
+      responses:
+        "200":
+          description: Updated project
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteProject
+      tags: [execution]
+      summary: Delete a project
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+  /projects/{id}/milestones:
+    get:
+      operationId: listProjectMilestones
+      tags: [execution]
+      summary: List milestones for a project in sequence order
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Milestones
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProjectMilestone"
+        "404":
+          description: Project not found
+    post:
+      operationId: createProjectMilestone
+      tags: [execution]
+      summary: Add a milestone to a project
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectMilestoneCreate"
+      responses:
+        "201":
+          description: Created milestone
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectMilestone"
+        "404":
+          description: Project not found
+  /projects/{id}/milestones/{milestoneId}:
+    patch:
+      operationId: updateProjectMilestone
+      tags: [execution]
+      summary: Update a milestone
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: milestoneId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectMilestoneUpdate"
+      responses:
+        "200":
+          description: Updated milestone
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectMilestone"
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteProjectMilestone
+      tags: [execution]
+      summary: Delete a milestone
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: milestoneId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+  /initiatives/{id}/promote:
+    post:
+      operationId: promoteInitiative
+      tags: [execution]
+      summary: Promote an initiative into an execution project (initiative is preserved)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PromoteInitiativeRequest"
+      responses:
+        "201":
+          description: Created project linked to the initiative
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+        "404":
+          description: Initiative not found
+        "409":
+          description: Initiative already has a linked project and allowDuplicate was not set
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /dashboard/execution-summary:
+    get:
+      operationId: getExecutionSummary
+      tags: [dashboard]
+      summary: Execution summary for the dashboard (projects + unpromoted approved initiatives)
+      responses:
+        "200":
+          description: Execution summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExecutionSummary"
 components:
   schemas:
     HealthStatus:
@@ -1928,3 +2443,423 @@ components:
         createdAt:
           type: string
           format: date-time
+    Organization:
+      type: object
+      required: [id, name, status, createdAt, updatedAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        status:
+          type: string
+          description: Active | Inactive
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    OrganizationCreate:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        status:
+          type: string
+    OrganizationUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        status:
+          type: string
+    Client:
+      type: object
+      required: [id, name, status, createdAt, updatedAt]
+      properties:
+        id:
+          type: integer
+        organizationId:
+          type: integer
+          nullable: true
+        name:
+          type: string
+        status:
+          type: string
+          description: Active | Inactive
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    ClientCreate:
+      type: object
+      required: [name]
+      properties:
+        organizationId:
+          type: integer
+          nullable: true
+        name:
+          type: string
+          minLength: 1
+        status:
+          type: string
+    ClientUpdate:
+      type: object
+      properties:
+        organizationId:
+          type: integer
+          nullable: true
+        name:
+          type: string
+          minLength: 1
+        status:
+          type: string
+    Program:
+      type: object
+      required: [id, name, description, status, owner, createdAt, updatedAt]
+      properties:
+        id:
+          type: integer
+        clientId:
+          type: integer
+          nullable: true
+        organizationId:
+          type: integer
+          nullable: true
+        name:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+          description: Active | On Hold | Completed | Cancelled
+        owner:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    ProgramCreate:
+      type: object
+      required: [name]
+      properties:
+        clientId:
+          type: integer
+          nullable: true
+        organizationId:
+          type: integer
+          nullable: true
+        name:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        status:
+          type: string
+        owner:
+          type: string
+    ProgramUpdate:
+      type: object
+      properties:
+        clientId:
+          type: integer
+          nullable: true
+        organizationId:
+          type: integer
+          nullable: true
+        name:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        status:
+          type: string
+        owner:
+          type: string
+    Project:
+      type: object
+      required:
+        [
+          id,
+          name,
+          description,
+          projectType,
+          lifecycleStage,
+          state,
+          health,
+          priority,
+          primaryOwner,
+          supportingOwners,
+          createdAt,
+          updatedAt,
+        ]
+      properties:
+        id:
+          type: integer
+        initiativeId:
+          type: integer
+          nullable: true
+        organizationId:
+          type: integer
+          nullable: true
+        clientId:
+          type: integer
+          nullable: true
+        programId:
+          type: integer
+          nullable: true
+        name:
+          type: string
+        description:
+          type: string
+        projectType:
+          type: string
+          description: >-
+            Client Implementation | Internal Technology | Internal Operations |
+            Executive Initiative | Innovation | Other (extensible)
+        lifecycleStage:
+          type: string
+          description: Planning | Ready | In Progress | On Hold | Completed | Cancelled
+        state:
+          type: string
+          description: Active | On Hold | Closed
+        health:
+          type: string
+          description: On Track | At Risk | Off Track | Unknown
+        priority:
+          type: string
+          description: Low | Medium | High | Critical
+        primaryOwner:
+          type: string
+        supportingOwners:
+          type: string
+          description: Comma-separated supporting owners
+        targetDate:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    ProjectDetail:
+      allOf:
+        - $ref: "#/components/schemas/Project"
+        - type: object
+          required: [milestones]
+          properties:
+            milestones:
+              type: array
+              items:
+                $ref: "#/components/schemas/ProjectMilestone"
+            initiativeTitle:
+              type: string
+              nullable: true
+    ProjectCreate:
+      type: object
+      required: [name, projectType]
+      properties:
+        initiativeId:
+          type: integer
+          nullable: true
+        organizationId:
+          type: integer
+          nullable: true
+        clientId:
+          type: integer
+          nullable: true
+        programId:
+          type: integer
+          nullable: true
+        name:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        projectType:
+          type: string
+          minLength: 1
+        lifecycleStage:
+          type: string
+        state:
+          type: string
+        health:
+          type: string
+        priority:
+          type: string
+        primaryOwner:
+          type: string
+        supportingOwners:
+          type: string
+        targetDate:
+          type: string
+          format: date-time
+          nullable: true
+    ProjectUpdate:
+      type: object
+      properties:
+        organizationId:
+          type: integer
+          nullable: true
+        clientId:
+          type: integer
+          nullable: true
+        programId:
+          type: integer
+          nullable: true
+        name:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        projectType:
+          type: string
+          minLength: 1
+        lifecycleStage:
+          type: string
+        state:
+          type: string
+        health:
+          type: string
+        priority:
+          type: string
+        primaryOwner:
+          type: string
+        supportingOwners:
+          type: string
+        targetDate:
+          type: string
+          format: date-time
+          nullable: true
+    ProjectMilestone:
+      type: object
+      required:
+        [id, projectId, name, description, owner, status, stageGate, sequence, createdAt, updatedAt]
+      properties:
+        id:
+          type: integer
+        projectId:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+        owner:
+          type: string
+        dueDate:
+          type: string
+          format: date-time
+          nullable: true
+        status:
+          type: string
+          description: Not Started | In Progress | Completed | Missed
+        stageGate:
+          type: boolean
+        sequence:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    ProjectMilestoneCreate:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        owner:
+          type: string
+        dueDate:
+          type: string
+          format: date-time
+          nullable: true
+        status:
+          type: string
+        stageGate:
+          type: boolean
+        sequence:
+          type: integer
+    ProjectMilestoneUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        owner:
+          type: string
+        dueDate:
+          type: string
+          format: date-time
+          nullable: true
+        status:
+          type: string
+        stageGate:
+          type: boolean
+        sequence:
+          type: integer
+    PromoteInitiativeRequest:
+      type: object
+      required: [projectType, primaryOwner]
+      properties:
+        projectType:
+          type: string
+          minLength: 1
+        organizationId:
+          type: integer
+          nullable: true
+        clientId:
+          type: integer
+          nullable: true
+        programId:
+          type: integer
+          nullable: true
+        primaryOwner:
+          type: string
+          minLength: 1
+        targetDate:
+          type: string
+          format: date-time
+          nullable: true
+        allowDuplicate:
+          type: boolean
+          description: Must be true to create an additional project for an already-promoted initiative
+    ExecutionSummary:
+      type: object
+      required:
+        [
+          totalProjects,
+          activeProjects,
+          atRiskProjects,
+          dueSoonProjects,
+          approvedUnpromotedInitiatives,
+        ]
+      properties:
+        totalProjects:
+          type: integer
+        activeProjects:
+          type: integer
+        atRiskProjects:
+          type: integer
+        dueSoonProjects:
+          type: integer
+          description: Projects with a target date within the next 30 days and not completed/cancelled
+        approvedUnpromotedInitiatives:
+          type: integer
+          description: Initiatives in Approved status (or beyond) with no linked project

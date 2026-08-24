@@ -717,3 +717,216 @@ export interface EnvironmentEvent {
   createdAt: string;
 }
 
+export interface Organization {
+  id: number;
+  name: string;
+  /** Active | Inactive */
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OrganizationCreate {
+  /** @minLength 1 */
+  name: string;
+  status?: string;
+}
+
+export interface OrganizationUpdate {
+  /** @minLength 1 */
+  name?: string;
+  status?: string;
+}
+
+export interface Client {
+  id: number;
+  organizationId?: number | null;
+  name: string;
+  /** Active | Inactive */
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ClientCreate {
+  organizationId?: number | null;
+  /** @minLength 1 */
+  name: string;
+  status?: string;
+}
+
+export interface ClientUpdate {
+  organizationId?: number | null;
+  /** @minLength 1 */
+  name?: string;
+  status?: string;
+}
+
+export interface Program {
+  id: number;
+  clientId?: number | null;
+  organizationId?: number | null;
+  name: string;
+  description: string;
+  /** Active | On Hold | Completed | Cancelled */
+  status: string;
+  owner: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProgramCreate {
+  clientId?: number | null;
+  organizationId?: number | null;
+  /** @minLength 1 */
+  name: string;
+  description?: string;
+  status?: string;
+  owner?: string;
+}
+
+export interface ProgramUpdate {
+  clientId?: number | null;
+  organizationId?: number | null;
+  /** @minLength 1 */
+  name?: string;
+  description?: string;
+  status?: string;
+  owner?: string;
+}
+
+export interface Project {
+  id: number;
+  initiativeId?: number | null;
+  organizationId?: number | null;
+  clientId?: number | null;
+  programId?: number | null;
+  name: string;
+  description: string;
+  /** Client Implementation | Internal Technology | Internal Operations | Executive Initiative | Innovation | Other (extensible) */
+  projectType: string;
+  /** Planning | Ready | In Progress | On Hold | Completed | Cancelled */
+  lifecycleStage: string;
+  /** Active | On Hold | Closed */
+  state: string;
+  /** On Track | At Risk | Off Track | Unknown */
+  health: string;
+  /** Low | Medium | High | Critical */
+  priority: string;
+  primaryOwner: string;
+  /** Comma-separated supporting owners */
+  supportingOwners: string;
+  targetDate?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProjectMilestone {
+  id: number;
+  projectId: number;
+  name: string;
+  description: string;
+  owner: string;
+  dueDate?: string | null;
+  /** Not Started | In Progress | Completed | Missed */
+  status: string;
+  stageGate: boolean;
+  sequence: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type ProjectDetail = Project & ({
+  milestones: ProjectMilestone[];
+  initiativeTitle?: string | null;
+});
+
+export interface ProjectCreate {
+  initiativeId?: number | null;
+  organizationId?: number | null;
+  clientId?: number | null;
+  programId?: number | null;
+  /** @minLength 1 */
+  name: string;
+  description?: string;
+  /** @minLength 1 */
+  projectType: string;
+  lifecycleStage?: string;
+  state?: string;
+  health?: string;
+  priority?: string;
+  primaryOwner?: string;
+  supportingOwners?: string;
+  targetDate?: string | null;
+}
+
+export interface ProjectUpdate {
+  organizationId?: number | null;
+  clientId?: number | null;
+  programId?: number | null;
+  /** @minLength 1 */
+  name?: string;
+  description?: string;
+  /** @minLength 1 */
+  projectType?: string;
+  lifecycleStage?: string;
+  state?: string;
+  health?: string;
+  priority?: string;
+  primaryOwner?: string;
+  supportingOwners?: string;
+  targetDate?: string | null;
+}
+
+export interface ProjectMilestoneCreate {
+  /** @minLength 1 */
+  name: string;
+  description?: string;
+  owner?: string;
+  dueDate?: string | null;
+  status?: string;
+  stageGate?: boolean;
+  sequence?: number;
+}
+
+export interface ProjectMilestoneUpdate {
+  /** @minLength 1 */
+  name?: string;
+  description?: string;
+  owner?: string;
+  dueDate?: string | null;
+  status?: string;
+  stageGate?: boolean;
+  sequence?: number;
+}
+
+export interface PromoteInitiativeRequest {
+  /** @minLength 1 */
+  projectType: string;
+  organizationId?: number | null;
+  clientId?: number | null;
+  programId?: number | null;
+  /** @minLength 1 */
+  primaryOwner: string;
+  targetDate?: string | null;
+  /** Must be true to create an additional project for an already-promoted initiative */
+  allowDuplicate?: boolean;
+}
+
+export interface ExecutionSummary {
+  totalProjects: number;
+  activeProjects: number;
+  atRiskProjects: number;
+  /** Projects with a target date within the next 30 days and not completed/cancelled */
+  dueSoonProjects: number;
+  /** Initiatives in Approved status (or beyond) with no linked project */
+  approvedUnpromotedInitiatives: number;
+}
+
+export type ListProjectsParams = {
+/**
+ * Filter to projects originating from a given initiative
+ */
+initiativeId?: number;
+};
+

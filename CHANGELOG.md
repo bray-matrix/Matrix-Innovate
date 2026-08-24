@@ -5,6 +5,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and the
 project adheres to semantic versioning (patch = fixes/edits, minor = new
 features, major = breaking or milestone changes).
 
+## [1.0.0] - 2026-08-23
+
+### Compass Consolidation Phase 1 (surviving foundation)
+- Product renamed to **Compass** (user-facing branding only; technical slug/audience remain matrix-innovation-hub pending Platform coordination).
+- New execution domain: organizations, clients, programs, projects, project_milestones tables (additive; Drizzle FKs; no existing table changed).
+- Projects support client AND internal Matrix work — organization/client/program all optional; extensible projectType.
+- Initiative -> Project promotion (POST /api/initiatives/{id}/promote) with duplicate protection (409 unless allowDuplicate); initiative preserved as business-case record.
+- New pages: /projects, /projects/new, /projects/:id, /organizations, /clients, /programs; grouped sidebar navigation.
+- Dashboard execution summary (active / at-risk / due-soon projects, approved-unpromoted initiatives).
+- Matrix SDK v1.1 integration unchanged; version reporting bumped to v1.0.0.
+
 ## [0.4.0] — 2026-07-16
 
 ### Added

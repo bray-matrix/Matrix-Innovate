@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import {
   useListInitiatives,
   useGetProductHealth,
+  useGetExecutionSummary,
 } from "@workspace/api-client-react";
 import type { Initiative } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,6 +38,10 @@ import {
   Timer,
   TrendingUp,
   UserX,
+  Briefcase,
+  AlertCircle,
+  CalendarClock,
+  Target
 } from "lucide-react";
 
 const PROTOTYPE_SPRINT_DAYS = 14;
@@ -377,6 +382,9 @@ export default function Dashboard() {
       {/* Product Health */}
       <ProductHealthWidget />
 
+      {/* Execution Summary */}
+      <ExecutionSummaryWidget />
+
       {/* KPI grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         {kpis.map((k) => (
@@ -666,6 +674,77 @@ function ProductHealthWidget() {
                   <div
                     className={`text-xl font-bold leading-tight ${s.mono ? "font-mono text-lg" : ""}`}
                   >
+                    {s.value ?? "—"}
+                  </div>
+                )}
+                <div className="text-xs text-muted-foreground truncate">
+                  {s.title}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+
+function ExecutionSummaryWidget() {
+  const { data: summary, isLoading } = useGetExecutionSummary();
+
+  const stats = [
+    {
+      title: "Active Projects",
+      value: summary?.activeProjects,
+      icon: Briefcase,
+      iconColor: "text-blue-600",
+    },
+    {
+      title: "At Risk Projects",
+      value: summary?.atRiskProjects,
+      icon: AlertCircle,
+      iconColor: "text-amber-500",
+    },
+    {
+      title: "Due Soon (30d)",
+      value: summary?.dueSoonProjects,
+      icon: CalendarClock,
+      iconColor: "text-red-500",
+    },
+    {
+      title: "Approved / Unpromoted",
+      value: summary?.approvedUnpromotedInitiatives,
+      icon: Target,
+      iconColor: "text-purple-600",
+    },
+  ];
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center justify-between text-sm font-semibold">
+          <span className="flex items-center gap-2">
+            <Briefcase className="h-4 w-4 text-[#002D72]" />
+            Execution Summary
+          </span>
+          <Link href="/projects">
+            <Button variant="ghost" size="sm" className="h-7 text-xs">
+              View Projects
+            </Button>
+          </Link>
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {stats.map((s) => (
+            <div key={s.title} className="flex items-center gap-3">
+              <s.icon className={`h-6 w-6 shrink-0 ${s.iconColor}`} />
+              <div className="min-w-0">
+                {isLoading ? (
+                  <Skeleton className="h-6 w-14" />
+                ) : (
+                  <div className="text-xl font-bold leading-tight">
                     {s.value ?? "—"}
                   </div>
                 )}

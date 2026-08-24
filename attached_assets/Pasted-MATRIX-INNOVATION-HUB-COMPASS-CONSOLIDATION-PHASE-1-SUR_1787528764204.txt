@@ -1,0 +1,561 @@
+MATRIX INNOVATION HUB -> COMPASS CONSOLIDATION
+PHASE 1: SURVIVING FOUNDATION
+
+IMPORTANT:
+You are in the existing Matrix Innovation Hub Replit project.
+
+This codebase has been selected as the SURVIVING application for the consolidation of:
+- Matrix Innovation Hub
+- Matrix Compass
+
+The resulting product will be named:
+
+COMPASS
+
+Do not access or modify the separate Compass Replit project during this build.
+Do not delete any existing Innovation Hub data.
+Do not remove existing Innovation Hub functionality.
+Do not deploy automatically unless instructed at the end of this request.
+
+Before implementing, confirm:
+- Current application: Matrix Innovation Hub
+- Current version: v0.4.0
+- Real PostgreSQL persistence is active
+- Existing /matrix SDK v1.1 integration is active
+- Existing initiative data will be preserved
+
+If any of those assumptions are false, STOP and report the discrepancy.
+
+GOAL
+
+Transform the Innovation Hub codebase into the foundation of the combined Compass application while preserving all existing Innovation Hub functionality and production data.
+
+This is NOT the full Compass feature migration yet.
+
+This phase establishes:
+1. Product identity
+2. Combined domain model
+3. Initiative -> Project promotion
+4. Enterprise/internal project support
+5. Navigation foundation
+6. Backward compatibility
+7. Versioning
+
+--------------------------------------------------
+1. PRODUCT IDENTITY
+--------------------------------------------------
+
+Change the user-facing product identity from:
+
+Matrix Innovation Hub
+
+to:
+
+Compass
+
+Use "Compass" consistently in:
+- application header
+- browser title
+- app-info
+- manifest
+- About/Admin product references
+- visible application branding
+
+Preserve the current application slug and Platform audience temporarily unless changing them is required technically.
+
+DO NOT break the currently registered Matrix Platform launch relationship.
+
+If the Platform registration currently depends on:
+matrix-innovation-hub
+
+keep that technical identifier for this phase and report it as technical debt to migrate after Platform coordination.
+
+Do not rename database names, deployment URLs, Replit project names, package folders, or technical identifiers solely for cosmetic reasons.
+
+--------------------------------------------------
+2. PRESERVE ALL CURRENT INNOVATION CAPABILITIES
+--------------------------------------------------
+
+The following existing capabilities must continue working unchanged:
+
+- Dashboard
+- AI Innovation Interview
+- Submit Initiative
+- Initiatives
+- Initiative Detail
+- Initiative scoring
+- Calculation transparency
+- Initiative version history
+- Kanban
+- Documents
+- Validation
+- Product Backlog
+- Parking Lot
+- Admin
+- AI provider readiness
+- Environment lifecycle tools
+- Matrix Platform authentication
+- /matrix/app-info
+- /matrix/manifest
+- /matrix/health
+- /matrix/session
+
+Existing production initiative records must remain fully usable.
+
+--------------------------------------------------
+3. ADD CORE COMPASS DOMAIN MODEL
+--------------------------------------------------
+
+Add real PostgreSQL-backed entities for:
+
+ORGANIZATIONS
+- id
+- name
+- status
+- createdAt
+- updatedAt
+
+CLIENTS
+- id
+- organizationId nullable
+- name
+- status
+- createdAt
+- updatedAt
+
+PROGRAMS
+- id
+- clientId nullable
+- organizationId nullable
+- name
+- description
+- status
+- owner
+- createdAt
+- updatedAt
+
+PROJECTS
+- id
+- initiativeId nullable
+- organizationId nullable
+- clientId nullable
+- programId nullable
+- name
+- description
+- projectType
+- lifecycleStage
+- state
+- health
+- priority
+- primaryOwner
+- supportingOwners
+- targetDate nullable
+- createdAt
+- updatedAt
+
+PROJECT MILESTONES
+- id
+- projectId
+- name
+- description
+- owner
+- dueDate nullable
+- status
+- stageGate boolean
+- sequence/order
+- createdAt
+- updatedAt
+
+Use proper Drizzle relationships and foreign keys.
+
+Use the application's existing OpenAPI -> Orval -> Zod -> Express -> Drizzle architecture.
+
+Do not introduce a parallel architectural pattern.
+
+--------------------------------------------------
+4. INTERNAL PROJECT SUPPORT
+--------------------------------------------------
+
+Projects must support BOTH:
+
+CLIENT PROJECTS
+and
+INTERNAL MATRIX PROJECTS
+
+Therefore:
+
+- organizationId must be optional
+- clientId must be optional
+- programId must be optional
+
+A project must NOT require a client or program.
+
+Add a projectType model supporting at minimum:
+
+- Client Implementation
+- Internal Technology
+- Internal Operations
+- Executive Initiative
+- Innovation
+- Other
+
+The model should allow additional project types later without major schema changes.
+
+--------------------------------------------------
+5. INITIATIVE -> PROJECT PROMOTION
+--------------------------------------------------
+
+Add a controlled workflow allowing an Innovation initiative to become an execution project.
+
+On an initiative detail screen, when appropriate, provide:
+
+"Create Project"
+
+This must:
+
+- create a real Project row
+- preserve the Initiative row
+- populate project.initiativeId
+- copy appropriate fields such as:
+  - title/name
+  - description
+  - priority
+  - business owner / sponsor where appropriate
+- allow the user to choose:
+  - project type
+  - organization if applicable
+  - client if applicable
+  - program if applicable
+  - primary owner
+  - target date
+
+After creation:
+- show a link from Initiative -> Project
+- show a link from Project -> originating Initiative
+
+Prevent accidental duplicate promotion unless the user explicitly chooses to create an additional related project.
+
+Do NOT convert/delete/mutate the original initiative into a project.
+
+The lifecycle is:
+
+Idea / Innovation
+        ->
+Approved for Execution
+        ->
+Project
+
+The initiative remains the innovation/business-case record.
+The project becomes the execution record.
+
+--------------------------------------------------
+6. PROJECT LIFECYCLE
+--------------------------------------------------
+
+Implement a clean initial project lifecycle.
+
+At minimum:
+
+Planning
+Ready
+In Progress
+At Risk
+On Hold
+Completed
+Cancelled
+
+Keep project STATE separate from HEALTH where practical.
+
+Initial health values:
+
+On Track
+At Risk
+Off Track
+Unknown
+
+Do not over-engineer lifecycle rules yet.
+
+--------------------------------------------------
+7. PROJECT UI
+--------------------------------------------------
+
+Add initial real-data pages:
+
+Projects
+/projects
+
+Project Detail
+/projects/:id
+
+New Project
+/projects/new
+
+Project pages must use PostgreSQL-backed API data.
+
+NO mock data.
+NO data.ts.
+NO hardcoded sample projects.
+
+Projects list should include:
+- name
+- type
+- client/internal context
+- owner
+- lifecycle stage
+- state
+- health
+- priority
+- target date
+
+Project Detail should initially include:
+- overview
+- ownership
+- context
+- originating initiative if applicable
+- milestones
+- status/health
+- target date
+
+Do not attempt to port the entire old Compass project-detail UI in this phase.
+
+--------------------------------------------------
+8. ORGANIZATION / CLIENT / PROGRAM FOUNDATION
+--------------------------------------------------
+
+Add basic database-backed list/detail capability sufficient to support Project relationships.
+
+Routes:
+
+/organizations
+/clients
+/programs
+
+Keep these pages functional and straightforward.
+
+Do not spend excessive time recreating every old Compass workspace feature yet.
+
+--------------------------------------------------
+9. NAVIGATION
+--------------------------------------------------
+
+Restructure navigation into logical groups.
+
+Suggested structure:
+
+HOME
+- Dashboard
+
+INNOVATION
+- AI Innovation Interview
+- Submit Initiative
+- Initiatives
+- Kanban
+
+EXECUTION
+- Projects
+- Programs
+- Clients
+- Organizations
+
+GOVERNANCE
+- Validation
+- Documents
+
+PRODUCT MANAGEMENT
+- Product Backlog
+
+ADMINISTRATION
+- Admin
+
+Do not remove existing routes unless replaced intentionally.
+
+--------------------------------------------------
+10. DASHBOARD
+--------------------------------------------------
+
+Do not redesign the Dashboard completely.
+
+Extend the existing Dashboard with a small execution summary showing:
+
+- Active Projects
+- At Risk Projects
+- Projects due soon
+- Approved initiatives not yet promoted to projects
+
+Use real database data.
+
+--------------------------------------------------
+11. BACKWARD COMPATIBILITY
+--------------------------------------------------
+
+Preserve existing Innovation Hub routes and database records.
+
+Existing bookmarks to:
+- /initiatives
+- /kanban
+- /validation
+- /backlog
+etc.
+
+must continue functioning.
+
+Do not delete or rename existing tables.
+
+Use additive migrations.
+
+--------------------------------------------------
+12. PLATFORM INTEGRATION
+--------------------------------------------------
+
+KEEP the existing Matrix SDK v1.1 integration unchanged during this phase.
+
+Do not replace it with the Finance Hub bridge yet.
+
+Preserve:
+- /matrix/app-info
+- /matrix/manifest
+- /matrix/health
+- /matrix/session
+- OIDC discovery
+- JWKS validation
+- gateway support
+
+Update only the visible product name/version metadata required to identify the application as Compass.
+
+If changing the application slug or audience would break Platform authentication, DO NOT change them.
+
+Report those items for a later Platform migration.
+
+--------------------------------------------------
+13. SECURITY
+--------------------------------------------------
+
+Do not attempt a full RBAC implementation in this phase.
+
+However:
+
+- maintain requireMatrixSession protection
+- keep secrets server-side
+- do not add frontend AI/API keys
+- preserve existing authentication behavior
+
+Do not weaken current security controls.
+
+--------------------------------------------------
+14. VERSION
+--------------------------------------------------
+
+This consolidation is a MAJOR product change.
+
+Set the new application version to:
+
+v1.0.0
+
+Reason:
+Compass is becoming the combined successor product to Innovation Hub and the previous Compass application.
+
+Update version reporting consistently in:
+- app-info
+- manifest
+- health
+- Admin/About surfaces
+- any centralized version constant
+
+--------------------------------------------------
+15. VALIDATION
+--------------------------------------------------
+
+Before reporting completion, verify:
+
+A. Existing initiative records are intact
+B. Existing Innovation pages still work
+C. Initiative scoring still works
+D. Initiative version history still works
+E. Kanban still works
+F. Validation still works
+G. Product Backlog still works
+H. Platform authentication still works
+I. /matrix/app-info returns Compass and v1.0.0
+J. /matrix/health succeeds with database check
+K. Projects CRUD works
+L. Internal project creation works without client/program
+M. Client project creation works
+N. Initiative -> Project promotion works
+O. Initiative <-> Project links work
+P. Milestones persist correctly
+Q. No business page uses mock/in-memory project data
+R. Existing production initiative count before and after migration is unchanged
+
+--------------------------------------------------
+16. DO NOT PORT YET
+--------------------------------------------------
+
+Do NOT migrate these old Compass modules in this phase:
+
+- Resources / capacity planning
+- Formal Approvals
+- Board Pack / PDF reports
+- Matrix Advisor
+- Jira Portfolio
+- Jira Connector
+- AI Operations from Compass
+- advanced Client Workspace
+- Go-Live Readiness
+- Global Search
+- full old Compass Portfolio UI
+
+Those will be migrated after the combined foundation is verified.
+
+--------------------------------------------------
+17. COMPLETION REPORT
+--------------------------------------------------
+
+Return:
+
+VERSION
+Before:
+After:
+
+DATA SAFETY
+Initiatives before migration:
+Initiatives after migration:
+Existing data preserved: YES/NO
+
+NEW DATABASE ENTITIES
+[list]
+
+NEW ROUTES
+[list]
+
+INITIATIVE -> PROJECT
+Implemented: YES/NO
+Duplicate protection: YES/NO
+
+INTERNAL PROJECTS
+Supported: YES/NO
+
+PLATFORM
+Existing SDK v1.1 preserved: YES/NO
+Authentication verified: YES/NO
+App-info verified: YES/NO
+Health verified: YES/NO
+Technical slug/audience still using old Innovation Hub identity: YES/NO
+
+VALIDATION
+[list each validation item A-R with PASS/FAIL]
+
+FILES CHANGED
+[list]
+
+DATABASE MIGRATIONS
+[list]
+
+KNOWN ISSUES
+[list only actual known issues]
+
+DEPLOYED
+NO
+
+End with:
+
+COMPASS CONSOLIDATION PHASE 1 COMPLETE

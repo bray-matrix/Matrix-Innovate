@@ -4,3 +4,4 @@
 - [Workflow restart drops requests](workflow-restart-request-drops.md) — failed request + no server log usually means the API workflow was rebuilding; check restart timing before debugging code.
 - [Matrix Platform IdP](matrix-platform-idp.md) — real platform issuer is literal "matrix-platform"; discover issuer/JWKS/logout from /.well-known/openid-configuration, never hard-code.
 - [Gateway base-path pattern](gateway-base-path.md) — one build serves standalone root + prefix-stripping gateway via relative assets, runtime <base> tag, and withBase() on all client fetches.
+- [Promotion duplicate guard & zod dates](promotion-duplicate-guard.md) — promote must lock initiative row in a tx; api-zod coerces date-time bodies to Date, string-only parsing nulls them.

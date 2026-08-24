@@ -16,6 +16,12 @@ import Documents from "@/pages/documents";
 import ValidationPage from "@/pages/validation";
 import ProductBacklogPage from "@/pages/backlog";
 import Admin from "@/pages/admin";
+import ProjectsPage from "@/pages/projects";
+import NewProjectPage from "@/pages/projects-new";
+import ProjectDetailPage from "@/pages/project-detail";
+import OrganizationsPage from "@/pages/organizations";
+import ClientsPage from "@/pages/clients";
+import ProgramsPage from "@/pages/programs";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
@@ -35,6 +41,12 @@ function Router() {
         <Route path="/validation" component={ValidationPage} />
         <Route path="/backlog" component={ProductBacklogPage} />
         <Route path="/admin" component={Admin} />
+        <Route path="/projects" component={ProjectsPage} />
+        <Route path="/projects/new" component={NewProjectPage} />
+        <Route path="/projects/:id" component={ProjectDetailPage} />
+        <Route path="/organizations" component={OrganizationsPage} />
+        <Route path="/clients" component={ClientsPage} />
+        <Route path="/programs" component={ProgramsPage} />
         <Route component={NotFound} />
       </Switch>
     </AppLayout>

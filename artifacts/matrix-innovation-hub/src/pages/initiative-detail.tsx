@@ -6,6 +6,12 @@ import {
   useUpdateInitiative,
   useDeleteInitiative,
   useListInitiativeVersions,
+  usePromoteInitiative,
+  useListProjects,
+  useListOrganizations,
+  useListClients,
+  useListPrograms,
+  getListProjectsQueryKey,
   useRecalculateInitiative,
   useCompareInitiativeVersions,
   getListInitiativesQueryKey,
@@ -32,6 +38,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import {
   Select,
@@ -63,6 +70,8 @@ import {
   RefreshCw,
   GitCompareArrows,
   UserRound,
+  PlusCircle,
+  Link2,
 } from "lucide-react";
 import type {
   Initiative,
@@ -271,6 +280,179 @@ function CompareDialog({
         )}
       </DialogContent>
     </Dialog>
+
+  );
+}
+
+
+function PromoteDialog({
+  initiative,
+  open,
+  onOpenChange
+}: {
+  initiative: Initiative;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
+  const { data: projects } = useListProjects(undefined, { query: { enabled: open, queryKey: getListProjectsQueryKey() } });
+  const linkedProjects = (projects || []).filter(p => p.initiativeId === initiative.id);
+  
+  const { data: organizations } = useListOrganizations();
+  const { data: clients } = useListClients();
+  const { data: programs } = useListPrograms();
+
+  const [form, setForm] = useState<{
+    projectType: string;
+    organizationId: number | null;
+    clientId: number | null;
+    programId: number | null;
+    primaryOwner: string;
+    targetDate: string;
+  }>({
+    projectType: "Innovation",
+    organizationId: null,
+    clientId: null,
+    programId: null,
+    primaryOwner: initiative.businessOwner || initiative.executiveSponsor || "",
+    targetDate: "",
+  });
+
+  const promoteMutation = usePromoteInitiative({
+    mutation: {
+      onSuccess: (proj) => {
+        queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
+        toast({ title: "Project Created", description: `Project "${proj.name}" successfully created.` });
+        onOpenChange(false);
+        setLocation(`/projects/${proj.id}`);
+      },
+      onError: (err) => {
+        toast({ title: "Promotion Failed", variant: "destructive" });
+      }
+    }
+  });
+
+  const submit = (allowDuplicate = false) => {
+    if (!form.primaryOwner.trim()) {
+      toast({ title: "Primary Owner is required", variant: "destructive" });
+      return;
+    }
+    
+    promoteMutation.mutate({
+      id: initiative.id,
+      data: {
+        projectType: form.projectType,
+        organizationId: form.organizationId,
+        clientId: form.clientId,
+        programId: form.programId,
+        primaryOwner: form.primaryOwner.trim(),
+        targetDate: form.targetDate || null,
+        allowDuplicate
+      }
+    });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Promote to Execution Project</DialogTitle>
+          <DialogDescription>
+            Create an execution project linked to this initiative.
+          </DialogDescription>
+        </DialogHeader>
+
+        {linkedProjects.length > 0 && (
+          <div className="bg-amber-50 border border-amber-200 text-amber-800 p-3 rounded-md text-sm mb-4">
+            <div className="font-semibold flex items-center gap-1"><Link2 className="h-4 w-4"/> Linked Projects Exist</div>
+            <div className="mt-1">
+              This initiative is already linked to:
+              <ul className="list-disc pl-5 mt-1">
+                {linkedProjects.map(p => (
+                  <li key={p.id}>
+                    <Link href={`/projects/${p.id}`} className="font-medium hover:underline">{p.name}</Link>
+                    <span className="text-xs ml-2 opacity-80">({p.lifecycleStage} / {p.state})</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        )}
+
+        <div className="grid gap-4 py-2">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-2">
+              <Label>Project Type</Label>
+              <Select value={form.projectType} onValueChange={(v) => setForm(f => ({...f, projectType: v}))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {["Client Implementation", "Internal Technology", "Internal Operations", "Executive Initiative", "Innovation", "Other"].map(t => (
+                    <SelectItem key={t} value={t}>{t}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label>Primary Owner</Label>
+              <Input value={form.primaryOwner} onChange={(e) => setForm(f => ({...f, primaryOwner: e.target.value}))} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4">
+            <div className="grid gap-2">
+              <Label>Organization (Optional)</Label>
+              <Select value={form.organizationId ? String(form.organizationId) : "none"} onValueChange={(v) => setForm(f => ({...f, organizationId: v === "none" ? null : Number(v)}))}>
+                <SelectTrigger><SelectValue placeholder="Internal" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None (Internal)</SelectItem>
+                  {(organizations || []).map(o => <SelectItem key={o.id} value={String(o.id)}>{o.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label>Client (Optional)</Label>
+              <Select value={form.clientId ? String(form.clientId) : "none"} onValueChange={(v) => setForm(f => ({...f, clientId: v === "none" ? null : Number(v)}))}>
+                <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  {(clients || []).map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label>Program (Optional)</Label>
+              <Select value={form.programId ? String(form.programId) : "none"} onValueChange={(v) => setForm(f => ({...f, programId: v === "none" ? null : Number(v)}))}>
+                <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  {(programs || []).map(p => <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label>Target Date (Optional)</Label>
+              <Input type="date" value={form.targetDate} onChange={(e) => setForm(f => ({...f, targetDate: e.target.value}))} />
+            </div>
+          </div>
+        </div>
+
+        <DialogFooter className="flex justify-between">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <div className="flex gap-2">
+            {linkedProjects.length > 0 ? (
+              <Button variant="secondary" onClick={() => submit(true)} disabled={promoteMutation.isPending}>
+                Create Additional Project
+              </Button>
+            ) : (
+              <Button onClick={() => submit(false)} disabled={promoteMutation.isPending}>
+                Create Project
+              </Button>
+            )}
+          </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -295,6 +477,7 @@ export default function InitiativeDetail() {
   const [editMode, setEditMode] = useState(false);
   const [draft, setDraft] = useState<EditDraft | null>(null);
   const [compareOpen, setCompareOpen] = useState(false);
+  const [promoteOpen, setPromoteOpen] = useState(false);
   const [recalcResult, setRecalcResult] = useState<RecalculationResult | null>(
     null,
   );
@@ -757,6 +940,13 @@ export default function InitiativeDetail() {
                 }`}
               />
               Recalculate
+            </Button>
+            <Button
+              onClick={() => setPromoteOpen(true)}
+              disabled={editMode}
+            >
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Create Project
             </Button>
           </div>
           <div className="flex items-center gap-3">
@@ -1285,6 +1475,7 @@ export default function InitiativeDetail() {
           </div>
         </div>
       )}
+      <PromoteDialog initiative={initiative} open={promoteOpen} onOpenChange={setPromoteOpen} />
     </div>
   );
 }
