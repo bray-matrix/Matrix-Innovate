@@ -1,0 +1,128 @@
+MATRIX INNOVATION HUB — BRANDING CLEANUP
+
+TARGET REPLIT PROJECT:
+Matrix Innovation Hub
+
+DO NOT RUN THIS IN:
+- Legacy Matrix Compass
+- Matrix Platform
+- Finance Hub
+- Infrastructure Hub
+
+CURRENT STATE:
+- Surviving application is Matrix Innovation Hub
+- Current version is v1.2.0
+- Production authentication through Matrix Platform is working
+- Technical identity is already correct:
+  - slug/audience = matrix-innovation-hub
+  - gateway path = /innovation/
+  - production URL = matrix-innovation-hub.replit.app
+- Current user-facing branding still says Compass because of the consolidation work
+
+GOAL
+
+Revert ONLY the user-facing product identity from Compass back to:
+
+Matrix Innovation Hub
+
+Do NOT change:
+- technical slug
+- audience
+- gateway route
+- production URL
+- Matrix Platform registration
+- database schema
+- authentication
+- session behavior
+- business functionality
+
+UPDATE USER-FACING REFERENCES
+
+Change visible product naming from:
+Compass
+
+to:
+Matrix Innovation Hub
+
+Update where applicable:
+- application header
+- browser title
+- /matrix/app-info name
+- /matrix/manifest display name
+- /matrix/health display/application name if present
+- Admin/About surfaces
+- report/PDF headers
+- any visible branding text
+- CHANGELOG
+
+Do not rename internal folders, package directories, Replit project names, database objects, or technical identifiers solely for branding.
+
+VERSION
+
+This is a PATCH branding correction.
+
+Set version:
+
+v1.2.1
+
+Update consistently in:
+- centralized version constant
+- /matrix/app-info
+- /matrix/manifest
+- /matrix/health
+- Admin/About
+- package metadata
+- PDF/report metadata
+- CHANGELOG
+
+VALIDATE
+
+A. /matrix/app-info name = Matrix Innovation Hub
+B. /matrix/app-info version = v1.2.1
+C. /matrix/health healthy
+D. Matrix Platform launch still works
+E. Audience remains matrix-innovation-hub
+F. Gateway remains /innovation/
+G. Production URL unchanged
+H. Dashboard works
+I. Portfolio works
+J. Resources works
+K. Reports work
+L. PDF header says Matrix Innovation Hub
+M. Original Innovation functionality works
+N. No business data changed
+O. No schema changes
+
+DO NOT DEPLOY AUTOMATICALLY.
+
+Return:
+
+VERSION
+Before:
+After:
+
+BRANDING
+Old:
+New:
+
+TECHNICAL IDENTITY
+Slug unchanged:
+Audience unchanged:
+Gateway unchanged:
+Production URL unchanged:
+
+VALIDATION
+A-O PASS/FAIL
+
+FILES CHANGED
+[list]
+
+DATABASE CHANGES
+NONE
+
+DEPLOYED
+NO
+
+End with:
+
+MATRIX INNOVATION HUB v1.2.1 BRANDING CLEANUP READY FOR PUBLISH

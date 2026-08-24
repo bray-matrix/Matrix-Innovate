@@ -76,7 +76,7 @@ function buildReplitFeedback(detail: ValidationDetail): string {
   const commented = detail.items.filter((i) => i.comments.trim() !== "");
 
   const lines: string[] = [];
-  lines.push(`Validation feedback for Compass`);
+  lines.push(`Validation feedback for Matrix Innovation Hub`);
   lines.push(``);
   lines.push(`Version tested: ${detail.applicationVersion}`);
   if (detail.releaseName) lines.push(`Release name: ${detail.releaseName}`);

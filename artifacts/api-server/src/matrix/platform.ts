@@ -20,12 +20,11 @@ import {
 
 export const MATRIX_SDK_VERSION = "1.1";
 
-// User-facing product name is now Compass (Phase 1 consolidation of Matrix
-// Innovation Hub + Matrix Compass). The technical slug/audience deliberately
-// remain "matrix-innovation-hub" to preserve the existing Matrix Platform
-// registration — migrating them requires Platform coordination (tracked as
-// technical debt).
-const APP_NAME = "Compass";
+// User-facing product name reverted to Matrix Innovation Hub (v1.2.1 branding
+// cleanup — the interim "Compass" name from the consolidation was retired).
+// The technical slug/audience remain "matrix-innovation-hub", matching the
+// existing Matrix Platform registration.
+const APP_NAME = "Matrix Innovation Hub";
 const APP_SLUG = "matrix-innovation-hub";
 const APP_OWNER = "CIO / AI Innovation Office";
 

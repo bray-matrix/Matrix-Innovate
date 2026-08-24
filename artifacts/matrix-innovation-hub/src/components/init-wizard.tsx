@@ -169,7 +169,7 @@ export function InitializeEnvironmentCard() {
               Environment Initialization
             </CardTitle>
             <CardDescription>
-              Prepare Compass for production use by clearing
+              Prepare Matrix Innovation Hub for production use by clearing
               sample business data while preserving system configuration.
             </CardDescription>
           </div>

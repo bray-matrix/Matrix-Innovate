@@ -5,6 +5,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and the
 project adheres to semantic versioning (patch = fixes/edits, minor = new
 features, major = breaking or milestone changes).
 
+## [1.2.1] - 2026-08-23
+
+### Branding cleanup — restore Matrix Innovation Hub name
+- Reverted the interim user-facing product name "Compass" back to "Matrix Innovation Hub" across app header, browser title, `/matrix/app-info`, `/matrix/manifest`, footer/about, report and PDF headers, and other visible copy.
+- Patch release; no functional, schema, auth, or session changes. Technical slug/audience (`matrix-innovation-hub`), gateway route (`/innovation`), production URL, and Matrix Platform registration all unchanged.
+
 ## [1.2.0] - 2026-08-23
 
 ### Compass Consolidation Phase 3 — Reporting / PDF + Resources / Capacity

@@ -96,7 +96,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     }
   ];
 
-  const currentLabel = navGroups.flatMap(g => g.items).find(i => i.href === location)?.label || "Compass";
+  const currentLabel = navGroups.flatMap(g => g.items).find(i => i.href === location)?.label || "Matrix Innovation Hub";
 
   return (
     <SidebarProvider>
@@ -105,7 +105,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           <SidebarHeader className="h-16 flex items-center px-4 border-b">
             <div className="flex items-center gap-2 font-bold text-primary">
               <Compass className="h-5 w-5" />
-              <span>Compass</span>
+              <span>Matrix Innovation Hub</span>
             </div>
           </SidebarHeader>
           <SidebarContent className="p-2 gap-0">
@@ -133,7 +133,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           </SidebarContent>
           <SidebarFooter className="border-t px-4 py-3">
             <div className="text-xs text-sidebar-foreground/70">
-              <div className="font-medium">Compass</div>
+              <div className="font-medium">Matrix Innovation Hub</div>
               <div className="font-mono mt-0.5">
                 {settings?.applicationVersion ?? ""}
               </div>
