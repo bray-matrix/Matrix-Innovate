@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
-import { createRemoteJWKSet, jwtVerify, SignJWT } from "jose";
+import { createRemoteJWKSet, decodeProtectedHeader, jwtVerify, SignJWT } from "jose";
 
 // Matrix Platform Launch Guard (Matrix SDK v1.1 Trust Model, wired to the
 // real Matrix Platform Identity Provider via OIDC discovery as of v0.3.2).
@@ -166,20 +166,54 @@ export class LaunchTokenError extends Error {
 
 const APP_ID_CLAIMS = ["app_id", "application_id", "appId", "client_id"] as const;
 
+// Asymmetric JWS algorithms acceptable for platform launch tokens. Signature
+// verification against the platform JWKS remains mandatory; symmetric (HS*)
+// and unsigned tokens are always rejected because the JWKS is public.
+const ALLOWED_LAUNCH_ALGS = new Set([
+  "RS256",
+  "RS384",
+  "RS512",
+  "PS256",
+  "PS384",
+  "PS512",
+  "ES256",
+  "ES384",
+  "ES512",
+  "EdDSA",
+]);
+
 export async function verifyLaunchToken(token: string): Promise<MatrixIdentity> {
   const { audience } = getMatrixAuthConfig();
   const { issuer, jwksUri } = await getMatrixDiscovery();
 
+  // Decode the (public) protected header first so rejections can name the
+  // offending algorithm without ever logging token contents.
+  let alg = "";
+  let kid: string | undefined;
+  try {
+    const header = decodeProtectedHeader(token);
+    alg = typeof header.alg === "string" ? header.alg : "";
+    kid = typeof header.kid === "string" ? header.kid : undefined;
+  } catch {
+    throw new LaunchTokenError("malformed token (unreadable protected header)");
+  }
+  if (!ALLOWED_LAUNCH_ALGS.has(alg)) {
+    throw new LaunchTokenError(
+      `disallowed signing algorithm "${alg || "(none)"}" (kid=${kid ?? "n/a"}); asymmetric JWS required`,
+    );
+  }
+
   let payload: Record<string, unknown>;
   try {
     const result = await jwtVerify(token, getJwks(jwksUri), {
-      algorithms: ["RS256"],
+      algorithms: [alg],
       issuer,
       audience,
     });
     payload = result.payload as Record<string, unknown>;
   } catch (err) {
-    throw new LaunchTokenError(err instanceof Error ? err.message : "verification failed");
+    const detail = err instanceof Error ? err.message : "verification failed";
+    throw new LaunchTokenError(`${detail} (alg=${alg}, kid=${kid ?? "n/a"})`);
   }
 
   const sub = typeof payload["sub"] === "string" ? payload["sub"].trim() : "";

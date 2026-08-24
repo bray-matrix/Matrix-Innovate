@@ -21,3 +21,12 @@ timeoutMs = 20000
 
 [nix]
 channel = "stable-25_05"
+
+[userenv]
+
+[userenv.production]
+GATEWAY_BASE_PATH = "/innovation"
+BASE_PATH = "/innovation"
+MATRIX_AUDIENCE = "matrix-innovation-hub"
+MATRIX_PLATFORM_URL = "https://matrix-platform.replit.app"
+MATRIX_SESSION_TTL_SECONDS = "28800"

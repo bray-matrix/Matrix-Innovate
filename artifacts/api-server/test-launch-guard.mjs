@@ -19,6 +19,12 @@ jwk.kid = "test-key";
 jwk.alg = "RS256";
 jwk.use = "sig";
 
+const { publicKey: ecPublicKey, privateKey: ecPrivateKey } = await generateKeyPair("ES256");
+const ecJwk = await exportJWK(ecPublicKey);
+ecJwk.kid = "test-ec-key";
+ecJwk.alg = "ES256";
+ecJwk.use = "sig";
+
 const jwksServer = createServer((req, res) => {
   res.setHeader("content-type", "application/json");
   if (req.url === "/.well-known/openid-configuration") {
@@ -32,7 +38,7 @@ const jwksServer = createServer((req, res) => {
     );
     return;
   }
-  res.end(JSON.stringify({ keys: [jwk] }));
+  res.end(JSON.stringify({ keys: [jwk, ecJwk] }));
 });
 await new Promise((r) => jwksServer.listen(JWKS_PORT, r));
 
@@ -103,7 +109,16 @@ await expectStatus("wrong issuer rejected", exchange(await mint({ iss: "https://
 await expectStatus("wrong audience rejected", exchange(await mint({ aud: "some-other-app" })), 401);
 await expectStatus("wrong signature rejected", exchange(await mint({ key: wrongKey })), 401);
 await expectStatus("wrong algorithm (HS256) rejected", exchange(await mint({ alg: "HS256" })), 401);
+const noneToken = [
+  Buffer.from(JSON.stringify({ alg: "none" })).toString("base64url"),
+  Buffer.from(JSON.stringify({ sub: "user-123", iss: ISSUER, aud: AUDIENCE, exp: Math.floor(Date.now() / 1000) + 300 })).toString("base64url"),
+  "",
+].join(".");
+await expectStatus("unsigned (alg=none) token rejected", exchange(noneToken), 401);
 await expectStatus("contradictory app_id claim rejected", exchange(await mint({ claims: { app_id: "different-app" } })), 401);
+
+// Alternate asymmetric algorithm accepted (platform key rollout, e.g. ES256)
+await expectStatus("ES256-signed launch token accepted", exchange(await mint({ alg: "ES256", key: ecPrivateKey })), 200);
 
 // Valid launch
 const good = await expectStatus("valid launch token accepted", exchange(await mint()), 200);
