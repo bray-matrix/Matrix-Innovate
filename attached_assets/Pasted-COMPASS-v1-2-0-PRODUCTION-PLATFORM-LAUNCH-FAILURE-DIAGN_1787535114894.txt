@@ -1,0 +1,289 @@
+COMPASS v1.2.0 — PRODUCTION PLATFORM LAUNCH FAILURE DIAGNOSTIC
+
+IMPORTANT:
+You are in the SURVIVING application codebase, originally Matrix Innovation Hub, now user-facing as Compass v1.2.0.
+
+Production has just been published.
+
+Observed production behavior:
+
+When launching from Matrix Platform at the gateway route:
+
+https://matrix-platform.replit.app/innovation/
+
+the application loads its authentication guard and displays:
+
+"Matrix Platform sign-in required
+This application is managed by Matrix Platform. Launch it from Matrix Platform to continue."
+
+This means the application itself is reachable, but the Matrix Platform launch/session handoff did not result in an authenticated application session.
+
+DO NOT make speculative changes yet.
+
+GOAL
+
+Diagnose the exact failure in the production Platform -> Compass launch flow and fix only the confirmed issue.
+
+--------------------------------------------------
+1. VERIFY PRODUCTION APPLICATION HEALTH
+--------------------------------------------------
+
+Check production directly and confirm:
+
+- /matrix/app-info returns Compass v1.2.0
+- /matrix/health returns healthy
+- database connectivity succeeds
+- application process has no startup errors
+
+If production itself is unhealthy, STOP and report.
+
+--------------------------------------------------
+2. VERIFY TECHNICAL PLATFORM IDENTITY
+--------------------------------------------------
+
+Report the CURRENT production values for:
+
+- Matrix application slug
+- Matrix application audience
+- MATRIX_PLATFORM_ORIGIN
+- gateway/base path
+- production URL
+- expected launch-token issuer
+- expected launch-token audience
+
+Do not print secrets.
+
+We expect that the technical slug/audience may still be:
+
+matrix-innovation-hub
+
+even though the visible application name is Compass.
+
+Confirm whether that is true.
+
+--------------------------------------------------
+3. INSPECT THE ACTUAL PLATFORM LAUNCH REQUEST
+--------------------------------------------------
+
+Determine what happens when Matrix Platform launches this application.
+
+Verify whether the initial browser URL contains:
+
+#matrix_token=...
+
+or equivalent launch-token fragment.
+
+Determine:
+
+A. Did Platform include a launch token?
+B. Did the frontend capture it?
+C. Did the frontend remove/scrub it from the URL?
+D. Did the frontend POST it to /matrix/session?
+E. What HTTP status did /matrix/session return?
+F. If rejected, what validation failed?
+
+Check production logs around the failed launch.
+
+Do NOT log the actual token.
+
+--------------------------------------------------
+4. VERIFY TOKEN CLAIM COMPATIBILITY
+--------------------------------------------------
+
+For the failed launch token, safely inspect validation results without exposing token contents.
+
+Confirm whether these match:
+
+- issuer expected by Compass
+- audience expected by Compass
+- subject exists
+- token not expired
+- RS256 signature validates
+- Platform JWKS retrieval succeeds
+
+Especially compare:
+
+PLATFORM-ISSUED AUDIENCE
+vs.
+COMPASS EXPECTED AUDIENCE
+
+If they differ, report both values.
+
+Do not change the application audience until the mismatch is confirmed.
+
+--------------------------------------------------
+5. VERIFY PLATFORM REGISTRATION
+--------------------------------------------------
+
+Determine what Matrix Platform currently has registered for this application:
+
+- application name
+- slug
+- audience
+- launch URL
+- gateway route
+- production URL
+
+If this application cannot inspect Platform registration directly, state exactly which Platform-side value needs to be checked.
+
+Expected gateway route may still be:
+
+/innovation
+
+Expected audience may still be:
+
+matrix-innovation-hub
+
+Do not assume Platform has already been updated to "Compass".
+
+--------------------------------------------------
+6. VERIFY GATEWAY / BASE-PATH BEHAVIOR
+--------------------------------------------------
+
+Production is being accessed through:
+
+/innovation/
+
+Verify:
+
+- frontend base path resolves correctly
+- /matrix/session request targets the correct application/API endpoint
+- gateway prefix stripping is correct
+- auth request is not accidentally posting to:
+  - Matrix Platform itself
+  - the wrong application path
+  - root instead of /innovation
+  - an obsolete /compass path
+
+Report the exact resolved /matrix/session request URL.
+
+--------------------------------------------------
+7. VERIFY SESSION COOKIE
+--------------------------------------------------
+
+If /matrix/session succeeds, verify:
+
+- matrix_session cookie is issued
+- cookie Path allows access through /innovation/
+- Secure is correct
+- SameSite is correct
+- Domain is appropriate
+- browser sends the cookie on subsequent /api requests
+
+A gateway-hosted application can fail authentication if the cookie Path is scoped incorrectly.
+
+Specifically check whether the cookie is being issued with:
+
+Path=/
+
+or
+
+Path=/innovation
+
+and whether that matches the deployed/gateway architecture.
+
+--------------------------------------------------
+8. DIRECT VS PLATFORM LAUNCH
+--------------------------------------------------
+
+Compare:
+
+A. Direct production app URL
+B. Matrix Platform gateway URL /innovation/
+
+Determine whether authentication works differently between them.
+
+Do not weaken authentication to make direct access work.
+
+The Platform launch must remain the supported authentication path.
+
+--------------------------------------------------
+9. FIX ONLY THE CONFIRMED CAUSE
+--------------------------------------------------
+
+After diagnosis, make the minimum change necessary.
+
+Likely categories include:
+
+- Platform audience mismatch
+- Platform launch URL mismatch
+- /matrix/session base-path bug
+- cookie Path bug
+- Platform registration still referencing obsolete endpoint
+- gateway fragment/token loss
+- issuer/JWKS configuration mismatch
+
+Do NOT:
+
+- disable authentication
+- add a local login
+- bypass requireMatrixSession
+- make production APIs public
+- rename the technical slug/audience unless required
+- retire legacy Platform registrations
+- change unrelated Phase 1-3 functionality
+
+--------------------------------------------------
+10. RETEST PRODUCTION
+--------------------------------------------------
+
+After the fix:
+
+1. Publish only if code/config change requires it
+2. Launch from Matrix Platform
+3. Confirm token is exchanged
+4. Confirm matrix_session is created
+5. Confirm Dashboard loads
+6. Confirm authenticated /api request succeeds
+7. Confirm /matrix/app-info still reports Compass v1.2.0
+8. Confirm /matrix/health remains healthy
+
+--------------------------------------------------
+11. COMPLETION REPORT
+--------------------------------------------------
+
+Return:
+
+ROOT CAUSE
+[exact confirmed cause]
+
+PLATFORM REGISTRATION
+Name:
+Slug:
+Audience:
+Launch URL:
+Gateway route:
+
+COMPASS EXPECTATION
+Slug:
+Audience:
+Platform origin:
+Gateway/base path:
+
+LAUNCH FLOW
+Platform token issued: PASS/FAIL
+Frontend token captured: PASS/FAIL
+/matrix/session called: PASS/FAIL
+/matrix/session result:
+Session cookie issued: PASS/FAIL
+Authenticated API call: PASS/FAIL
+
+FIX APPLIED
+[exact change]
+
+FILES/CONFIG CHANGED
+[list]
+
+DEPLOYMENT REQUIRED
+YES/NO
+
+POST-FIX VERIFICATION
+Platform launch: PASS/FAIL
+Dashboard: PASS/FAIL
+Authenticated API: PASS/FAIL
+/matrix/app-info: PASS/FAIL
+/matrix/health: PASS/FAIL
+
+End with:
+
+COMPASS PLATFORM LAUNCH ISSUE RESOLVED
