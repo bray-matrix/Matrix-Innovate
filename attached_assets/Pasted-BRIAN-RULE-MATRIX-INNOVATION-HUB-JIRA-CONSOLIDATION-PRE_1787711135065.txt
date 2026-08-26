@@ -1,0 +1,559 @@
+BRIAN RULE — MATRIX INNOVATION HUB JIRA CONSOLIDATION PRE-BUILD ANALYSIS
+
+TARGET REPLIT PROJECT:
+Matrix Innovation Hub
+
+THIS IS THE SURVIVING APPLICATION.
+
+DO NOT RUN THIS IN:
+- old/donor Matrix Compass
+- Matrix Platform
+- Finance Hub
+- Matrix Infrastructure Hub
+- any other Replit project
+
+==================================================
+WORKSPACE CHECK — REQUIRED
+==================================================
+
+Before doing anything, prove this is the surviving Matrix Innovation Hub.
+
+Expected characteristics include:
+
+Application:
+Matrix Innovation Hub
+
+Technical slug/audience:
+matrix-innovation-hub
+
+Gateway:
+/innovation
+
+Production URL:
+https://matrix-innovation-hub.replit.app
+
+Expected current version:
+v1.2.1
+
+Expected major capabilities:
+- Innovation intake/interview
+- Initiatives
+- scoring/prioritization
+- Kanban
+- Organizations
+- Clients
+- Programs
+- Projects
+- Milestones
+- Risks
+- Approvals
+- Go-Live Readiness
+- Resources
+- Portfolio
+- Reports / Board Pack
+- Matrix Platform /matrix contract
+
+If these assumptions do not match this workspace:
+
+STOP.
+
+Return the mismatch.
+
+DO NOT modify code.
+
+==================================================
+OBJECTIVE
+==================================================
+
+Prepare Matrix Innovation Hub to absorb the valuable Jira capabilities from the OLD Matrix Compass donor application.
+
+IMPORTANT:
+
+Old Compass is DONOR/REFERENCE ONLY.
+
+Do NOT:
+- migrate Compass business data
+- migrate Compass mock data
+- replace Innovation Hub's project model
+- replace Innovation Hub's PostgreSQL architecture
+- copy Compass authentication/session architecture
+- change Matrix Innovation Hub identity
+- change Matrix Platform integration
+- modify Matrix Platform
+- modify old Compass
+- deploy anything
+
+The surviving architecture is Matrix Innovation Hub.
+
+We want to port Jira capabilities INTO Innovation Hub using Innovation Hub's architecture and security model.
+
+==================================================
+KNOWN DONOR JIRA CAPABILITIES
+==================================================
+
+Previous donor inventory identified these capabilities as worth preserving:
+
+1. Jira connector configuration
+2. Jira connection testing
+3. Jira project discovery
+4. Jira field discovery
+5. Jira project mapping
+6. Jira field mapping
+7. Jira status mapping
+8. Manual Jira synchronization
+9. PostgreSQL upsert of Jira data
+10. Sync-run history
+11. Sync diagnostics
+12. Jira snapshots
+13. Per-project executive metrics
+14. Deterministic Jira intelligence
+15. Health scoring 0–100
+16. Aging analytics
+17. Overdue analytics
+18. Blocked-work analytics
+19. Alerts
+20. Jira Portfolio UI
+21. Jira executive dashboard panel
+
+Known donor implementation areas included:
+
+api-server/src/routes/jira.ts
+api-server/src/services/jira/*
+lib/jira-intelligence/*
+pages/jira-portfolio.tsx
+components/jira/*
+repositories/jira/*
+
+Donor database contained approximately 12 Jira-specific tables.
+
+Known donor limitations included:
+- approximately 5,000 issue cap per sync
+- weak/no 429 rate-limit handling
+- some keyword-based priority classification
+
+Do NOT blindly reproduce those limitations.
+
+==================================================
+PHASE 1 — INVENTORY INNOVATION HUB TODAY
+==================================================
+
+Inspect the surviving Matrix Innovation Hub and report whether ANY Jira functionality already exists.
+
+Search:
+
+- frontend
+- backend
+- OpenAPI
+- database schema
+- environment configuration
+- Administration
+- integrations
+- projects
+- portfolio
+- dashboard
+- reporting
+- AI/provider architecture
+
+For each Jira-related capability found, classify:
+
+EXISTS AND USABLE
+EXISTS BUT INCOMPLETE
+DOES NOT EXIST
+
+Do not assume Jira is absent merely because it is not visible in navigation.
+
+==================================================
+PHASE 2 — INVENTORY DONOR SOURCE AVAILABILITY
+==================================================
+
+Determine what donor Compass Jira source is actually accessible from this workspace.
+
+Do NOT guess that another Replit project's files can be directly imported.
+
+Report whether you have:
+
+A. direct donor source available locally
+B. shared package/library available
+C. Git repository/reference available
+D. documentation/specification only
+E. no donor source available from this workspace
+
+If donor source is NOT directly available, say exactly what must be provided before implementation.
+
+Do not recreate a large Jira integration from memory when the donor code already exists elsewhere.
+
+==================================================
+PHASE 3 — DESIGN THE SURVIVING DATA MODEL
+==================================================
+
+Determine how Jira should integrate with Innovation Hub's REAL PostgreSQL model.
+
+The core relationship should conceptually be:
+
+Innovation Hub Project
+        ↕
+Jira Project(s)
+        ↓
+Jira Issues
+        ↓
+Execution metrics / intelligence / snapshots
+
+Determine whether one Innovation Hub Project should support:
+
+- zero Jira projects
+- one Jira project
+- multiple Jira projects
+
+RECOMMEND the model based on the existing application architecture.
+
+Do not force the donor's old mapping model if Innovation Hub now has a better project model.
+
+Identify proposed Jira tables.
+
+For each table report:
+
+TABLE
+PURPOSE
+KEY RELATIONSHIPS
+DELETE/CASCADE BEHAVIOR
+WHETHER PORTED OR REDESIGNED
+
+No migrations yet.
+
+==================================================
+PHASE 4 — SECURITY DESIGN
+==================================================
+
+Review the donor Jira credential model and design the surviving implementation.
+
+Requirements:
+
+Jira credentials MUST:
+- remain server-side
+- never be sent to the browser
+- never appear in logs
+- never appear in API responses
+- never appear in exports
+- never appear in Matrix Platform metadata
+
+Determine the appropriate configuration model for:
+
+- Jira base URL
+- Jira account/email
+- Jira API token
+
+Also determine whether one Jira tenant is sufficient initially or whether the donor already supports multiple Jira instances.
+
+Do not add multi-tenant complexity unless there is a real existing requirement.
+
+Matrix Innovation Hub authentication must remain unchanged.
+
+==================================================
+PHASE 5 — SYNC ENGINE REVIEW
+==================================================
+
+Design the Jira synchronization flow.
+
+At minimum evaluate:
+
+- manual sync
+- project discovery
+- field discovery
+- pagination
+- issue upserts
+- deleted/missing issue handling
+- sync history
+- failure diagnostics
+- partial failures
+- retries
+- Atlassian 429 handling
+- Retry-After
+- request timeout
+- maximum issue safeguards
+- incremental synchronization
+- full synchronization
+- concurrency protection
+- duplicate sync prevention
+
+We do NOT need to solve every enhancement in Phase 1.
+
+Classify each as:
+
+REQUIRED FOR FIRST PORT
+FOLLOW-UP
+NOT NEEDED
+
+==================================================
+PHASE 6 — JIRA INTELLIGENCE
+==================================================
+
+Inventory the donor deterministic intelligence concepts.
+
+Determine which should be preserved:
+
+- project execution health score
+- overdue work
+- aging work
+- blocked work
+- stale work
+- priority distribution
+- status distribution
+- issue throughput
+- alerts
+- trend/snapshot comparison
+- executive summary metrics
+
+IMPORTANT:
+
+Jira intelligence must remain deterministic.
+
+AI may later explain Jira metrics, but AI must NOT silently change the underlying health score or calculations.
+
+For every proposed metric identify:
+
+NAME
+INPUT DATA
+CALCULATION
+OUTPUT
+DONOR LOGIC REUSABLE: YES/NO/PARTIAL
+
+==================================================
+PHASE 7 — UI INTEGRATION
+==================================================
+
+Do NOT simply recreate the old Compass navigation.
+
+Determine the correct Innovation Hub placement.
+
+Evaluate:
+
+Administration
+    Integrations
+        Jira
+
+Execution
+    Projects
+        Project Detail → Jira
+
+Reporting / Portfolio
+    Jira Portfolio or Execution Intelligence
+
+Dashboard
+    Jira Executive Summary
+
+Recommend the minimum navigation additions necessary.
+
+The user should NOT need to think of Jira as a separate application.
+
+Jira should feel like execution intelligence inside Matrix Innovation Hub.
+
+==================================================
+PHASE 8 — PROJECT DETAIL INTEGRATION
+==================================================
+
+Innovation Hub already has real Project Detail.
+
+Design how Jira appears there.
+
+Potential capabilities:
+
+- mapped Jira project(s)
+- current Jira health score
+- open issue count
+- overdue count
+- blocked count
+- stale count
+- latest sync
+- alerts
+- issue/status summary
+- link to deeper Jira analytics
+
+Determine what belongs on:
+
+Project Overview
+
+versus
+
+a dedicated Jira/Execution tab.
+
+Do not overload Project Overview.
+
+==================================================
+PHASE 9 — PORTFOLIO INTEGRATION
+==================================================
+
+Innovation Hub already has Portfolio.
+
+Determine how Jira execution intelligence should augment it.
+
+Examples:
+
+- Jira execution health
+- stale execution
+- blocked work
+- overdue work
+- synchronization status
+
+Do NOT create a second competing definition of overall Project Health.
+
+Existing Innovation Hub effective project health remains authoritative.
+
+Jira health should be an execution signal/input displayed separately unless a future explicit rule incorporates it into project health.
+
+==================================================
+PHASE 10 — REPORTING
+==================================================
+
+Determine whether existing Innovation Hub reports should gain Jira sections.
+
+Evaluate:
+
+- Executive Portfolio
+- Project Status
+- Client Portfolio
+- Program Portfolio
+- Risk & Approval Summary
+- Board / Leadership Pack
+
+Recommend only useful additions.
+
+Do not expand every report merely because Jira data exists.
+
+==================================================
+PHASE 11 — IMPLEMENTATION PHASES
+==================================================
+
+Create a FAST consolidation plan.
+
+Goal:
+Port the valuable Jira vertical without turning this into a multi-week rewrite.
+
+Prefer approximately:
+
+PHASE J1
+Jira foundation + credentials + connection + discovery + mappings + persistence
+
+PHASE J2
+Sync engine + diagnostics + issue persistence
+
+PHASE J3
+Deterministic intelligence + snapshots
+
+PHASE J4
+Project/Portfolio/Dashboard UI integration
+
+PHASE J5
+Reporting + polish + production validation
+
+If a different grouping is materially better, recommend it.
+
+For each phase provide:
+
+PURPOSE
+FEATURES
+DATABASE WORK
+API WORK
+UI WORK
+VALIDATION
+ESTIMATED COMPLEXITY
+DEPENDENCIES
+
+==================================================
+PHASE 12 — VERSION PLAN
+==================================================
+
+Current expected Matrix Innovation Hub version:
+v1.2.1
+
+Recommend semantic versions for J1–J5.
+
+Do NOT change the version now.
+
+==================================================
+PHASE 13 — OLD COMPASS DELETION GATE
+==================================================
+
+Define exactly what must be true before we can permanently delete the old Compass Replit project.
+
+At minimum consider:
+
+- required Jira source preserved
+- required Jira behavior reproduced
+- credentials migrated/rotated appropriately
+- Jira integration validated
+- no remaining donor-only feature marked KEEP
+- Git/source archive decision completed
+
+Remember:
+
+NO BUSINESS DATA MIGRATION FROM COMPASS IS REQUIRED.
+
+==================================================
+RETURN
+==================================================
+
+WORKSPACE
+Replit project:
+Application:
+Version:
+Confirmed surviving Matrix Innovation Hub: YES/NO
+
+CURRENT JIRA CAPABILITY MATRIX
+Capability | Status | Existing files/components
+
+DONOR SOURCE AVAILABILITY
+Available:
+Not available:
+What is needed:
+
+PROPOSED ARCHITECTURE
+
+PROJECT ↔ JIRA RELATIONSHIP
+
+PROPOSED DATABASE MODEL
+
+SECURITY MODEL
+
+SYNC ENGINE PLAN
+Required:
+Follow-up:
+Not needed:
+
+DETERMINISTIC INTELLIGENCE
+Metric | Calculation | Reuse assessment
+
+UI INTEGRATION PLAN
+
+PROJECT DETAIL PLAN
+
+PORTFOLIO PLAN
+
+REPORTING PLAN
+
+IMPLEMENTATION PHASES
+J1:
+J2:
+J3:
+J4:
+J5:
+
+VERSION PLAN
+
+OLD COMPASS DELETION GATE
+
+RISKS / OPEN QUESTIONS
+
+RECOMMENDATION
+
+CHANGES MADE:
+NONE
+
+DATABASE CHANGES:
+NONE
+
+DEPLOYED:
+NO
+
+FINAL LINE:
+
+MATRIX INNOVATION HUB JIRA CONSOLIDATION PRE-BUILD ANALYSIS COMPLETE
