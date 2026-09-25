@@ -1,0 +1,270 @@
+BRIAN RULE — MATRIX INNOVATION HUB JIRA J1 LIVE VALIDATION
+
+TARGET REPLIT PROJECT:
+Matrix Innovation Hub
+
+DO NOT RUN THIS IN:
+- Matrix Platform
+- Finance Hub
+- Matrix Infrastructure Hub
+- Legacy Compass
+
+CURRENT STATE
+
+Matrix Innovation Hub Jira J1 is complete in development.
+
+Current version:
+v1.3.0
+
+Implemented:
+- Jira connection state
+- Jira connection testing
+- project discovery
+- project mapping
+- field discovery/mapping
+- status mapping
+- Admin Jira Integration UI
+- server-side Jira client
+- timeout + 429 handling
+- Matrix authentication protection
+
+NOT IMPLEMENTED YET:
+- issue synchronization
+- issue persistence
+- Jira intelligence
+- snapshots
+- Portfolio Jira signals
+- Project Detail Jira analytics
+- Dashboard Jira analytics
+- reporting additions
+
+DO NOT implement J2 during this task.
+
+==================================================
+1. CONFIGURE LIVE JIRA SECRETS
+==================================================
+
+Use Replit Secrets / server environment only.
+
+Required:
+
+JIRA_BASE_URL
+JIRA_EMAIL
+JIRA_API_TOKEN
+
+Do NOT:
+- store the token in PostgreSQL
+- put the token in source code
+- expose it to the browser
+- write it to logs
+- print it in this completion report
+
+If one or more values are already configured, inspect only whether they exist and use them.
+
+Never display the token value.
+
+==================================================
+2. TEST THE LIVE CONNECTION
+==================================================
+
+Use the actual J1 connection-test flow.
+
+Verify:
+
+- authentication succeeds
+- Jira identity/account is recognized
+- configured base URL is correct
+- timeout behavior is normal
+- no authorization headers appear in logs
+- jira_connection_state records only safe metadata
+
+If connection fails:
+
+STOP.
+
+Report only the sanitized Jira error and likely cause.
+
+Do not weaken security or authentication to make it work.
+
+==================================================
+3. LIVE PROJECT DISCOVERY
+==================================================
+
+Run Discover Projects against the real Jira tenant.
+
+Report:
+
+- number of Jira projects discovered
+- pagination behavior
+- whether any safety limit was reached
+- discovery duration
+- whether rediscovery preserves mappings
+
+Do NOT map every project automatically.
+
+Do NOT enable sync for every project automatically.
+
+Discovery only.
+
+==================================================
+4. FIELD DISCOVERY
+==================================================
+
+Run live field discovery.
+
+Verify:
+
+- Jira system due-date field is visible
+- custom fields are discoverable
+- field IDs are preserved exactly
+- field names/types are returned safely
+- story-points candidates can be identified where present
+- blocked-signal candidate fields can be selected where present
+
+Do not guess custom-field mappings.
+
+==================================================
+5. STATUS DISCOVERY
+==================================================
+
+Discover live Jira statuses/status categories.
+
+Verify the application can initialize sensible mappings to:
+
+todo
+in_progress
+blocked
+done
+
+Do not overwrite administrator-defined mappings.
+
+Report any Jira statuses that cannot be cleanly classified and require manual mapping.
+
+==================================================
+6. TEST ONE PROJECT MAPPING
+==================================================
+
+If Matrix Innovation Hub currently has at least one legitimate Project record suitable for testing:
+
+map ONE discovered Jira project to ONE Innovation Hub Project.
+
+Verify:
+- mapping persists
+- page reload preserves it
+- rediscovery preserves it
+- unmap/remap works
+
+If there are no legitimate Hub Projects available:
+
+DO NOT create fake production-style project data merely for this test.
+
+Report:
+PROJECT MAPPING LIVE TEST DEFERRED — NO SUITABLE HUB PROJECT
+
+Mocked automated coverage already proves the mapping logic.
+
+==================================================
+7. SECURITY VALIDATION
+==================================================
+
+Verify after live testing:
+
+A. JIRA_API_TOKEN absent from browser bundle
+B. token absent from API responses
+C. token absent from application logs
+D. token absent from database
+E. token absent from /matrix/app-info
+F. token absent from /matrix/health
+G. Jira errors are sanitized
+H. unauthenticated Jira API calls return 401
+
+==================================================
+8. REGRESSION
+==================================================
+
+Re-run:
+
+- Jira J1 automated tests
+- Matrix launch/auth tests
+- project/governance/portfolio/resource/reporting regressions
+- typecheck
+- frontend production build
+
+Do not change application version.
+
+Remain:
+v1.3.0
+
+==================================================
+9. DO NOT DEPLOY
+==================================================
+
+Do not publish.
+
+This task is live validation only.
+
+RETURN:
+
+WORKSPACE
+Confirmed Matrix Innovation Hub:
+
+VERSION
+Current:
+
+JIRA CONFIGURATION
+Base URL configured:
+Email configured:
+Token configured:
+Token location:
+Token exposed anywhere: YES/NO
+
+LIVE CONNECTION
+Result:
+Account verified:
+Duration:
+Sanitized errors:
+
+PROJECT DISCOVERY
+Projects discovered:
+Pagination:
+Safety limit reached:
+Duration:
+
+FIELD DISCOVERY
+System fields:
+Custom fields:
+Due date candidate:
+Story point candidate:
+Blocked candidate:
+
+STATUS DISCOVERY
+Statuses discovered:
+Automatic mappings:
+Manual mappings required:
+
+PROJECT MAPPING LIVE TEST
+Performed:
+Result:
+
+SECURITY
+A-H PASS/FAIL
+
+REGRESSION
+Jira tests:
+Launch/auth:
+Business regressions:
+Typecheck:
+Build:
+
+DATABASE CHANGES
+Configuration/discovery records only: YES/NO
+
+SCHEMA CHANGES
+NONE
+
+DEPLOYED
+NO
+
+FINAL LINE:
+
+MATRIX INNOVATION HUB JIRA J1 LIVE VALIDATION COMPLETE
