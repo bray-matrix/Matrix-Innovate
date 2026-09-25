@@ -1,0 +1,148 @@
+BRIAN RULE — PUBLISH MATRIX INNOVATION HUB v1.3.0
+
+TARGET REPLIT PROJECT:
+Matrix Innovation Hub
+
+DO NOT RUN THIS IN:
+- Matrix Platform
+- Legacy Compass
+- Finance Hub
+- Matrix Infrastructure Hub
+
+CURRENT VERSION:
+v1.3.0
+
+Jira J1 development and live validation are complete.
+
+PRE-PUBLISH CHECK
+
+Confirm:
+- version is v1.3.0
+- full test suite remains passing
+- typecheck passes
+- production build passes
+- /matrix/app-info reports v1.3.0
+- /matrix/health is healthy
+- Jira credentials exist only in server-side Replit Secrets
+- JIRA_API_TOKEN is not persisted in PostgreSQL
+- 19 discovered Jira projects remain intact
+- discovered projects remain unmapped
+- sync remains disabled
+- 100 discovered/default status mappings remain intact
+- no issue synchronization exists yet
+- no donor business data exists
+
+IMPORTANT CONFIGURATION NOTE
+
+Jira contains a status named:
+
+Blocked
+
+Jira itself categorizes this status as:
+in_progress
+
+Do NOT change discovery/category logic.
+
+Explicitly map this status to the Innovation Hub canonical category:
+
+blocked
+
+This is an administrator override of Jira's default category.
+
+Verify the override persists after rediscovery.
+
+Do not make other speculative status-mapping changes.
+
+PUBLISH
+
+Publish Matrix Innovation Hub v1.3.0 to production using the existing production deployment process.
+
+Do NOT:
+- change version
+- change slug/audience
+- change gateway
+- change Matrix Platform authentication
+- implement J2
+- enable Jira sync
+- create test Projects
+- import Jira issues
+
+POST-PUBLISH VALIDATION
+
+Verify production:
+
+1. Application launches normally.
+2. Matrix Platform launch authentication works.
+3. /matrix/app-info returns v1.3.0.
+4. /matrix/health returns healthy.
+5. Admin Jira Integration loads.
+6. Jira connection test succeeds.
+7. 19 Jira projects can be discovered.
+8. Projects remain unmapped.
+9. Sync remains disabled.
+10. Field discovery works.
+11. Status discovery works.
+12. Blocked status explicitly maps to canonical blocked.
+13. Rediscovery preserves the Blocked override.
+14. Jira token remains server-side only.
+15. Existing Innovation Hub functionality works.
+16. No Jira issues have been imported.
+
+If production Jira secrets are not present after deployment:
+
+STOP Jira-specific production validation.
+
+Do not copy or expose secret values in output.
+Report which secret NAMES need configuration.
+
+MATRIX PLATFORM
+
+After production deployment, verify the application's authoritative endpoint:
+
+/matrix/app-info
+
+reports:
+- Matrix Innovation Hub
+- v1.3.0
+- expected technical identity
+
+Do not modify Matrix Platform during this task.
+
+RETURN
+
+DEPLOYMENT
+Published:
+Production version:
+
+PLATFORM CONTRACT
+/matrix/app-info:
+/matrix/health:
+Authentication:
+
+JIRA PRODUCTION
+Connection:
+Projects discovered:
+Projects mapped:
+Sync enabled:
+Issues imported:
+
+BLOCKED STATUS
+Jira category:
+Canonical override:
+Rediscovery preserved:
+
+SECURITY
+Credentials server-side:
+Token persisted in DB:
+Token exposed:
+
+REGRESSION
+Application launch:
+Existing functionality:
+Jira Admin:
+
+KNOWN ISSUES
+
+FINAL LINE:
+
+MATRIX INNOVATION HUB v1.3.0 PUBLISHED AND VERIFIED

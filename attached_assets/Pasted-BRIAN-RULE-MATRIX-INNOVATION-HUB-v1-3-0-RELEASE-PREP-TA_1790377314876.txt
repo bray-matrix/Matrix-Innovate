@@ -1,0 +1,342 @@
+BRIAN RULE — MATRIX INNOVATION HUB v1.3.0 RELEASE PREP
+
+TARGET REPLIT PROJECT:
+Matrix Innovation Hub
+
+DO NOT RUN THIS IN:
+- Matrix Platform
+- Legacy Compass
+- Finance Hub
+- Matrix Infrastructure Hub
+- any other Replit project
+
+==================================================
+WORKSPACE CHECK
+==================================================
+
+Before making changes, confirm:
+
+Application:
+Matrix Innovation Hub
+
+Current version:
+v1.3.0
+
+Technical slug/audience:
+matrix-innovation-hub
+
+Gateway:
+/innovation
+
+Production URL:
+https://matrix-innovation-hub.replit.app
+
+Expected Jira J1 state:
+- Jira foundation implemented
+- Jira connection test implemented
+- Jira project discovery implemented
+- Jira field discovery/mapping implemented
+- Jira status mapping implemented
+- Admin Jira Integration UI implemented
+- Jira credentials configured in server-side Replit Secrets
+- live Jira connection validated
+- 19 Jira projects discovered
+- projects currently unmapped
+- sync currently disabled
+- no Jira issues imported
+- J2 not implemented
+
+If these assumptions are materially false, STOP and report the mismatch.
+
+==================================================
+OBJECTIVE
+==================================================
+
+Prepare Matrix Innovation Hub v1.3.0 for the normal production release process.
+
+DO NOT PUBLISH.
+DO NOT DEPLOY.
+
+The normal release process is:
+
+1. Replit prepares and validates the release
+2. Brian performs the Git synchronization/checkpoint
+3. Brian manually republishes production
+4. Production validation occurs afterward
+
+Do not change that process.
+
+==================================================
+1. PRE-RELEASE VALIDATION
+==================================================
+
+Verify:
+
+- application version = v1.3.0
+- package versions are consistent
+- /matrix/app-info reports v1.3.0
+- /matrix/health reports healthy with database OK
+- full automated test suite passes
+- Jira J1 automated tests pass
+- Matrix launch/auth tests pass
+- project/governance/portfolio/resources/reporting regressions pass
+- workspace typecheck passes
+- frontend production build passes
+
+Do not bump the version.
+
+==================================================
+2. JIRA LIVE STATE
+==================================================
+
+Confirm the live Jira configuration remains valid:
+
+- JIRA_BASE_URL configured
+- JIRA_EMAIL configured
+- JIRA_API_TOKEN configured
+- credentials exist only in server-side Replit Secrets
+- connection test succeeds
+- discovered Jira projects = 19
+- discovered projects remain unmapped
+- sync remains disabled
+- no Jira issues have been imported
+
+Do not expose credential values.
+
+==================================================
+3. BLOCKED STATUS OVERRIDE
+==================================================
+
+The live Jira tenant contains a status named:
+
+Blocked
+
+Jira itself categorizes this status as:
+
+in_progress
+
+This should be explicitly mapped in Matrix Innovation Hub to the canonical category:
+
+blocked
+
+Apply this as an administrator override.
+
+Requirements:
+
+- do NOT change Jira discovery/category logic
+- do NOT globally reinterpret all in_progress statuses
+- override only the actual Jira status named Blocked
+- preserve its Jira status ID/value exactly
+- verify the explicit override persists after Jira rediscovery
+- do not make other speculative status-mapping changes
+
+==================================================
+4. DATA SAFETY
+==================================================
+
+Confirm:
+
+- existing Initiative count unchanged
+- existing Project count unchanged
+- no donor Compass business data imported
+- no Jira issue data imported
+- only Jira configuration/discovery/mapping records exist
+- no destructive database changes
+- no existing application tables renamed/dropped
+- no existing IDs changed
+
+==================================================
+5. SECURITY
+==================================================
+
+Verify:
+
+A. JIRA_API_TOKEN is not stored in PostgreSQL
+B. token is not present in browser bundle
+C. token is not present in API responses
+D. token is not present in inspected logs
+E. token is not present in /matrix/app-info
+F. token is not present in /matrix/health
+G. Jira routes require Matrix authentication
+H. Jira errors remain sanitized
+I. Matrix Platform auth/session behavior is unchanged
+J. slug/audience/gateway remain unchanged
+
+Do not weaken security controls.
+
+==================================================
+6. JIRA J1 SCOPE CHECK
+==================================================
+
+Confirm J1 includes only:
+
+- connection configuration/state
+- connection test
+- project discovery
+- project mapping
+- field discovery/mapping
+- status discovery/mapping
+- Admin UI
+- PostgreSQL persistence for J1 entities
+- OpenAPI/generated contracts
+- security/tests
+
+Confirm J2 functionality is NOT present:
+
+- no Jira issue synchronization
+- no jira_issues table
+- no jira_sync_runs table
+- no snapshots
+- no deterministic Jira health scoring
+- no Jira alerts
+- no Project Detail Jira analytics tab
+- no Portfolio Jira signal
+- no Dashboard Jira analytics
+- no Jira report additions
+- no scheduled sync
+- no webhooks
+
+==================================================
+7. DONOR REFERENCE PRESERVATION
+==================================================
+
+Confirm the donor Jira reference documents are preserved in:
+
+docs/reference/jira/
+
+At minimum:
+
+JIRA_DONOR_INTELLIGENCE_REFERENCE.md
+JIRA_DONOR_SCHEMA_REFERENCE.md
+JIRA_DONOR_SYNC_REFERENCE.md
+JIRA_DONOR_MANIFEST.md
+
+Do not remove or rewrite these during release prep.
+
+==================================================
+8. GIT / RELEASE PREPARATION
+==================================================
+
+Prepare the v1.3.0 release for Brian's normal Git synchronization process.
+
+Do NOT:
+
+- publish
+- deploy
+- modify production
+- change deployment configuration
+- change Matrix Platform registration
+- start J2
+- change application version
+
+Report:
+
+- current Git branch if available
+- working tree status
+- files changed for v1.3.0
+- whether all intended J1 source/docs/schema changes are included
+- whether any unrelated or temporary files are present
+- whether legacy-compass-jira-donor.zip is still present in the workspace
+- whether that ZIP needs to be committed or should remain untracked/reference-only
+
+Preferred behavior:
+The donor ZIP itself should NOT need to become part of the production application if all required reference documents/source knowledge have already been preserved appropriately.
+
+Do not delete it automatically.
+
+==================================================
+9. RELEASE READINESS
+==================================================
+
+The application is READY FOR GIT SYNC only if all are true:
+
+A. version is v1.3.0
+B. app-info reports v1.3.0
+C. health is healthy
+D. Jira connection passes
+E. 19 Jira projects remain discovered
+F. projects remain unmapped
+G. sync remains disabled
+H. Blocked status override = blocked
+I. Blocked override survives rediscovery
+J. no Jira issues imported
+K. security validation passes
+L. all automated tests pass
+M. launch/auth tests pass
+N. regressions pass
+O. typecheck passes
+P. production build passes
+Q. donor reference docs preserved
+R. no destructive schema changes
+S. no unrelated temporary changes would be included in Git sync
+
+If any item fails:
+DO NOT declare release ready.
+
+==================================================
+10. RETURN
+==================================================
+
+WORKSPACE
+Replit project:
+Confirmed Matrix Innovation Hub:
+
+VERSION
+Current:
+
+JIRA LIVE STATE
+Connection:
+Projects discovered:
+Projects mapped:
+Sync enabled:
+Issues imported:
+
+BLOCKED STATUS
+Jira status:
+Jira category:
+Innovation canonical override:
+Rediscovery preserved:
+
+DATA SAFETY
+Initiatives before/after:
+Projects before/after:
+Existing data preserved:
+Destructive DB changes:
+
+SECURITY
+A-J PASS/FAIL
+
+J1 SCOPE
+J1 only: YES/NO
+J2 functionality present: YES/NO
+
+DONOR REFERENCES
+Preserved:
+ZIP still present:
+ZIP recommended for Git commit: YES/NO
+
+VALIDATION
+A-S PASS/FAIL
+
+GIT STATUS
+Branch:
+Working tree:
+Intended J1 changes included:
+Unrelated/temp files:
+Ready for Git sync: YES/NO
+
+FILES INCLUDED IN RELEASE
+[list]
+
+KNOWN ISSUES
+[list only actual issues]
+
+PUBLISHED
+NO
+
+DEPLOYED
+NO
+
+FINAL LINE:
+
+MATRIX INNOVATION HUB v1.3.0 READY FOR GIT SYNC AND PRODUCTION REPUBLISH
