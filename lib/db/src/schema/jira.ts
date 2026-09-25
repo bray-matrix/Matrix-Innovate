@@ -52,3 +52,23 @@ export const jiraFieldMappingsTable = pgTable("jira_field_mappings", {
   additionalMappings: jsonb("additional_mappings").$type<Record<string, string> | null>(),
   ...dates(),
 });
+
+// Jira is authoritative for issue details. Only stable identity and optional
+// relationship metadata are persisted; live details are resolved on read.
+export const projectJiraLinksTable = pgTable("project_jira_links", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull().references(() => projectsTable.id, { onDelete: "cascade" }),
+  jiraProjectId: integer("jira_project_id").references(() => jiraProjectsTable.id, { onDelete: "set null" }),
+  jiraIssueId: text("jira_issue_id").notNull(),
+  jiraIssueKey: text("jira_issue_key").notNull(),
+  jiraIssueType: text("jira_issue_type").notNull(),
+  relationshipType: text("relationship_type"),
+  displayOrder: integer("display_order"),
+  notes: text("notes"),
+  createdBy: text("created_by"),
+  ...dates(),
+}, (t) => [
+  uniqueIndex("project_jira_links_project_issue_unique").on(t.projectId, t.jiraIssueId),
+]);
+
+export type ProjectJiraLinkRecord = typeof projectJiraLinksTable.$inferSelect;

@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Api
  * API specification
- * OpenAPI spec version: 1.3.0
+ * OpenAPI spec version: 1.4.0
  */
 import * as zod from 'zod';
 
@@ -88,6 +88,41 @@ export const ListJiraFieldsResponseItem = zod.object({
   "fieldType": zod.string().nullable()
 })
 export const ListJiraFieldsResponse = zod.array(ListJiraFieldsResponseItem)
+
+
+/**
+ * @summary Search Jira work items live without storing issue data
+ */
+export const searchJiraIssuesQueryQMax = 255;
+
+export const searchJiraIssuesQueryProjectKeyMax = 255;
+
+export const searchJiraIssuesQueryLimitDefault = 25;
+export const searchJiraIssuesQueryLimitMax = 25;
+
+
+
+export const SearchJiraIssuesQueryParams = zod.object({
+  "q": zod.coerce.string().max(searchJiraIssuesQueryQMax).optional(),
+  "projectKey": zod.coerce.string().max(searchJiraIssuesQueryProjectKeyMax).optional(),
+  "limit": zod.coerce.number().min(1).max(searchJiraIssuesQueryLimitMax).default(searchJiraIssuesQueryLimitDefault)
+})
+
+export const SearchJiraIssuesResponseItem = zod.object({
+  "jiraIssueId": zod.string(),
+  "jiraIssueKey": zod.string(),
+  "jiraIssueType": zod.string(),
+  "summary": zod.string(),
+  "status": zod.string(),
+  "jiraProjectId": zod.string(),
+  "jiraProjectKey": zod.string(),
+  "jiraProjectName": zod.string(),
+  "url": zod.string(),
+  "assignee": zod.string().nullable(),
+  "priority": zod.string().nullable(),
+  "updated": zod.string().nullable()
+})
+export const SearchJiraIssuesResponse = zod.array(SearchJiraIssuesResponseItem)
 
 
 
@@ -1780,6 +1815,102 @@ export const DeleteProjectParams = zod.object({
 })
 
 export const DeleteProjectResponse = zod.void()
+
+
+/**
+ * @summary List saved Jira links with live details where available
+ */
+
+
+
+export const ListProjectJiraLinksParams = zod.object({
+  "projectId": zod.coerce.number().min(1)
+})
+
+export const ListProjectJiraLinksResponseItem = zod.object({
+  "id": zod.number(),
+  "projectId": zod.number(),
+  "jiraIssueId": zod.string(),
+  "jiraIssueKey": zod.string(),
+  "jiraIssueType": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "details": zod.object({
+  "jiraIssueId": zod.string(),
+  "jiraIssueKey": zod.string(),
+  "jiraIssueType": zod.string(),
+  "summary": zod.string(),
+  "status": zod.string(),
+  "jiraProjectId": zod.string(),
+  "jiraProjectKey": zod.string(),
+  "jiraProjectName": zod.string(),
+  "url": zod.string(),
+  "assignee": zod.string().nullable(),
+  "priority": zod.string().nullable(),
+  "updated": zod.string().nullable()
+}).nullable(),
+  "unavailable": zod.boolean()
+})
+export const ListProjectJiraLinksResponse = zod.array(ListProjectJiraLinksResponseItem)
+
+
+/**
+ * @summary Link an existing Jira work item without modifying Jira
+ */
+
+
+
+export const CreateProjectJiraLinkParams = zod.object({
+  "projectId": zod.coerce.number().min(1)
+})
+
+export const createProjectJiraLinkBodyJiraIssueIdMax = 255;
+
+
+
+export const CreateProjectJiraLinkBody = zod.object({
+  "jiraIssueId": zod.string().min(1).max(createProjectJiraLinkBodyJiraIssueIdMax)
+})
+
+export const CreateProjectJiraLinkResponse = zod.object({
+  "id": zod.number(),
+  "projectId": zod.number(),
+  "jiraIssueId": zod.string(),
+  "jiraIssueKey": zod.string(),
+  "jiraIssueType": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "details": zod.object({
+  "jiraIssueId": zod.string(),
+  "jiraIssueKey": zod.string(),
+  "jiraIssueType": zod.string(),
+  "summary": zod.string(),
+  "status": zod.string(),
+  "jiraProjectId": zod.string(),
+  "jiraProjectKey": zod.string(),
+  "jiraProjectName": zod.string(),
+  "url": zod.string(),
+  "assignee": zod.string().nullable(),
+  "priority": zod.string().nullable(),
+  "updated": zod.string().nullable()
+}).nullable(),
+  "unavailable": zod.boolean()
+})
+
+
+/**
+ * @summary Unlink a Jira work item; does not modify Jira
+ */
+
+
+
+
+export const DeleteProjectJiraLinkParams = zod.object({
+  "projectId": zod.coerce.number().min(1),
+  "linkId": zod.coerce.number().min(1)
+})
+
+export const DeleteProjectJiraLinkResponse = zod.void()
 
 
 /**

@@ -69,6 +69,7 @@ import { toast } from "@/hooks/use-toast";
 import { Briefcase, Users, ChevronLeft, Trash2, PlusCircle, Pencil, Flag, Link2, AlertCircle, AlertTriangle, ShieldCheck, Target, CheckSquare, Clock } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PriorityBadge } from "@/components/badges";
+import { ProjectLinkedWork } from "@/components/project-linked-work";
 
 function formatDate(value: string | null | undefined): string {
   if (!value) return "—";
@@ -554,13 +555,14 @@ export default function ProjectDetailPage() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="md:col-span-3 space-y-6">
           <Tabs defaultValue="overview" className="w-full">
-            <TabsList className="mb-4">
+            <TabsList className="mb-4 flex h-auto flex-wrap justify-start">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="milestones">Milestones</TabsTrigger>
               <TabsTrigger value="risks">Risks {risks?.filter(r => r.status === "Open" && (r.severity === "Critical" || r.severity === "High")).length ? <span className="ml-1.5 inline-flex h-2 w-2 rounded-full bg-red-500"></span> : null}</TabsTrigger>
               <TabsTrigger value="approvals">Approvals {approvals?.filter(a => a.status === "Pending").length ? <span className="ml-1.5 inline-flex h-2 w-2 rounded-full bg-amber-500"></span> : null}</TabsTrigger>
               <TabsTrigger value="golive">Go-Live Readiness</TabsTrigger>
               <TabsTrigger value="resources">Resources</TabsTrigger>
+              <TabsTrigger value="linked-work">Linked Work</TabsTrigger>
             </TabsList>
 
             <TabsContent value="overview">
@@ -938,6 +940,9 @@ export default function ProjectDetailPage() {
                   )}
                 </CardContent>
               </Card>
+            </TabsContent>
+            <TabsContent value="linked-work">
+              <ProjectLinkedWork projectId={id} />
             </TabsContent>
           </Tabs>
         </div>

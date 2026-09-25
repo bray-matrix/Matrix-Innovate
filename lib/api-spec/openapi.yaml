@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
-  version: 1.3.0
+  version: 1.4.0
   description: API specification
 servers:
   - url: /api
@@ -98,6 +98,25 @@ paths:
           content:
             application/json:
               schema: { type: array, items: { $ref: "#/components/schemas/JiraField" } }
+  /jira/issues/search:
+    get:
+      operationId: searchJiraIssues
+      tags: [jira]
+      summary: Search Jira work items live without storing issue data
+      parameters:
+        - { name: q, in: query, required: false, schema: { type: string, maxLength: 255 } }
+        - { name: projectKey, in: query, required: false, schema: { type: string, maxLength: 255 } }
+        - { name: limit, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 25, default: 25 } }
+      responses:
+        "200":
+          description: Bounded live Jira search results
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/JiraWorkItem" } }
+        "400":
+          description: Invalid search parameters
+        "503":
+          description: Jira temporarily unavailable
   /jira/projects/{id}/field-mapping:
     parameters:
       - { name: id, in: path, required: true, schema: { type: integer, minimum: 1 } }
@@ -1216,6 +1235,55 @@ paths:
           description: Deleted
         "404":
           description: Not found
+  /projects/{projectId}/jira-links:
+    parameters:
+      - { name: projectId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+    get:
+      operationId: listProjectJiraLinks
+      tags: [execution, jira]
+      summary: List saved Jira links with live details where available
+      responses:
+        "200":
+          description: Linked work items (saved references remain when Jira is unavailable)
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/ProjectJiraLink" } }
+        "404":
+          description: Project not found
+    post:
+      operationId: createProjectJiraLink
+      tags: [execution, jira]
+      summary: Link an existing Jira work item without modifying Jira
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProjectJiraLinkCreate" }
+      responses:
+        "201":
+          description: Link created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ProjectJiraLink" }
+        "404":
+          description: Project or Jira issue not found
+        "409":
+          description: Jira issue already linked to this project
+        "503":
+          description: Jira temporarily unavailable
+  /projects/{projectId}/jira-links/{linkId}:
+    delete:
+      operationId: deleteProjectJiraLink
+      tags: [execution, jira]
+      summary: Unlink a Jira work item; does not modify Jira
+      parameters:
+        - { name: projectId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+        - { name: linkId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        "204":
+          description: Link deleted
+        "404":
+          description: Project or link not found
   /projects/{id}/milestones:
     get:
       operationId: listProjectMilestones
@@ -2127,6 +2195,43 @@ components:
           required: [id]
           properties:
             id: { type: integer }
+    JiraWorkItem:
+      type: object
+      required: [jiraIssueId, jiraIssueKey, jiraIssueType, summary, status, jiraProjectId, jiraProjectKey, jiraProjectName, url, assignee, priority, updated]
+      properties:
+        jiraIssueId: { type: string }
+        jiraIssueKey: { type: string }
+        jiraIssueType: { type: string }
+        summary: { type: string }
+        status: { type: string }
+        jiraProjectId: { type: string }
+        jiraProjectKey: { type: string }
+        jiraProjectName: { type: string }
+        url: { type: string }
+        assignee: { type: string, nullable: true }
+        priority: { type: string, nullable: true }
+        updated: { type: string, nullable: true }
+    ProjectJiraLinkCreate:
+      type: object
+      required: [jiraIssueId]
+      properties:
+        jiraIssueId: { type: string, minLength: 1, maxLength: 255 }
+    ProjectJiraLink:
+      type: object
+      required: [id, projectId, jiraIssueId, jiraIssueKey, jiraIssueType, createdAt, updatedAt, details, unavailable]
+      properties:
+        id: { type: integer }
+        projectId: { type: integer }
+        jiraIssueId: { type: string }
+        jiraIssueKey: { type: string }
+        jiraIssueType: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        details:
+          allOf:
+            - { $ref: "#/components/schemas/JiraWorkItem" }
+          nullable: true
+        unavailable: { type: boolean }
     HealthStatus:
       type: object
       properties:

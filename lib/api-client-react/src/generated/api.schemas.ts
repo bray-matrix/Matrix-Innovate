@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Api
  * API specification
- * OpenAPI spec version: 1.3.0
+ * OpenAPI spec version: 1.4.0
  */
 export interface JiraConnection {
   configured: boolean;
@@ -79,6 +79,41 @@ export interface JiraStatusMappingInput {
 export type JiraStatusMapping = JiraStatusMappingInput & {
   id: number;
 };
+
+export interface JiraWorkItem {
+  jiraIssueId: string;
+  jiraIssueKey: string;
+  jiraIssueType: string;
+  summary: string;
+  status: string;
+  jiraProjectId: string;
+  jiraProjectKey: string;
+  jiraProjectName: string;
+  url: string;
+  assignee: string | null;
+  priority: string | null;
+  updated: string | null;
+}
+
+export interface ProjectJiraLinkCreate {
+  /**
+     * @minLength 1
+     * @maxLength 255
+     */
+  jiraIssueId: string;
+}
+
+export interface ProjectJiraLink {
+  id: number;
+  projectId: number;
+  jiraIssueId: string;
+  jiraIssueKey: string;
+  jiraIssueType: string;
+  createdAt: string;
+  updatedAt: string;
+  details: JiraWorkItem | null;
+  unavailable: boolean;
+}
 
 export interface HealthStatus {
   status: string;
@@ -1400,6 +1435,22 @@ export interface Report {
   scopeLabel?: string | null;
   sections: ReportSection[];
 }
+
+export type SearchJiraIssuesParams = {
+/**
+ * @maxLength 255
+ */
+q?: string;
+/**
+ * @maxLength 255
+ */
+projectKey?: string;
+/**
+ * @minimum 1
+ * @maximum 25
+ */
+limit?: number;
+};
 
 export type ListProjectsParams = {
 /**

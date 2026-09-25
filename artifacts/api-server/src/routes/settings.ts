@@ -11,7 +11,7 @@ import {
 
 const router: IRouter = Router();
 
-export const APPLICATION_VERSION = "v1.3.0";
+export const APPLICATION_VERSION = "v1.4.0";
 
 const SETTINGS = {
   departments: [

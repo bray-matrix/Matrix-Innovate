@@ -5,6 +5,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and the
 project adheres to semantic versioning (patch = fixes/edits, minor = new
 features, major = breaking or milestone changes).
 
+## [1.4.0] - 2026-09-25
+
+### Linked Jira work items (J2)
+- Projects can explicitly link and unlink selected Jira issues; the same issue may be linked to multiple Hub projects.
+- Server-side, bounded live Jira search and refresh show current issue details without mirroring or writing Jira issues.
+- Additive project Jira link references preserve saved keys during Jira outages; project deletion cascades to links only.
+- Project Detail gains Linked Work; J1 connection, projects, fields and statuses remain available.
+- Matrix authentication and technical identity unchanged. No deployment performed.
+
 ## [1.3.0] - 2026-09-25
 
 ### Jira foundation (J1)

@@ -59,7 +59,7 @@ export function JiraIntegration() {
     <CardHeader><CardTitle>Jira Integration</CardTitle><CardDescription>Jira foundation · connection, discovery, and execution mappings. Credentials remain server-side.</CardDescription></CardHeader>
     <CardContent>
       <Tabs defaultValue="connection">
-        <TabsList className="flex flex-wrap h-auto justify-start">{["connection", "projects", "fields", "statuses", "sync"].map(tab => <TabsTrigger key={tab} value={tab} className="capitalize">{tab}</TabsTrigger>)}</TabsList>
+        <TabsList className="flex flex-wrap h-auto justify-start">{["connection", "projects", "fields", "statuses"].map(tab => <TabsTrigger key={tab} value={tab} className="capitalize">{tab}</TabsTrigger>)}</TabsList>
         <TabsContent value="connection" className="space-y-4">
           <Badge variant="outline">Configured: {state?.configured ? "YES" : "NO"}</Badge>
           <dl className="grid gap-2 text-sm"><div>Base URL: {state?.baseUrl || "Not configured"}</div><div>Account: {state?.accountEmailMasked || "Not configured"}</div><div>Last test: {state?.lastTestStatus || "Not tested"} {state?.lastTestAt ? `· ${new Date(state.lastTestAt).toLocaleString()}` : ""}</div></dl>
@@ -70,9 +70,9 @@ export function JiraIntegration() {
         </TabsContent>
         <TabsContent value="projects" className="space-y-4">
           <Button disabled={discover.isPending} onClick={() => discover.mutate()}>{discover.isPending ? "Discovering…" : "Discover Projects"}</Button>
-          <p className="text-sm text-muted-foreground">Multiple Jira projects may map to one Hub project. Sync Enabled records future intent only; no issues are synchronized in J1.</p>
-          <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="text-left border-b">{["Jira Key", "Jira Name", "Type", "Hub Project", "Sync Enabled", "Last Discovered"].map(t => <th className="p-2" key={t}>{t}</th>)}</tr></thead>
-            <tbody>{projects.data?.map(p => <tr key={p.id} className="border-b"><td className="p-2">{p.key}</td><td className="p-2">{p.name}</td><td className="p-2">{p.projectType || "—"}</td><td className="p-2"><select aria-label={`Hub project for ${p.key}`} className={selectClass} disabled={update.isPending} value={p.projectId || ""} onChange={e => update.mutate({ id: p.id, data: { projectId: e.target.value ? Number(e.target.value) : null } })}><option value="">Unmapped</option>{hubProjects.data?.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}</select></td><td className="p-2"><input aria-label={`Sync enabled for ${p.key}`} type="checkbox" checked={p.syncEnabled} disabled={update.isPending} onChange={e => update.mutate({ id: p.id, data: { syncEnabled: e.target.checked } })} /></td><td className="p-2">{new Date(p.lastDiscoveredAt).toLocaleString()}</td></tr>)}</tbody></table></div>
+          <p className="text-sm text-muted-foreground">Discovered Jira projects are available for work-item search. A Hub project may also be associated with more than one Jira project.</p>
+          <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="text-left border-b">{["Jira Key", "Jira Name", "Type", "Hub Project", "Last Discovered"].map(t => <th className="p-2" key={t}>{t}</th>)}</tr></thead>
+            <tbody>{projects.data?.map(p => <tr key={p.id} className="border-b"><td className="p-2">{p.key}</td><td className="p-2">{p.name}</td><td className="p-2">{p.projectType || "—"}</td><td className="p-2"><select aria-label={`Hub project for ${p.key}`} className={selectClass} disabled={update.isPending} value={p.projectId || ""} onChange={e => update.mutate({ id: p.id, data: { projectId: e.target.value ? Number(e.target.value) : null } })}><option value="">Unmapped</option>{hubProjects.data?.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}</select></td><td className="p-2">{new Date(p.lastDiscoveredAt).toLocaleString()}</td></tr>)}</tbody></table></div>
           {!projects.data?.length && <p className="text-sm">No Jira projects discovered yet.</p>}
           <ErrorMessage error={discover.error || update.error || projects.error || hubProjects.error} />
         </TabsContent>
@@ -93,7 +93,6 @@ export function JiraIntegration() {
           {!statusRows.length && <p className="text-sm">No statuses discovered yet.</p>}
           <ErrorMessage error={discoverStatuses.error || saveStatus.error || statuses.error} />
         </TabsContent>
-        <TabsContent value="sync"><p className="text-sm py-3">Issue synchronization will be added in J2.</p></TabsContent>
       </Tabs>
     </CardContent>
   </Card>;

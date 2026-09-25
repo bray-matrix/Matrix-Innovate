@@ -3,6 +3,25 @@ export class JiraError extends Error {
   constructor(message: string, public status = 503) { super(message); }
 }
 
+export interface JiraWorkItem {
+  jiraIssueId: string;
+  jiraIssueKey: string;
+  jiraIssueType: string;
+  summary: string;
+  status: string;
+  assignee: string | null;
+  priority: string | null;
+  updated: string | null;
+  jiraProjectId: string;
+  jiraProjectKey: string;
+  jiraProjectName: string;
+  url: string;
+}
+
+const issueFields = "summary,issuetype,status,assignee,priority,updated,project";
+// Escape JQL literals separately from Lucene text-search syntax.
+export const jiraLiteral = (value: string) => `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+
 export function jiraConfig(env = process.env) {
   const raw = env.JIRA_BASE_URL?.trim();
   let baseUrl: string | null = null;
@@ -43,18 +62,18 @@ export class JiraClient {
       accountEmailMasked: this.config.email ? "***@***" : null,
     };
   }
-  async get(path: string): Promise<any> {
+  async get(path: string, options: { signal?: AbortSignal; workItem?: boolean } = {}): Promise<any> {
     if (!this.config.configured) throw new JiraError("Jira credentials are not configured.");
     for (let attempt = 0; attempt < 3; attempt++) {
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), this.timeout);
+      const timer = setTimeout(() => controller.abort(), options.workItem ? Math.min(this.timeout, 5000) : this.timeout);
       try {
         const response = await this.fetcher(`${this.config.baseUrl}/rest/api/3/${path}`, {
           headers: { Accept: "application/json", Authorization: `Basic ${Buffer.from(`${this.config.email}:${this.config.token}`).toString("base64")}` },
           redirect: "error",
-          signal: controller.signal,
+          signal: options.signal ? AbortSignal.any([controller.signal, options.signal]) : controller.signal,
         });
-        if (response.status === 429 && attempt < 2) {
+        if (response.status === 429 && attempt < 2 && !options.workItem) {
           const retry = response.headers.get("retry-after") || "";
           const seconds = /^\d+(\.\d+)?$/.test(retry) ? Number(retry) : (Date.parse(retry) - Date.now()) / 1000;
           await response.body?.cancel();
@@ -65,7 +84,7 @@ export class JiraClient {
         }
         if (!response.ok) {
           await response.body?.cancel();
-          throw new JiraError(response.status === 429 ? "Jira rate limit reached. Try again later." : response.status === 401 || response.status === 403 ? "Jira authentication or permissions failed." : "Jira request failed.");
+          throw new JiraError(response.status === 429 ? "Jira rate limit reached. Try again later." : response.status === 401 || response.status === 403 ? "Jira authentication or permissions failed." : "Jira request failed.", options.workItem && response.status === 404 ? 404 : 503);
         }
         // Bound decoded response size; keep timeout active until the entire body is read.
         const reader = response.body?.getReader();
@@ -88,6 +107,59 @@ export class JiraClient {
     throw new JiraError("Jira rate limit reached. Try again later.");
   }
   async test() { await this.get("myself"); }
+  private workItem(raw: any): JiraWorkItem {
+    if (!raw || !/^\d+$/.test(raw.id) || typeof raw.key !== "string" || !/^[A-Z][A-Z0-9_]*-\d+$/i.test(raw.key)) throw new JiraError("Jira returned invalid issue identity.");
+    const f = raw.fields;
+    const optional = (v: unknown) => typeof v === "string" ? this.safe(v, 500) : null;
+    // Deliberate whitelist: never return upstream self/avatar/account URLs or bodies.
+    return {
+      jiraIssueId: this.safe(raw.id), jiraIssueKey: this.safe(raw.key),
+      jiraIssueType: this.safe(f?.issuetype?.name), summary: this.safe(f?.summary, 1000),
+      status: this.safe(f?.status?.name), assignee: optional(f?.assignee?.displayName),
+      priority: optional(f?.priority?.name), updated: optional(f?.updated),
+      jiraProjectId: this.safe(f?.project?.id), jiraProjectKey: this.safe(f?.project?.key),
+      jiraProjectName: this.safe(f?.project?.name),
+      url: this.safe(`${this.config.baseUrl}/browse/${encodeURIComponent(raw.key)}`, 2000),
+    };
+  }
+  async issue(id: string, signal?: AbortSignal): Promise<JiraWorkItem> {
+    if (!/^\d{1,30}$/.test(id)) throw new JiraError("Invalid Jira issue ID.", 400);
+    const item = this.workItem(await this.get(`issue/${encodeURIComponent(id)}?fields=${issueFields}`, { workItem: true, signal }));
+    if (item.jiraIssueId !== id) throw new JiraError("Jira returned an unexpected issue identity.");
+    return item;
+  }
+  async searchIssues(q = "", projectKey = "", limit = 25): Promise<JiraWorkItem[]> {
+    q = q.trim();
+    projectKey = projectKey.trim().toUpperCase();
+    if (q.length > 200 || /[\u0000-\u001f\u007f]/.test(q) || (projectKey && !/^[A-Z][A-Z0-9_]{0,99}$/.test(projectKey))) throw new JiraError("Invalid Jira search.", 400);
+    if (!q && !projectKey) throw new JiraError("Enter a Jira key, text, or select a project.", 400);
+    if (!Number.isInteger(limit) || limit < 1) throw new JiraError("Invalid result limit.", 400);
+    limit = Math.min(25, limit);
+    const clauses: string[] = [];
+    if (projectKey) clauses.push(`project = ${jiraLiteral(projectKey)}`);
+    const key = /^([A-Z][A-Z0-9_]*)-(\d{1,9})$/i.exec(q);
+    const projectPrefix = /^([A-Z][A-Z0-9_]*)-$/i.exec(q);
+    if (key) {
+      // Jira has no issuekey ~ operator. Numeric prefix ranges are index-backed,
+      // bounded, and include the exact key without downloading project issues.
+      const prefix = key[1].toUpperCase();
+      const number = key[2];
+      const alternatives = [`key = ${jiraLiteral(`${prefix}-${number}`)}`];
+      for (let digits = 1; digits <= 9 - number.length; digits++) {
+        alternatives.push(`(key >= ${jiraLiteral(`${prefix}-${number}${"0".repeat(digits)}`)} AND key <= ${jiraLiteral(`${prefix}-${number}${"9".repeat(digits)}`)})`);
+      }
+      clauses.push(`(project = ${jiraLiteral(prefix)} AND (${alternatives.join(" OR ")}))`);
+    } else if (projectPrefix) {
+      clauses.push(`project = ${jiraLiteral(projectPrefix[1].toUpperCase())}`);
+    } else if (q) {
+      const text = q.replace(/([+\-&|!(){}\[\]^"~*?:\\/])/g, "\\$1");
+      clauses.push(`text ~ ${jiraLiteral(text)}`);
+    }
+    const params = new URLSearchParams({ jql: `${clauses.join(" AND ")} ORDER BY ${key ? "key ASC" : "updated DESC"}`, maxResults: String(limit), fields: issueFields });
+    const data = await this.get(`search/jql?${params}`, { workItem: true });
+    if (!Array.isArray(data?.issues)) throw new JiraError("Jira returned invalid search results.");
+    return data.issues.slice(0, limit).map((item: unknown) => this.workItem(item));
+  }
   async projects() {
     const projects: { jiraProjectId: string; key: string; name: string; projectType: string | null }[] = [];
     let start = 0;

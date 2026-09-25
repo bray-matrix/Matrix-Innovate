@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Api
  * API specification
- * OpenAPI spec version: 1.3.0
+ * OpenAPI spec version: 1.4.0
  */
 
 export type InitiativeRecommendationsComplexity = typeof InitiativeRecommendationsComplexity[keyof typeof InitiativeRecommendationsComplexity];

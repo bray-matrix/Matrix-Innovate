@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Api
  * API specification
- * OpenAPI spec version: 1.3.0
+ * OpenAPI spec version: 1.4.0
  */
 
 export * from './aIProviderConfig';
@@ -59,6 +59,7 @@ export * from './jiraProjectInput';
 export * from './jiraStatusMapping';
 export * from './jiraStatusMappingInput';
 export * from './jiraStatusMappingInputCanonicalCategory';
+export * from './jiraWorkItem';
 export * from './listProjectsParams';
 export * from './organization';
 export * from './organizationCreate';
@@ -79,6 +80,8 @@ export * from './projectApprovalCreate';
 export * from './projectApprovalUpdate';
 export * from './projectCreate';
 export * from './projectDetail';
+export * from './projectJiraLink';
+export * from './projectJiraLinkCreate';
 export * from './projectMilestone';
 export * from './projectMilestoneCreate';
 export * from './projectMilestoneUpdate';
@@ -117,6 +120,7 @@ export * from './resourceUpdateStatus';
 export * from './resourceWithCapacity';
 export * from './scoringComponentChange';
 export * from './scoringWeight';
+export * from './searchJiraIssuesParams';
 export * from './settings';
 export * from './similarInitiative';
 export * from './statusCount';

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { JiraClient, jiraConfig } from "./src/lib/jira-client";
 import jiraRouter from "./src/routes/jira";
+import jiraLinksRouter from "./src/routes/jira-links";
 import matrixRouter from "./src/matrix/platform";
 import { requireMatrixSession, mintSessionToken, verifySessionToken } from "./src/matrix/auth";
 import { pool } from "@workspace/db";
@@ -14,12 +15,23 @@ const noSecret = (value: unknown) => {
   const text = JSON.stringify(value);
   for (const s of [env.JIRA_API_TOKEN, env.JIRA_EMAIL, encoded]) assert.equal(text.includes(s), false);
 };
-const call = (router: any, method: string, path: string, body = {}, params = {}) => new Promise<{ status: number; body: any }>((resolve, reject) => {
+const call = (router: any, method: string, path: string, body = {}, params = {}, query = {}) => new Promise<{ status: number; body: any }>((resolve, reject) => {
   const route = router.stack.find((r: any) => r.route?.path === path && r.route.methods[method.toLowerCase()]);
   assert.ok(route, `${method} ${path} exists`);
   let status = 200;
-  const res: any = { status: (v: number) => { status = v; return res; }, json: (value: unknown) => resolve({ status, body: value }) };
-  Promise.resolve(route.route.stack[0].handle({ body, params, query: {}, headers: {}, log: { info() {}, error() { throw new Error("Unexpected error logging"); } } }, res, reject)).catch(reject);
+  const res: any = { status: (v: number) => { status = v; return res; }, json: (value: unknown) => resolve({ status, body: value }), end: () => resolve({ status, body: null }), send: (value: unknown) => resolve({ status, body: value }), on: () => res, off: () => res };
+  Promise.resolve(route.route.stack[0].handle({ body, params, query, headers: {}, matrixIdentity: { sub: "fixture-user" }, log: { info() {}, error() { throw new Error("Unexpected error logging"); } } }, res, reject)).catch(reject);
+});
+
+const issue = (id: string, key: string, summary = "Current Jira summary") => ({
+  id, key, fields: {
+    summary, issuetype: { name: "Story" }, status: { name: "Blocked" },
+    assignee: { displayName: "Engineer" }, priority: { name: "High" },
+    updated: "2026-09-25T15:00:00.000+0000",
+    project: { id: "100", key: "KEY", name: "Real Jira project" },
+    description: `do not copy ${env.JIRA_API_TOKEN}`, authorization: encoded,
+  },
+  token: env.JIRA_API_TOKEN,
 });
 
 test("J1 Jira client: mocked security, validation, pagination, timeout and retry", async t => {
@@ -92,6 +104,51 @@ test("J1 Jira client: mocked security, validation, pagination, timeout and retry
   });
 });
 
+test("J2 Jira client: live bounded, read-only issue search and resolution", async t => {
+  const requests: { url: URL; method: string; authorization: string }[] = [];
+  const client = new JiraClient(async (url, options) => {
+    const u = new URL(String(url));
+    requests.push({ url: u, method: options?.method ?? "GET", authorization: (options?.headers as any).Authorization });
+    if (u.pathname.includes("/issue/")) return json(issue("101", "KEY-101"));
+    return json({ issues: Array.from({ length: 40 }, (_, i) => issue(String(i + 101), `KEY-${i + 101}`)) });
+  }, env);
+  await t.test("exact and partial key, text and project filter use bounded live Jira reads", async () => {
+    assert.equal((await client.searchIssues("KEY-101", undefined, 2)).length, 2);
+    const exact = requests.at(-1)!.url;
+    assert.match(exact.searchParams.get("jql")!, /key = "KEY-101"/);
+    assert.equal(exact.searchParams.get("maxResults"), "2");
+    await client.searchIssues("KEY-10", "KEY");
+    assert.match(requests.at(-1)!.url.searchParams.get("jql")!, /project = "KEY"/);
+    assert.match(requests.at(-1)!.url.searchParams.get("jql")!, /key = "KEY-10"/);
+    await client.searchIssues("critical bug", "KEY");
+    assert.match(requests.at(-1)!.url.searchParams.get("jql")!, /text ~ "critical bug"/);
+    assert.match(requests.at(-1)!.url.searchParams.get("jql")!, /project = "KEY"/);
+    const bounded = await client.searchIssues("", "KEY", 1000);
+    assert.equal(bounded.length, 25);
+    assert.equal(requests.at(-1)!.url.searchParams.get("maxResults"), "25");
+    assert.equal(bounded[0].status, "Blocked");
+    assert.equal(bounded[0].url, "https://test.atlassian.net/browse/KEY-101");
+    noSecret(bounded);
+    assert.equal(JSON.stringify(bounded).includes("description"), false);
+  });
+  await t.test("issue ID validated and live detail resolved, with no Jira write", async () => {
+    const result = await client.issue("101");
+    assert.equal(result.summary, "Current Jira summary");
+    assert.equal(result.jiraIssueId, "101");
+    noSecret(result);
+    await assert.rejects(client.issue("../101"), /Invalid Jira issue ID/);
+    assert.equal(requests.every(r => r.method === "GET" && r.authorization === `Basic ${encoded}`), true);
+    assert.equal(requests.every(r => r.url.origin === env.JIRA_BASE_URL && r.url.pathname.startsWith("/rest/api/3/")), true);
+  });
+  await t.test("outages, malicious upstream error bodies, and unsafe query values do not leak credentials", async () => {
+    await assert.rejects(new JiraClient(async () => json({ message: env.JIRA_API_TOKEN }, 500), env).issue("101"), err => {
+      noSecret(String(err)); return true;
+    });
+    await assert.rejects(client.searchIssues("bad\nquery"), /Invalid Jira search/);
+    await assert.rejects(client.searchIssues("", "KEY\") OR status = Done"), /Invalid Jira search/);
+  });
+});
+
 test("J1 routes and PostgreSQL persistence in isolated TEMP tables", async t => {
   const originalFetch = globalThis.fetch;
   const oldEnv = { ...process.env };
@@ -104,6 +161,14 @@ test("J1 routes and PostgreSQL persistence in isolated TEMP tables", async t => 
     await client.query("CREATE TEMP TABLE projects (id integer PRIMARY KEY)");
     const sql = readFileSync("../../lib/db/src/jira-foundation.sql", "utf8");
     await client.query(sql.replaceAll("CREATE TABLE IF NOT EXISTS", "CREATE TEMP TABLE"));
+    await client.query(`CREATE TEMP TABLE project_jira_links (
+      id serial PRIMARY KEY, project_id integer NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+      jira_project_id integer REFERENCES jira_projects(id) ON DELETE SET NULL,
+      jira_issue_id text NOT NULL, jira_issue_key text NOT NULL, jira_issue_type text NOT NULL,
+      relationship_type text, display_order integer, notes text, created_by text,
+      created_at timestamp NOT NULL DEFAULT now(), updated_at timestamp NOT NULL DEFAULT now(),
+      UNIQUE (project_id, jira_issue_id)
+    )`);
     (pool as any).query = client.query.bind(client);
     (pool as any).connect = async () => ({ query: client.query.bind(client), release() {} });
     const request = async (method: string, path: string, body = {}, params = {}) => {
@@ -174,14 +239,98 @@ test("J1 routes and PostgreSQL persistence in isolated TEMP tables", async t => 
       assert.equal(result.body.find((s: any) => s.jiraProjectId === a.id).canonicalCategory, "done");
       await assert.rejects(client.query("INSERT INTO jira_status_mappings(jira_status_id,jira_status_name) VALUES ('10','duplicate')"), /unique/);
       assert.equal((await request("PUT", "/jira/status-mappings", { ...input, canonicalCategory: "invalid" })).status, 400);
+      await request("PUT", "/jira/status-mappings", { jiraProjectId: null, jiraStatusId: "10814", jiraStatusName: "Blocked", canonicalCategory: "blocked" });
+      assert.equal((await request("GET", "/jira/status-mappings")).body.find((s: any) => s.jiraStatusId === "10814").canonicalCategory, "blocked");
+    });
+    await t.test("J2 routes: live search, identity-only links, duplicates, multi-project, outage, refresh, unlink and cascade", async () => {
+      const routes = async (method: string, path: string, body = {}, params = {}, query = {}) => {
+        const result = await call(jiraLinksRouter, method, path, body, params, query);
+        noSecret(result);
+        return result;
+      };
+      await client.query("INSERT INTO projects(id) VALUES (9000001),(9000002)");
+      const calls: string[] = [];
+      globalThis.fetch = async (url, options) => {
+        assert.equal(options?.method ?? "GET", "GET", "J2 must never write to Jira");
+        calls.push(String(url));
+        const u = new URL(String(url));
+        if (u.pathname.endsWith("/issue/102")) return json(issue("102", "KEY-102", "Second current summary"));
+        if (u.pathname.endsWith("/issue/101")) return json(issue("101", "KEY-101"));
+        if (u.pathname.endsWith("/search/jql")) return json({ issues: Array.from({ length: 30 }, (_, i) => issue(String(i + 101), `KEY-${i + 101}`)) });
+        throw new Error("Unexpected Jira endpoint");
+      };
+      const search = async (query: Record<string, string>) => routes("GET", "/jira/issues/search", {}, {}, query);
+      let found = await search({ q: "KEY-101", limit: "2" });
+      assert.equal(found.status, 200);
+      assert.equal(found.body.length, 2);
+      assert.match(new URL(calls.at(-1)!).searchParams.get("jql")!, /key = "KEY-101"/);
+      await search({ q: "KEY-10", projectKey: "KEY" });
+      assert.match(new URL(calls.at(-1)!).searchParams.get("jql")!, /project = "KEY"/);
+      found = await search({ q: "current summary", projectKey: "KEY" });
+      assert.match(new URL(calls.at(-1)!).searchParams.get("jql")!, /text ~ "current summary"/);
+      found = await search({ projectKey: "KEY" });
+      assert.equal(found.body.length, 25);
+      assert.equal(new URL(calls.at(-1)!).searchParams.get("maxResults"), "25");
+      assert.equal((await search({ q: "x", limit: "999" })).status, 400);
+      const routeParams = (projectId: number, linkId?: number) => ({ projectId: String(projectId), ...(linkId ? { linkId: String(linkId) } : {}) });
+      const linkBody = (jiraIssueId: string) => ({ jiraIssueId, summary: env.JIRA_API_TOKEN, status: "Done", jiraIssueKey: "FAKE-99" });
+      const create = (p: number, id: string) => routes("POST", "/projects/:projectId/jira-links", linkBody(id), routeParams(p));
+      const first = await create(9000001, "101");
+      assert.equal(first.status, 201);
+      assert.equal(first.body.jiraIssueKey, "KEY-101");
+      assert.equal(first.body.details.status, "Blocked");
+      assert.equal(first.body.createdBy, "fixture-user");
+      assert.equal((await create(9000001, "101")).status, 409);
+      assert.equal((await create(9000001, "102")).status, 201);
+      const other = await create(9000002, "101");
+      assert.equal(other.status, 201);
+      const stored = (await client.query("SELECT * FROM project_jira_links ORDER BY id")).rows;
+      assert.equal(stored.length, 3);
+      assert.equal(stored.every(row => row.jira_issue_key.startsWith("KEY-")), true);
+      for (const field of ["summary", "status", "assignee", "priority", "description", "token", "authorization"]) {
+        assert.equal(stored.some(row => field in row), false, `${field} must not persist`);
+      }
+      const list = () => routes("GET", "/projects/:projectId/jira-links", {}, routeParams(9000001));
+      assert.equal((await list()).body[0].details.summary, "Current Jira summary");
+      globalThis.fetch = async () => json({ message: env.JIRA_API_TOKEN }, 503);
+      const unavailable = await list();
+      assert.equal(unavailable.status, 200);
+      assert.equal(unavailable.body.length, 2);
+      assert.equal(unavailable.body[0].jiraIssueKey, "KEY-101");
+      assert.equal(unavailable.body[0].unavailable, true);
+      globalThis.fetch = async url => json(String(url).includes("/issue/102") ? issue("102", "KEY-102") : issue("101", "KEY-101", "Updated live summary"));
+      assert.equal((await list()).body[0].details.summary, "Updated live summary", "refresh is a new GET, not a sync");
+      assert.equal((await client.query("SELECT count(*)::int AS count FROM project_jira_links")).rows[0].count, 3);
+      const beforeUnlinkCalls = calls.length;
+      assert.equal((await routes("DELETE", "/projects/:projectId/jira-links/:linkId", {}, routeParams(9000001, first.body.id))).status, 204);
+      assert.equal(calls.length, beforeUnlinkCalls, "unlink never contacts Jira");
+      assert.equal((await routes("DELETE", "/projects/:projectId/jira-links/:linkId", {}, routeParams(9000001, other.body.id))).status, 404, "cannot unlink another project's reference");
+      assert.equal((await client.query("SELECT count(*)::int AS count FROM project_jira_links")).rows[0].count, 2);
+      await client.query("DELETE FROM projects WHERE id = 9000001");
+      assert.deepEqual((await client.query("SELECT project_id FROM project_jira_links")).rows.map(row => row.project_id), [9000002]);
+      await client.query("DELETE FROM projects WHERE id = 9000002");
+    });
+    await t.test("J2 auth and additive schema safety", async () => {
+      for (const layer of (jiraLinksRouter as any).stack) {
+        let status = 0;
+        await requireMatrixSession({ headers: {} } as any, { status(v: number) { status = v; return this; }, json(value: unknown) { noSecret(value); } } as any, () => { throw new Error("Unauthenticated Jira route"); });
+        assert.equal(status, 401, layer.route.path);
+      }
+      const source = readFileSync("src/routes/jira-links.ts", "utf8");
+      assert.equal(/console\.(?:log|error)|(?:req\.)?log(?:ger)?\.(?:info|error|warn|debug)/.test(source), false);
+      assert.equal(/\.post\(["'`]\/rest\/api\/3|\.put\(["'`]\/rest\/api\/3/.test(source), false);
+      const schema = readFileSync("../../lib/db/src/schema/jira.ts", "utf8");
+      assert.match(schema, /projectJiraLinksTable/);
+      assert.match(schema, /onDelete: "cascade"/);
+      assert.equal(/(?:summary|status|assignee|priority|description): (?:text|jsonb)\(/.test(schema.slice(schema.indexOf("export const projectJiraLinksTable"))), false);
     });
     await t.test("Matrix app-info and health version surfaces", async () => {
       const info = await call(matrixRouter, "GET", "/app-info");
-      assert.equal(info.body.version, "v1.3.0");
+      assert.equal(info.body.version, "v1.4.0");
       assert.equal(info.body.name, "Matrix Innovation Hub");
       noSecret(info);
       const health = await call(matrixRouter, "GET", "/health");
-      assert.equal(health.body.version, "v1.3.0"); noSecret(health);
+      assert.equal(health.body.version, "v1.4.0"); noSecret(health);
     });
     await t.test("unchanged Matrix session mint/verify", async () => {
       process.env.SESSION_SECRET = "J1-automated-test-session-secret-not-real";

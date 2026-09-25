@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Api
  * API specification
- * OpenAPI spec version: 1.3.0
+ * OpenAPI spec version: 1.4.0
  */
 import {
   useMutation,
@@ -51,6 +51,7 @@ import type {
   JiraProjectInput,
   JiraStatusMapping,
   JiraStatusMappingInput,
+  JiraWorkItem,
   ListProjectsParams,
   Organization,
   OrganizationCreate,
@@ -69,6 +70,8 @@ import type {
   ProjectApprovalUpdate,
   ProjectCreate,
   ProjectDetail,
+  ProjectJiraLink,
+  ProjectJiraLinkCreate,
   ProjectMilestone,
   ProjectMilestoneCreate,
   ProjectMilestoneUpdate,
@@ -95,6 +98,7 @@ import type {
   ResourceDetail,
   ResourceUpdate,
   ResourceWithCapacity,
+  SearchJiraIssuesParams,
   Settings,
   ValidationCreate,
   ValidationDetail,
@@ -525,6 +529,90 @@ export function useListJiraFields<TData = Awaited<ReturnType<typeof listJiraFiel
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getListJiraFieldsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSearchJiraIssuesUrl = (params?: SearchJiraIssuesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/jira/issues/search?${stringifiedParams}` : `/api/jira/issues/search`
+}
+
+/**
+ * @summary Search Jira work items live without storing issue data
+ */
+export const searchJiraIssues = async (params?: SearchJiraIssuesParams, options?: RequestInit): Promise<JiraWorkItem[]> => {
+
+  return customFetch<JiraWorkItem[]>(getSearchJiraIssuesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getSearchJiraIssuesQueryKey = (params?: SearchJiraIssuesParams,) => {
+    return [
+    `/api/jira/issues/search`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getSearchJiraIssuesQueryOptions = <TData = Awaited<ReturnType<typeof searchJiraIssues>>, TError = ErrorType<void>>(params?: SearchJiraIssuesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof searchJiraIssues>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getSearchJiraIssuesQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof searchJiraIssues>>> = ({ signal }) => searchJiraIssues(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof searchJiraIssues>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type SearchJiraIssuesQueryResult = NonNullable<Awaited<ReturnType<typeof searchJiraIssues>>>
+export type SearchJiraIssuesQueryError = ErrorType<void>
+
+
+/**
+ * @summary Search Jira work items live without storing issue data
+ */
+
+export function useSearchJiraIssues<TData = Awaited<ReturnType<typeof searchJiraIssues>>, TError = ErrorType<void>>(
+ params?: SearchJiraIssuesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof searchJiraIssues>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getSearchJiraIssuesQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
@@ -4855,6 +4943,226 @@ export const useDeleteProject = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getDeleteProjectMutationOptions(options));
+    }
+
+export const getListProjectJiraLinksUrl = (projectId: number,) => {
+
+
+
+
+  return `/api/projects/${projectId}/jira-links`
+}
+
+/**
+ * @summary List saved Jira links with live details where available
+ */
+export const listProjectJiraLinks = async (projectId: number, options?: RequestInit): Promise<ProjectJiraLink[]> => {
+
+  return customFetch<ProjectJiraLink[]>(getListProjectJiraLinksUrl(projectId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListProjectJiraLinksQueryKey = (projectId: number,) => {
+    return [
+    `/api/projects/${projectId}/jira-links`
+    ] as const;
+    }
+
+
+export const getListProjectJiraLinksQueryOptions = <TData = Awaited<ReturnType<typeof listProjectJiraLinks>>, TError = ErrorType<void>>(projectId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listProjectJiraLinks>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListProjectJiraLinksQueryKey(projectId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listProjectJiraLinks>>> = ({ signal }) => listProjectJiraLinks(projectId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: projectId !== null && projectId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listProjectJiraLinks>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListProjectJiraLinksQueryResult = NonNullable<Awaited<ReturnType<typeof listProjectJiraLinks>>>
+export type ListProjectJiraLinksQueryError = ErrorType<void>
+
+
+/**
+ * @summary List saved Jira links with live details where available
+ */
+
+export function useListProjectJiraLinks<TData = Awaited<ReturnType<typeof listProjectJiraLinks>>, TError = ErrorType<void>>(
+ projectId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listProjectJiraLinks>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListProjectJiraLinksQueryOptions(projectId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateProjectJiraLinkUrl = (projectId: number,) => {
+
+
+
+
+  return `/api/projects/${projectId}/jira-links`
+}
+
+/**
+ * @summary Link an existing Jira work item without modifying Jira
+ */
+export const createProjectJiraLink = async (projectId: number,
+    projectJiraLinkCreate: ProjectJiraLinkCreate, options?: RequestInit): Promise<ProjectJiraLink> => {
+
+  return customFetch<ProjectJiraLink>(getCreateProjectJiraLinkUrl(projectId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(projectJiraLinkCreate)
+  }
+);}
+
+
+
+
+export const getCreateProjectJiraLinkMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createProjectJiraLink>>, TError,{projectId: number;data: BodyType<ProjectJiraLinkCreate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createProjectJiraLink>>, TError,{projectId: number;data: BodyType<ProjectJiraLinkCreate>}, TContext> => {
+
+const mutationKey = ['createProjectJiraLink'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createProjectJiraLink>>, {projectId: number;data: BodyType<ProjectJiraLinkCreate>}> = (props) => {
+          const {projectId,data} = props ?? {};
+
+          return  createProjectJiraLink(projectId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateProjectJiraLinkMutationResult = NonNullable<Awaited<ReturnType<typeof createProjectJiraLink>>>
+    export type CreateProjectJiraLinkMutationBody = BodyType<ProjectJiraLinkCreate>
+    export type CreateProjectJiraLinkMutationError = ErrorType<void>
+
+    /**
+ * @summary Link an existing Jira work item without modifying Jira
+ */
+export const useCreateProjectJiraLink = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createProjectJiraLink>>, TError,{projectId: number;data: BodyType<ProjectJiraLinkCreate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createProjectJiraLink>>,
+        TError,
+        {projectId: number;data: BodyType<ProjectJiraLinkCreate>},
+        TContext
+      > => {
+      return useMutation(getCreateProjectJiraLinkMutationOptions(options));
+    }
+
+export const getDeleteProjectJiraLinkUrl = (projectId: number,
+    linkId: number,) => {
+
+
+
+
+  return `/api/projects/${projectId}/jira-links/${linkId}`
+}
+
+/**
+ * @summary Unlink a Jira work item; does not modify Jira
+ */
+export const deleteProjectJiraLink = async (projectId: number,
+    linkId: number, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteProjectJiraLinkUrl(projectId,linkId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteProjectJiraLinkMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteProjectJiraLink>>, TError,{projectId: number;linkId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteProjectJiraLink>>, TError,{projectId: number;linkId: number}, TContext> => {
+
+const mutationKey = ['deleteProjectJiraLink'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteProjectJiraLink>>, {projectId: number;linkId: number}> = (props) => {
+          const {projectId,linkId} = props ?? {};
+
+          return  deleteProjectJiraLink(projectId,linkId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteProjectJiraLinkMutationResult = NonNullable<Awaited<ReturnType<typeof deleteProjectJiraLink>>>
+
+    export type DeleteProjectJiraLinkMutationError = ErrorType<void>
+
+    /**
+ * @summary Unlink a Jira work item; does not modify Jira
+ */
+export const useDeleteProjectJiraLink = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteProjectJiraLink>>, TError,{projectId: number;linkId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteProjectJiraLink>>,
+        TError,
+        {projectId: number;linkId: number},
+        TContext
+      > => {
+      return useMutation(getDeleteProjectJiraLinkMutationOptions(options));
     }
 
 export const getListProjectMilestonesUrl = (id: number,) => {
