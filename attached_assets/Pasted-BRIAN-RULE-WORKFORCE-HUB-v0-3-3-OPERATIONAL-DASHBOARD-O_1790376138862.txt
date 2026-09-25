@@ -1,0 +1,320 @@
+BRIAN RULE — WORKFORCE HUB v0.3.3
+OPERATIONAL DASHBOARD
+
+OBJECTIVE
+
+Turn the Workforce Hub Dashboard into a useful operational landing page for HR, Technology, managers, and administrators.
+
+The Dashboard should immediately answer:
+
+1. What needs attention?
+2. What is happening with our workforce?
+3. What technology/workflow issues are outstanding?
+4. Where should I click next?
+
+This release is DEVELOPMENT ONLY.
+
+
+==================================================
+1. OPERATIONAL KPI STRIP
+==================================================
+
+Replace the current Dashboard metrics with real Workforce Hub operational data.
+
+Include:
+
+- Active Employees
+- Onboarding in Progress
+- Offboarding in Progress
+- Technology Requests Open
+- Awaiting Manager Approval
+- Technology Queue
+- Employees Missing Required Technology
+
+Each KPI should be clickable and drill into the appropriate existing filtered page/view.
+
+Use existing Workforce Hub data/services as the source of truth.
+
+Do not invent a metric if it cannot be reliably calculated from existing data. Report the gap instead.
+
+
+==================================================
+2. NEEDS ATTENTION
+==================================================
+
+Add a prominent "Needs Attention" section.
+
+This should be the operational centerpiece of the Dashboard.
+
+Surface actionable conditions such as:
+
+- Overdue onboarding tasks
+- Overdue offboarding tasks
+- Technology requests awaiting manager approval
+- Technology requests waiting on Technology
+- Requests waiting for requester information
+- Employees missing required software/hardware
+- Entra/import records requiring remediation
+- Other existing Workforce conditions that genuinely require administrator action
+
+Each item should provide enough information to understand the issue and a direct path to resolve or investigate it.
+
+Sort the highest-priority/oldest actionable items first.
+
+If there are none:
+
+"No items currently require attention."
+
+
+==================================================
+3. TECHNOLOGY REQUESTS
+==================================================
+
+Surface the existing Technology Request workflow on the Dashboard.
+
+Show compact counts for:
+
+- Open requests
+- Awaiting manager approval
+- Technology queue
+- Request information / waiting
+- Approved / in fulfillment
+- Recently completed
+
+Drill through to the existing Technology Request pages.
+
+Where an existing request has a Jira linkage, expose that information in the appropriate request drill-through.
+
+PRESERVE the existing Matrix Platform Jira architecture.
+
+DO NOT:
+
+- Add Jira credentials to Workforce Hub
+- Make direct Jira API calls from Workforce Hub
+- Build another Jira integration
+- Redesign the Technology Request workflow
+
+
+==================================================
+4. WORKFORCE OVERVIEW
+==================================================
+
+Provide a management snapshot using existing employee data.
+
+Include:
+
+- Active employee count
+- Employees by department
+- Employees by location
+- Employees by employment type
+- New hires/onboardings underway
+- Departures/offboardings underway
+
+Use compact charts only where they improve comprehension.
+
+Do not fill the Dashboard with decorative charts.
+
+Department/location information should drill into filtered employee lists where practical.
+
+
+==================================================
+5. TECHNOLOGY COVERAGE
+==================================================
+
+Provide a compact operational view of:
+
+- Employees missing required technology
+- Software requirement gaps
+- Hardware requirement gaps
+- Employees with unresolved technology requirements
+
+Use the existing:
+
+Position
+→ Technology Requirements
+→ Employee Assignment
+
+model.
+
+IMPORTANT:
+
+Do not treat unfinished Position mappings as technology failures.
+
+Clearly distinguish between:
+
+A. Position/requirements not yet configured
+
+and
+
+B. Position requirements are configured but the employee does not satisfy them.
+
+
+==================================================
+6. MICROSOFT LICENSING
+==================================================
+
+Do NOT expand the Microsoft 365 mapping workflow in this release.
+
+If the existing v0.3.1/v0.3.2 data supports it safely, provide a small administrative Dashboard indicator showing:
+
+- Microsoft users discovered
+- License assignments discovered
+- Mapped SKUs
+- SKUs needing review
+- Estimated monthly spend ONLY where administrator-entered pricing exists
+
+Unknown pricing remains UNKNOWN.
+
+Never infer or fabricate Microsoft licensing costs.
+
+This should link to the existing Microsoft 365 Licenses area.
+
+Do not bring the complexity of SKU normalization onto the Dashboard.
+
+
+==================================================
+7. ROLE-AWARE DASHBOARD
+==================================================
+
+Respect existing Workforce Hub authorization.
+
+Users must never gain access to information through the Dashboard that they cannot access through the underlying module.
+
+Where practical:
+
+HR / Admin / Super Admin
+- Broader workforce operational visibility
+
+Technology-authorized users
+- Technology Requests
+- Technology coverage
+- Relevant licensing information
+
+Managers
+- Their actionable approvals
+- Appropriate workforce information
+
+General users
+- Appropriate personal/request information
+
+Do NOT create separate Dashboard frameworks for each role.
+
+Use one Dashboard with authorization-aware sections/cards.
+
+
+==================================================
+8. UX / DEMO READINESS
+==================================================
+
+This Dashboard needs to be demo-ready for Brian to begin showing Workforce Hub to others next week.
+
+Requirements:
+
+- Clear visual hierarchy
+- Actionable information above the fold
+- Existing Matrix Workforce Hub visual language
+- Existing collapsible sidebar preserved
+- Desktop and mobile behavior
+- Loading states
+- Empty states
+- Error states
+- No giant Dashboard tables
+- Compact cards/lists with drill-through
+- Avoid excessive scrolling
+- Avoid tiny fonts
+- Business-friendly terminology
+
+A first-time executive should be able to look at the Dashboard and understand the overall condition of Workforce Hub in roughly 10 seconds.
+
+
+==================================================
+9. ARCHITECTURE / SAFETY
+==================================================
+
+PRESERVE:
+
+- Matrix Platform centralized integrations and credentials
+- Existing Workforce authorization
+- Existing Jira bridge
+- Existing Entra/Microsoft discovery architecture
+- Existing Technology Request workflows
+- Existing lifecycle workflows
+- Existing employee model
+- Existing Position model
+- Existing software/hardware models
+- Existing audit behavior
+- Existing v0.3.2 Microsoft licensing work
+
+DO NOT:
+
+- Add Microsoft credentials to Workforce
+- Add Jira credentials to Workforce
+- Call Microsoft Graph directly from Workforce
+- Call Jira directly from Workforce
+- Build SharePoint integration in this release
+- Redesign Technology Requests
+- Redesign Microsoft licensing
+- Automatically modify employee records
+- Automatically modify Position records
+- Automatically modify software/hardware records
+- Automatically modify licensing records
+- Automatically modify Technology Requests
+- Create fake metrics
+- Make production mutations
+
+
+==================================================
+10. ACCEPTANCE TESTING
+==================================================
+
+Verify at minimum:
+
+- KPI counts against underlying records
+- Dashboard drill-throughs
+- Needs Attention logic
+- Technology Request status counts
+- Employee department aggregation
+- Employee location aggregation
+- Technology requirement gap calculations
+- Role/authorization visibility
+- Microsoft licensing summary where available
+- Empty states
+- Loading/error states
+- Collapsed/expanded sidebar
+- Desktop layout
+- Mobile layout
+- Existing regression suite
+
+Prefer existing backend/service business logic rather than duplicating business rules in the frontend.
+
+
+==================================================
+STOP / REPORT
+==================================================
+
+If an important Dashboard metric cannot be reliably derived from existing Workforce Hub data:
+
+STOP on that metric and report the gap.
+
+Do NOT invent a new interpretation of the business rule simply to populate the Dashboard.
+
+
+==================================================
+COMPLETION REPORT
+==================================================
+
+When complete, report:
+
+- Version implemented
+- Dashboard sections delivered
+- Exact metrics available
+- Drill-throughs implemented
+- Role-aware behavior implemented
+- Data-quality/configuration gaps discovered
+- Test results
+- Schema changes, if any
+- Anything requiring Brian
+
+TARGET VERSION:
+
+Workforce Hub v0.3.3 — Operational Dashboard
