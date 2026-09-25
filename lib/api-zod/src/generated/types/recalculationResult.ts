@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Api
  * API specification
- * OpenAPI spec version: 0.1.0
+ * OpenAPI spec version: 1.3.0
  */
 import type { Initiative } from './initiative';
 import type { ScoringComponentChange } from './scoringComponentChange';

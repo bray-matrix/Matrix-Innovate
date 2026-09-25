@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Api
  * API specification
- * OpenAPI spec version: 0.1.0
+ * OpenAPI spec version: 1.3.0
  */
 
 export * from './aIProviderConfig';
@@ -50,6 +50,15 @@ export * from './initiativeRecommendations';
 export * from './initiativeRecommendationsComplexity';
 export * from './initiativeUpdate';
 export * from './initiativeVersion';
+export * from './jiraConnection';
+export * from './jiraField';
+export * from './jiraFieldMapping';
+export * from './jiraFieldMappingAdditionalMappings';
+export * from './jiraProject';
+export * from './jiraProjectInput';
+export * from './jiraStatusMapping';
+export * from './jiraStatusMappingInput';
+export * from './jiraStatusMappingInputCanonicalCategory';
 export * from './listProjectsParams';
 export * from './organization';
 export * from './organizationCreate';

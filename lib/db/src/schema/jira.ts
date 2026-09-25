@@ -1,0 +1,54 @@
+import { pgTable, serial, text, integer, boolean, timestamp, jsonb, uniqueIndex, check } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import { projectsTable } from "./execution";
+
+const dates = () => ({
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const jiraConnectionStateTable = pgTable("jira_connection_state", {
+  id: text("id").primaryKey().default("default"),
+  baseUrl: text("base_url"),
+  accountEmailMasked: text("account_email_masked"),
+  configured: boolean("configured").notNull().default(false),
+  lastTestStatus: text("last_test_status"),
+  lastTestMessage: text("last_test_message"),
+  lastTestAt: timestamp("last_test_at"),
+  ...dates(),
+});
+
+export const jiraProjectsTable = pgTable("jira_projects", {
+  id: serial("id").primaryKey(),
+  jiraProjectId: text("jira_project_id").notNull().unique(),
+  key: text("key").notNull(),
+  name: text("name").notNull(),
+  projectType: text("project_type"),
+  syncEnabled: boolean("sync_enabled").notNull().default(false),
+  projectId: integer("project_id").references(() => projectsTable.id, { onDelete: "set null" }),
+  lastDiscoveredAt: timestamp("last_discovered_at").notNull().defaultNow(),
+  ...dates(),
+});
+
+export const jiraStatusMappingsTable = pgTable("jira_status_mappings", {
+  id: serial("id").primaryKey(),
+  jiraProjectId: integer("jira_project_id").references(() => jiraProjectsTable.id, { onDelete: "cascade" }),
+  jiraStatusId: text("jira_status_id").notNull(),
+  jiraStatusName: text("jira_status_name").notNull(),
+  canonicalCategory: text("canonical_category").notNull().default("todo"),
+  ...dates(),
+}, (t) => [
+  uniqueIndex("jira_status_scope_unique").on(t.jiraProjectId, t.jiraStatusId).where(sql`${t.jiraProjectId} is not null`),
+  uniqueIndex("jira_status_global_unique").on(t.jiraStatusId).where(sql`${t.jiraProjectId} is null`),
+  check("jira_status_category_check", sql`${t.canonicalCategory} in ('todo','in_progress','blocked','done')`),
+]);
+
+export const jiraFieldMappingsTable = pgTable("jira_field_mappings", {
+  id: serial("id").primaryKey(),
+  jiraProjectId: integer("jira_project_id").notNull().unique().references(() => jiraProjectsTable.id, { onDelete: "cascade" }),
+  dueDateField: text("due_date_field"),
+  blockedField: text("blocked_field"),
+  storyPointsField: text("story_points_field"),
+  additionalMappings: jsonb("additional_mappings").$type<Record<string, string> | null>(),
+  ...dates(),
+});

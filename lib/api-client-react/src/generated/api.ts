@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Api
  * API specification
- * OpenAPI spec version: 0.1.0
+ * OpenAPI spec version: 1.3.0
  */
 import {
   useMutation,
@@ -44,6 +44,13 @@ import type {
   InitiativeRecommendations,
   InitiativeUpdate,
   InitiativeVersion,
+  JiraConnection,
+  JiraField,
+  JiraFieldMapping,
+  JiraProject,
+  JiraProjectInput,
+  JiraStatusMapping,
+  JiraStatusMappingInput,
   ListProjectsParams,
   Organization,
   OrganizationCreate,
@@ -123,6 +130,747 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getGetJiraConnectionUrl = () => {
+
+
+
+
+  return `/api/jira/connection`
+}
+
+export const getJiraConnection = async ( options?: RequestInit): Promise<JiraConnection> => {
+
+  return customFetch<JiraConnection>(getGetJiraConnectionUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetJiraConnectionQueryKey = () => {
+    return [
+    `/api/jira/connection`
+    ] as const;
+    }
+
+
+export const getGetJiraConnectionQueryOptions = <TData = Awaited<ReturnType<typeof getJiraConnection>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getJiraConnection>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetJiraConnectionQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getJiraConnection>>> = ({ signal }) => getJiraConnection({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getJiraConnection>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetJiraConnectionQueryResult = NonNullable<Awaited<ReturnType<typeof getJiraConnection>>>
+export type GetJiraConnectionQueryError = ErrorType<unknown>
+
+
+
+export function useGetJiraConnection<TData = Awaited<ReturnType<typeof getJiraConnection>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getJiraConnection>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetJiraConnectionQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getTestJiraConnectionUrl = () => {
+
+
+
+
+  return `/api/jira/connection/test`
+}
+
+export const testJiraConnection = async ( options?: RequestInit): Promise<JiraConnection> => {
+
+  return customFetch<JiraConnection>(getTestJiraConnectionUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getTestJiraConnectionMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof testJiraConnection>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof testJiraConnection>>, TError,void, TContext> => {
+
+const mutationKey = ['testJiraConnection'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof testJiraConnection>>, void> = () => {
+
+
+          return  testJiraConnection(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type TestJiraConnectionMutationResult = NonNullable<Awaited<ReturnType<typeof testJiraConnection>>>
+
+    export type TestJiraConnectionMutationError = ErrorType<unknown>
+
+    export const useTestJiraConnection = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof testJiraConnection>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof testJiraConnection>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getTestJiraConnectionMutationOptions(options));
+    }
+
+export const getListJiraProjectsUrl = () => {
+
+
+
+
+  return `/api/jira/projects`
+}
+
+export const listJiraProjects = async ( options?: RequestInit): Promise<JiraProject[]> => {
+
+  return customFetch<JiraProject[]>(getListJiraProjectsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListJiraProjectsQueryKey = () => {
+    return [
+    `/api/jira/projects`
+    ] as const;
+    }
+
+
+export const getListJiraProjectsQueryOptions = <TData = Awaited<ReturnType<typeof listJiraProjects>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listJiraProjects>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListJiraProjectsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listJiraProjects>>> = ({ signal }) => listJiraProjects({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listJiraProjects>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListJiraProjectsQueryResult = NonNullable<Awaited<ReturnType<typeof listJiraProjects>>>
+export type ListJiraProjectsQueryError = ErrorType<unknown>
+
+
+
+export function useListJiraProjects<TData = Awaited<ReturnType<typeof listJiraProjects>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listJiraProjects>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListJiraProjectsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getDiscoverJiraProjectsUrl = () => {
+
+
+
+
+  return `/api/jira/projects/discover`
+}
+
+export const discoverJiraProjects = async ( options?: RequestInit): Promise<JiraProject[]> => {
+
+  return customFetch<JiraProject[]>(getDiscoverJiraProjectsUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getDiscoverJiraProjectsMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof discoverJiraProjects>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof discoverJiraProjects>>, TError,void, TContext> => {
+
+const mutationKey = ['discoverJiraProjects'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof discoverJiraProjects>>, void> = () => {
+
+
+          return  discoverJiraProjects(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DiscoverJiraProjectsMutationResult = NonNullable<Awaited<ReturnType<typeof discoverJiraProjects>>>
+
+    export type DiscoverJiraProjectsMutationError = ErrorType<unknown>
+
+    export const useDiscoverJiraProjects = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof discoverJiraProjects>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof discoverJiraProjects>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getDiscoverJiraProjectsMutationOptions(options));
+    }
+
+export const getUpdateJiraProjectUrl = (id: number,) => {
+
+
+
+
+  return `/api/jira/projects/${id}`
+}
+
+export const updateJiraProject = async (id: number,
+    jiraProjectInput: JiraProjectInput, options?: RequestInit): Promise<JiraProject> => {
+
+  return customFetch<JiraProject>(getUpdateJiraProjectUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(jiraProjectInput)
+  }
+);}
+
+
+
+
+export const getUpdateJiraProjectMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateJiraProject>>, TError,{id: number;data: BodyType<JiraProjectInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateJiraProject>>, TError,{id: number;data: BodyType<JiraProjectInput>}, TContext> => {
+
+const mutationKey = ['updateJiraProject'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateJiraProject>>, {id: number;data: BodyType<JiraProjectInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateJiraProject(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateJiraProjectMutationResult = NonNullable<Awaited<ReturnType<typeof updateJiraProject>>>
+    export type UpdateJiraProjectMutationBody = BodyType<JiraProjectInput>
+    export type UpdateJiraProjectMutationError = ErrorType<unknown>
+
+    export const useUpdateJiraProject = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateJiraProject>>, TError,{id: number;data: BodyType<JiraProjectInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateJiraProject>>,
+        TError,
+        {id: number;data: BodyType<JiraProjectInput>},
+        TContext
+      > => {
+      return useMutation(getUpdateJiraProjectMutationOptions(options));
+    }
+
+export const getListJiraFieldsUrl = () => {
+
+
+
+
+  return `/api/jira/fields`
+}
+
+export const listJiraFields = async ( options?: RequestInit): Promise<JiraField[]> => {
+
+  return customFetch<JiraField[]>(getListJiraFieldsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListJiraFieldsQueryKey = () => {
+    return [
+    `/api/jira/fields`
+    ] as const;
+    }
+
+
+export const getListJiraFieldsQueryOptions = <TData = Awaited<ReturnType<typeof listJiraFields>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listJiraFields>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListJiraFieldsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listJiraFields>>> = ({ signal }) => listJiraFields({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listJiraFields>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListJiraFieldsQueryResult = NonNullable<Awaited<ReturnType<typeof listJiraFields>>>
+export type ListJiraFieldsQueryError = ErrorType<unknown>
+
+
+
+export function useListJiraFields<TData = Awaited<ReturnType<typeof listJiraFields>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listJiraFields>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListJiraFieldsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetJiraFieldMappingUrl = (id: number,) => {
+
+
+
+
+  return `/api/jira/projects/${id}/field-mapping`
+}
+
+export const getJiraFieldMapping = async (id: number, options?: RequestInit): Promise<JiraFieldMapping> => {
+
+  return customFetch<JiraFieldMapping>(getGetJiraFieldMappingUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetJiraFieldMappingQueryKey = (id: number,) => {
+    return [
+    `/api/jira/projects/${id}/field-mapping`
+    ] as const;
+    }
+
+
+export const getGetJiraFieldMappingQueryOptions = <TData = Awaited<ReturnType<typeof getJiraFieldMapping>>, TError = ErrorType<unknown>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getJiraFieldMapping>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetJiraFieldMappingQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getJiraFieldMapping>>> = ({ signal }) => getJiraFieldMapping(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getJiraFieldMapping>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetJiraFieldMappingQueryResult = NonNullable<Awaited<ReturnType<typeof getJiraFieldMapping>>>
+export type GetJiraFieldMappingQueryError = ErrorType<unknown>
+
+
+
+export function useGetJiraFieldMapping<TData = Awaited<ReturnType<typeof getJiraFieldMapping>>, TError = ErrorType<unknown>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getJiraFieldMapping>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetJiraFieldMappingQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSaveJiraFieldMappingUrl = (id: number,) => {
+
+
+
+
+  return `/api/jira/projects/${id}/field-mapping`
+}
+
+export const saveJiraFieldMapping = async (id: number,
+    jiraFieldMapping: JiraFieldMapping, options?: RequestInit): Promise<JiraFieldMapping> => {
+
+  return customFetch<JiraFieldMapping>(getSaveJiraFieldMappingUrl(id),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(jiraFieldMapping)
+  }
+);}
+
+
+
+
+export const getSaveJiraFieldMappingMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveJiraFieldMapping>>, TError,{id: number;data: BodyType<JiraFieldMapping>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof saveJiraFieldMapping>>, TError,{id: number;data: BodyType<JiraFieldMapping>}, TContext> => {
+
+const mutationKey = ['saveJiraFieldMapping'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof saveJiraFieldMapping>>, {id: number;data: BodyType<JiraFieldMapping>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  saveJiraFieldMapping(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SaveJiraFieldMappingMutationResult = NonNullable<Awaited<ReturnType<typeof saveJiraFieldMapping>>>
+    export type SaveJiraFieldMappingMutationBody = BodyType<JiraFieldMapping>
+    export type SaveJiraFieldMappingMutationError = ErrorType<unknown>
+
+    export const useSaveJiraFieldMapping = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveJiraFieldMapping>>, TError,{id: number;data: BodyType<JiraFieldMapping>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof saveJiraFieldMapping>>,
+        TError,
+        {id: number;data: BodyType<JiraFieldMapping>},
+        TContext
+      > => {
+      return useMutation(getSaveJiraFieldMappingMutationOptions(options));
+    }
+
+export const getDiscoverJiraStatusesUrl = () => {
+
+
+
+
+  return `/api/jira/statuses`
+}
+
+export const discoverJiraStatuses = async ( options?: RequestInit): Promise<JiraStatusMapping[]> => {
+
+  return customFetch<JiraStatusMapping[]>(getDiscoverJiraStatusesUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getDiscoverJiraStatusesMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof discoverJiraStatuses>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof discoverJiraStatuses>>, TError,void, TContext> => {
+
+const mutationKey = ['discoverJiraStatuses'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof discoverJiraStatuses>>, void> = () => {
+
+
+          return  discoverJiraStatuses(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DiscoverJiraStatusesMutationResult = NonNullable<Awaited<ReturnType<typeof discoverJiraStatuses>>>
+
+    export type DiscoverJiraStatusesMutationError = ErrorType<unknown>
+
+    export const useDiscoverJiraStatuses = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof discoverJiraStatuses>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof discoverJiraStatuses>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getDiscoverJiraStatusesMutationOptions(options));
+    }
+
+export const getListJiraStatusMappingsUrl = () => {
+
+
+
+
+  return `/api/jira/status-mappings`
+}
+
+export const listJiraStatusMappings = async ( options?: RequestInit): Promise<JiraStatusMapping[]> => {
+
+  return customFetch<JiraStatusMapping[]>(getListJiraStatusMappingsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListJiraStatusMappingsQueryKey = () => {
+    return [
+    `/api/jira/status-mappings`
+    ] as const;
+    }
+
+
+export const getListJiraStatusMappingsQueryOptions = <TData = Awaited<ReturnType<typeof listJiraStatusMappings>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listJiraStatusMappings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListJiraStatusMappingsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listJiraStatusMappings>>> = ({ signal }) => listJiraStatusMappings({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listJiraStatusMappings>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListJiraStatusMappingsQueryResult = NonNullable<Awaited<ReturnType<typeof listJiraStatusMappings>>>
+export type ListJiraStatusMappingsQueryError = ErrorType<unknown>
+
+
+
+export function useListJiraStatusMappings<TData = Awaited<ReturnType<typeof listJiraStatusMappings>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listJiraStatusMappings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListJiraStatusMappingsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSaveJiraStatusMappingUrl = () => {
+
+
+
+
+  return `/api/jira/status-mappings`
+}
+
+export const saveJiraStatusMapping = async (jiraStatusMappingInput: JiraStatusMappingInput, options?: RequestInit): Promise<JiraStatusMapping> => {
+
+  return customFetch<JiraStatusMapping>(getSaveJiraStatusMappingUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(jiraStatusMappingInput)
+  }
+);}
+
+
+
+
+export const getSaveJiraStatusMappingMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveJiraStatusMapping>>, TError,{data: BodyType<JiraStatusMappingInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof saveJiraStatusMapping>>, TError,{data: BodyType<JiraStatusMappingInput>}, TContext> => {
+
+const mutationKey = ['saveJiraStatusMapping'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof saveJiraStatusMapping>>, {data: BodyType<JiraStatusMappingInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  saveJiraStatusMapping(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SaveJiraStatusMappingMutationResult = NonNullable<Awaited<ReturnType<typeof saveJiraStatusMapping>>>
+    export type SaveJiraStatusMappingMutationBody = BodyType<JiraStatusMappingInput>
+    export type SaveJiraStatusMappingMutationError = ErrorType<unknown>
+
+    export const useSaveJiraStatusMapping = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveJiraStatusMapping>>, TError,{data: BodyType<JiraStatusMappingInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof saveJiraStatusMapping>>,
+        TError,
+        {data: BodyType<JiraStatusMappingInput>},
+        TContext
+      > => {
+      return useMutation(getSaveJiraStatusMappingMutationOptions(options));
+    }
 
 export const getHealthCheckUrl = () => {
 

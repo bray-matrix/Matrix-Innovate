@@ -3,9 +3,225 @@
  * Do not edit manually.
  * Api
  * API specification
- * OpenAPI spec version: 0.1.0
+ * OpenAPI spec version: 1.3.0
  */
 import * as zod from 'zod';
+
+
+export const GetJiraConnectionResponse = zod.object({
+  "configured": zod.boolean(),
+  "baseUrl": zod.string().nullable(),
+  "accountEmailMasked": zod.string().nullable(),
+  "lastTestAt": zod.string().nullable(),
+  "lastTestStatus": zod.string().nullable(),
+  "lastTestMessage": zod.string().nullable()
+})
+
+
+export const TestJiraConnectionResponse = zod.object({
+  "configured": zod.boolean(),
+  "baseUrl": zod.string().nullable(),
+  "accountEmailMasked": zod.string().nullable(),
+  "lastTestAt": zod.string().nullable(),
+  "lastTestStatus": zod.string().nullable(),
+  "lastTestMessage": zod.string().nullable()
+})
+
+
+export const ListJiraProjectsResponseItem = zod.object({
+  "id": zod.number(),
+  "jiraProjectId": zod.string(),
+  "key": zod.string(),
+  "name": zod.string(),
+  "projectType": zod.string().nullable(),
+  "projectId": zod.number().nullable(),
+  "syncEnabled": zod.boolean(),
+  "lastDiscoveredAt": zod.string()
+})
+export const ListJiraProjectsResponse = zod.array(ListJiraProjectsResponseItem)
+
+
+export const DiscoverJiraProjectsResponseItem = zod.object({
+  "id": zod.number(),
+  "jiraProjectId": zod.string(),
+  "key": zod.string(),
+  "name": zod.string(),
+  "projectType": zod.string().nullable(),
+  "projectId": zod.number().nullable(),
+  "syncEnabled": zod.boolean(),
+  "lastDiscoveredAt": zod.string()
+})
+export const DiscoverJiraProjectsResponse = zod.array(DiscoverJiraProjectsResponseItem)
+
+
+
+
+
+export const UpdateJiraProjectParams = zod.object({
+  "id": zod.coerce.number().min(1)
+})
+
+
+
+
+export const UpdateJiraProjectBody = zod.object({
+  "projectId": zod.number().min(1).nullish(),
+  "syncEnabled": zod.boolean().optional()
+})
+
+export const UpdateJiraProjectResponse = zod.object({
+  "id": zod.number(),
+  "jiraProjectId": zod.string(),
+  "key": zod.string(),
+  "name": zod.string(),
+  "projectType": zod.string().nullable(),
+  "projectId": zod.number().nullable(),
+  "syncEnabled": zod.boolean(),
+  "lastDiscoveredAt": zod.string()
+})
+
+
+export const ListJiraFieldsResponseItem = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "custom": zod.boolean(),
+  "fieldType": zod.string().nullable()
+})
+export const ListJiraFieldsResponse = zod.array(ListJiraFieldsResponseItem)
+
+
+
+
+
+export const GetJiraFieldMappingParams = zod.object({
+  "id": zod.coerce.number().min(1)
+})
+
+export const getJiraFieldMappingResponseDueDateFieldMax = 255;
+
+export const getJiraFieldMappingResponseBlockedFieldMax = 255;
+
+export const getJiraFieldMappingResponseStoryPointsFieldMax = 255;
+
+export const getJiraFieldMappingResponseAdditionalMappingsMaxOne = 255;
+
+
+
+export const GetJiraFieldMappingResponse = zod.object({
+  "dueDateField": zod.string().max(getJiraFieldMappingResponseDueDateFieldMax).nullable(),
+  "blockedField": zod.string().max(getJiraFieldMappingResponseBlockedFieldMax).nullable(),
+  "storyPointsField": zod.string().max(getJiraFieldMappingResponseStoryPointsFieldMax).nullable(),
+  "additionalMappings": zod.record(zod.string(), zod.string().max(getJiraFieldMappingResponseAdditionalMappingsMaxOne)).nullable()
+})
+
+
+
+
+
+export const SaveJiraFieldMappingParams = zod.object({
+  "id": zod.coerce.number().min(1)
+})
+
+export const saveJiraFieldMappingBodyDueDateFieldMax = 255;
+
+export const saveJiraFieldMappingBodyBlockedFieldMax = 255;
+
+export const saveJiraFieldMappingBodyStoryPointsFieldMax = 255;
+
+export const saveJiraFieldMappingBodyAdditionalMappingsMaxOne = 255;
+
+
+
+export const SaveJiraFieldMappingBody = zod.object({
+  "dueDateField": zod.string().max(saveJiraFieldMappingBodyDueDateFieldMax).nullable(),
+  "blockedField": zod.string().max(saveJiraFieldMappingBodyBlockedFieldMax).nullable(),
+  "storyPointsField": zod.string().max(saveJiraFieldMappingBodyStoryPointsFieldMax).nullable(),
+  "additionalMappings": zod.record(zod.string(), zod.string().max(saveJiraFieldMappingBodyAdditionalMappingsMaxOne)).nullable()
+})
+
+export const saveJiraFieldMappingResponseDueDateFieldMax = 255;
+
+export const saveJiraFieldMappingResponseBlockedFieldMax = 255;
+
+export const saveJiraFieldMappingResponseStoryPointsFieldMax = 255;
+
+export const saveJiraFieldMappingResponseAdditionalMappingsMaxOne = 255;
+
+
+
+export const SaveJiraFieldMappingResponse = zod.object({
+  "dueDateField": zod.string().max(saveJiraFieldMappingResponseDueDateFieldMax).nullable(),
+  "blockedField": zod.string().max(saveJiraFieldMappingResponseBlockedFieldMax).nullable(),
+  "storyPointsField": zod.string().max(saveJiraFieldMappingResponseStoryPointsFieldMax).nullable(),
+  "additionalMappings": zod.record(zod.string(), zod.string().max(saveJiraFieldMappingResponseAdditionalMappingsMaxOne)).nullable()
+})
+
+
+
+export const discoverJiraStatusesResponseOneJiraStatusIdMax = 255;
+
+export const discoverJiraStatusesResponseOneJiraStatusNameMax = 255;
+
+
+
+export const DiscoverJiraStatusesResponseItem = zod.object({
+  "jiraProjectId": zod.number().min(1).nullable(),
+  "jiraStatusId": zod.string().min(1).max(discoverJiraStatusesResponseOneJiraStatusIdMax),
+  "jiraStatusName": zod.string().min(1).max(discoverJiraStatusesResponseOneJiraStatusNameMax),
+  "canonicalCategory": zod.enum(['todo', 'in_progress', 'blocked', 'done'])
+}).and(zod.object({
+  "id": zod.number()
+}))
+export const DiscoverJiraStatusesResponse = zod.array(DiscoverJiraStatusesResponseItem)
+
+
+
+export const listJiraStatusMappingsResponseOneJiraStatusIdMax = 255;
+
+export const listJiraStatusMappingsResponseOneJiraStatusNameMax = 255;
+
+
+
+export const ListJiraStatusMappingsResponseItem = zod.object({
+  "jiraProjectId": zod.number().min(1).nullable(),
+  "jiraStatusId": zod.string().min(1).max(listJiraStatusMappingsResponseOneJiraStatusIdMax),
+  "jiraStatusName": zod.string().min(1).max(listJiraStatusMappingsResponseOneJiraStatusNameMax),
+  "canonicalCategory": zod.enum(['todo', 'in_progress', 'blocked', 'done'])
+}).and(zod.object({
+  "id": zod.number()
+}))
+export const ListJiraStatusMappingsResponse = zod.array(ListJiraStatusMappingsResponseItem)
+
+
+
+export const saveJiraStatusMappingBodyJiraStatusIdMax = 255;
+
+export const saveJiraStatusMappingBodyJiraStatusNameMax = 255;
+
+
+
+export const SaveJiraStatusMappingBody = zod.object({
+  "jiraProjectId": zod.number().min(1).nullable(),
+  "jiraStatusId": zod.string().min(1).max(saveJiraStatusMappingBodyJiraStatusIdMax),
+  "jiraStatusName": zod.string().min(1).max(saveJiraStatusMappingBodyJiraStatusNameMax),
+  "canonicalCategory": zod.enum(['todo', 'in_progress', 'blocked', 'done'])
+})
+
+
+export const saveJiraStatusMappingResponseOneJiraStatusIdMax = 255;
+
+export const saveJiraStatusMappingResponseOneJiraStatusNameMax = 255;
+
+
+
+export const SaveJiraStatusMappingResponse = zod.object({
+  "jiraProjectId": zod.number().min(1).nullable(),
+  "jiraStatusId": zod.string().min(1).max(saveJiraStatusMappingResponseOneJiraStatusIdMax),
+  "jiraStatusName": zod.string().min(1).max(saveJiraStatusMappingResponseOneJiraStatusNameMax),
+  "canonicalCategory": zod.enum(['todo', 'in_progress', 'blocked', 'done'])
+}).and(zod.object({
+  "id": zod.number()
+}))
 
 
 /**

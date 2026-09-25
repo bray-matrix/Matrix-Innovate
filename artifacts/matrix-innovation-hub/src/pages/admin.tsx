@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import type { AIProviderInfo } from "@workspace/api-client-react";
 import { InitializeEnvironmentCard } from "@/components/init-wizard";
+import { JiraIntegration } from "@/components/jira-integration";
 
 function formatTestTime(value: string): string {
   const d = new Date(value);
@@ -323,6 +324,7 @@ export default function Admin() {
         </Badge>
       </div>
 
+      <JiraIntegration />
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
           <CardHeader>

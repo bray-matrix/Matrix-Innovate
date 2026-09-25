@@ -1,0 +1,728 @@
+BRIAN RULE — MATRIX INNOVATION HUB JIRA CONSOLIDATION J1
+
+TARGET REPLIT PROJECT:
+Matrix Innovation Hub
+
+DO NOT RUN THIS IN:
+- Legacy Compass
+- Matrix Platform
+- Finance Hub
+- Matrix Infrastructure Hub
+- any other Replit project
+
+==================================================
+WORKSPACE CHECK
+==================================================
+
+Before making changes, confirm:
+
+Application:
+Matrix Innovation Hub
+
+Current version:
+v1.2.1
+
+Technical slug/audience:
+matrix-innovation-hub
+
+Gateway:
+/innovation
+
+Expected production URL:
+https://matrix-innovation-hub.replit.app
+
+Expected existing capabilities:
+- Innovation intake/interview
+- Initiatives
+- scoring/prioritization
+- Kanban
+- Organizations
+- Clients
+- Programs
+- Projects
+- Milestones
+- Risks
+- Approvals
+- Go-Live Readiness
+- Resources
+- Portfolio
+- Reports / Board Pack
+- Matrix Platform /matrix contract
+
+If any of these assumptions are materially false, STOP and report the mismatch.
+
+==================================================
+DONOR REFERENCE
+==================================================
+
+The workspace root now contains:
+
+legacy-compass-jira-donor.zip
+
+This ZIP was exported from the old Compass donor application.
+
+It contains:
+- donor Jira routes/services/repositories
+- Jira intelligence code
+- Jira DB schema
+- Jira frontend components
+- API/contracts
+- documentation/reference files
+- exact deterministic scoring formulas
+
+IMPORTANT:
+
+The donor ZIP is REFERENCE MATERIAL.
+
+Do NOT blindly copy donor architecture.
+
+Do NOT import:
+- mock data architecture
+- old Compass session/auth implementation
+- plaintext token storage
+- frontend secrets
+- donor project model
+- donor navigation structure
+- old 5,000-issue hard cap behavior
+- weak/no 429 handling
+- weak/no timeout behavior
+
+Use Innovation Hub's architecture as authoritative.
+
+==================================================
+J1 OBJECTIVE
+==================================================
+
+Build the Jira FOUNDATION only.
+
+J1 includes:
+
+1. Jira server-side configuration
+2. Connection testing
+3. Jira project discovery
+4. Jira field discovery
+5. Jira project mapping to Innovation Hub Projects
+6. Jira status mapping
+7. Jira field mapping
+8. Real PostgreSQL persistence for configuration/mappings
+9. Admin UI for Jira Integration
+10. OpenAPI / generated client contracts
+11. Security controls
+12. Automated tests
+
+J1 does NOT include issue synchronization, issue persistence, Jira intelligence, snapshots, Portfolio integration, Project Detail Jira analytics, Dashboard integration, or reports.
+
+Those remain J2–J5.
+
+==================================================
+1. INSPECT THE DONOR ZIP FIRST
+==================================================
+
+Before implementing, inspect:
+
+legacy-compass-jira-donor.zip
+
+Read at minimum:
+
+/reference/JIRA_DONOR_INTELLIGENCE_REFERENCE.md
+/reference/JIRA_DONOR_SCHEMA_REFERENCE.md
+/reference/JIRA_DONOR_SYNC_REFERENCE.md
+/manifest/JIRA_DONOR_MANIFEST.md
+
+Also inspect the donor source relevant to:
+- connection handling
+- connection test
+- project discovery
+- field discovery
+- project mapping
+- status mapping
+- field mapping
+- API contracts
+- DB schema
+
+Do not implement until that inspection is complete.
+
+Report internally any donor behavior worth preserving and any behavior intentionally redesigned.
+
+==================================================
+2. ARCHITECTURE
+==================================================
+
+Use the existing Innovation Hub pattern:
+
+OpenAPI
+    ->
+generated Zod / generated React Query client
+    ->
+Express routes
+    ->
+server services/lib
+    ->
+Drizzle/PostgreSQL
+
+All new Jira routes must be protected by the existing:
+
+requireMatrixSession
+
+Do not add a second authentication system.
+
+Do not change Matrix Platform integration.
+
+==================================================
+3. CREDENTIAL MODEL
+==================================================
+
+Jira credentials must stay server-side.
+
+Use environment/Replit Secrets for:
+
+JIRA_BASE_URL
+JIRA_EMAIL
+JIRA_API_TOKEN
+
+Do NOT store JIRA_API_TOKEN in PostgreSQL.
+
+Do NOT expose it in:
+- API responses
+- logs
+- browser bundles
+- reports
+- PDFs
+- /matrix/app-info
+- /matrix/health
+
+The UI should show only safe state such as:
+
+Configured: YES/NO
+Base URL
+Masked email if appropriate
+Last connection test
+Last test status
+
+If the donor stored the token in plaintext DB, explicitly do NOT reproduce that.
+
+==================================================
+4. DATABASE MODEL — J1
+==================================================
+
+Create additive PostgreSQL entities.
+
+A. jira_connection_state
+
+Purpose:
+Non-secret operational metadata for the configured Jira connection.
+
+Suggested fields:
+- id
+- baseUrl
+- accountEmailMasked or accountEmail if considered safe internal metadata
+- configured
+- lastTestStatus
+- lastTestMessage nullable
+- lastTestAt nullable
+- createdAt
+- updatedAt
+
+Do NOT store API token.
+
+B. jira_projects
+
+Purpose:
+Discovered Jira projects and mapping to Innovation Hub Projects.
+
+Fields at minimum:
+- id
+- jiraProjectId
+- key
+- name
+- projectType nullable
+- syncEnabled
+- projectId nullable FK -> Innovation Hub projects
+- lastDiscoveredAt
+- createdAt
+- updatedAt
+
+Mapping rule:
+
+Innovation Hub Project
+    1
+    |
+    +---- 0..N Jira Projects
+
+Each Jira Project maps to at most one Innovation Hub Project.
+
+If an Innovation Hub Project is deleted:
+- Jira project mapping becomes NULL
+- Jira discovered project remains
+
+C. jira_status_mappings
+
+Purpose:
+Map Jira status values to canonical execution categories.
+
+Fields:
+- id
+- jiraProjectId nullable
+- jiraStatusId/value
+- jiraStatusName
+- canonicalCategory
+- createdAt
+- updatedAt
+
+Canonical categories:
+
+todo
+in_progress
+blocked
+done
+
+Allow NULL jiraProjectId for global/default mappings.
+
+D. jira_field_mappings
+
+Purpose:
+Per-project Jira field overrides.
+
+Fields:
+- id
+- jiraProjectId
+- dueDateField nullable
+- blockedField nullable
+- storyPointsField nullable
+- additionalMappings JSONB nullable
+- createdAt
+- updatedAt
+
+Do not over-engineer custom-field support yet.
+
+==================================================
+5. JIRA SERVER CLIENT
+==================================================
+
+Create a reusable Jira server client.
+
+Requirements:
+
+- Atlassian REST API
+- Basic auth using email + API token
+- credentials assembled only server-side
+- configurable request timeout
+- safe error handling
+- no auth headers in logs
+- no response-body dumping when sensitive
+- 429-aware base behavior even though issue sync is J2
+
+For J1, implement:
+
+- connection test
+- GET accessible Jira projects
+- field discovery / metadata sufficient for mapping UI
+- status discovery where practical
+
+Use Jira Cloud REST API v3 where appropriate.
+
+Do not implement issue sync yet.
+
+==================================================
+6. CONNECTION TEST
+==================================================
+
+Add a server endpoint to test the configured Jira connection.
+
+Expected behavior:
+
+- verifies configuration exists
+- performs a lightweight authenticated Jira request
+- records safe result in jira_connection_state
+- returns safe status to browser
+
+Never return:
+- Authorization header
+- token
+- raw credentials
+- unrestricted Jira error bodies
+
+Admin UI must support:
+
+Test Connection
+
+Display:
+- Connected / Failed
+- Jira base URL
+- account identity if safely available
+- test timestamp
+- sanitized failure reason
+
+==================================================
+7. PROJECT DISCOVERY
+==================================================
+
+Implement Jira project discovery.
+
+Requirements:
+
+- fetch projects available to the configured Jira user
+- upsert into jira_projects
+- preserve existing Innovation Hub mappings during rediscovery
+- update names/metadata where Jira changed
+- do NOT delete historical discovered projects merely because one discovery call omits them
+- record lastDiscoveredAt
+
+Admin UI:
+
+Discover Projects
+
+Table:
+
+Jira Key
+Jira Name
+Type
+Mapped Innovation Hub Project
+Sync Enabled
+Last Discovered
+
+Allow mapping/unmapping to an Innovation Hub Project.
+
+Allow multiple Jira projects to map to the same Innovation Hub Project.
+
+==================================================
+8. FIELD DISCOVERY
+==================================================
+
+Implement field discovery sufficient to show:
+
+- system fields
+- custom fields
+- field id
+- field name
+- field type/schema where available
+
+Provide searchable selection controls for:
+
+- due-date field
+- blocked signal field
+- story-points field
+
+The Jira default due-date field should be selected automatically where appropriate.
+
+Do not assume custom field IDs.
+
+==================================================
+9. STATUS MAPPING
+==================================================
+
+Implement status discovery/mapping.
+
+Admin UI should allow Jira statuses to map to:
+
+- To Do
+- In Progress
+- Blocked
+- Done
+
+Use Jira status category metadata as a sensible initial default where possible.
+
+Do NOT overwrite explicit administrator mappings during rediscovery.
+
+==================================================
+10. ADMIN UI
+==================================================
+
+Add a Jira Integration section to the existing Innovation Hub Admin area.
+
+Do NOT add a top-level Jira navigation item.
+
+Suggested sections/tabs:
+
+CONNECTION
+- configured state
+- base URL
+- account
+- Test Connection
+
+PROJECTS
+- Discover Projects
+- discovered project list
+- Hub Project mapping
+- Sync Enabled
+
+FIELDS
+- field discovery
+- due date
+- blocked signal
+- story points
+
+STATUSES
+- Jira status mappings
+
+SYNC
+- display "Issue synchronization will be added in J2"
+- no fake sync functionality
+
+Keep UI consistent with existing Innovation Hub Admin patterns.
+
+==================================================
+11. OPENAPI / CONTRACTS
+==================================================
+
+Add required endpoints to the existing OpenAPI specification and regenerate clients/schemas using the project's normal process.
+
+Expected route family:
+
+/api/jira/connection
+/api/jira/connection/test
+/api/jira/projects
+/api/jira/projects/discover
+/api/jira/projects/:id
+/api/jira/fields
+/api/jira/projects/:id/field-mapping
+/api/jira/statuses
+/api/jira/status-mappings
+
+Exact route design may vary slightly if existing project conventions suggest a cleaner structure.
+
+Do not bypass generated API contracts with ad hoc frontend fetches.
+
+==================================================
+12. SECURITY TESTING
+==================================================
+
+Explicitly test:
+
+A. unauthenticated Jira route -> 401
+B. Jira API token absent from all API responses
+C. Jira API token absent from browser bundle/config
+D. Jira API token absent from logs
+E. connection test sanitizes Jira errors
+F. project discovery cannot leak Authorization header
+G. field discovery cannot leak credentials
+H. /matrix endpoints unchanged
+I. existing Matrix auth unchanged
+
+==================================================
+13. DONOR FORMULAS
+==================================================
+
+Do NOT implement Jira intelligence in J1.
+
+However, copy/preserve the donor reference documents inside the Innovation Hub repository under an appropriate docs/reference location so the exact donor formulas survive independently of the ZIP.
+
+At minimum preserve:
+
+JIRA_DONOR_INTELLIGENCE_REFERENCE.md
+JIRA_DONOR_SCHEMA_REFERENCE.md
+JIRA_DONOR_SYNC_REFERENCE.md
+JIRA_DONOR_MANIFEST.md
+
+This is reference documentation only.
+
+==================================================
+14. VERSIONING
+==================================================
+
+J1 is a meaningful feature release.
+
+Change:
+
+v1.2.1 -> v1.3.0
+
+Update:
+
+- authoritative application version
+- package versions
+- /matrix/app-info
+- /matrix/health
+- Admin/About/version surfaces
+- CHANGELOG/release history
+
+Do not change:
+- slug
+- audience
+- gateway
+- production URL
+- Platform authentication contract
+
+==================================================
+15. DATABASE SAFETY
+==================================================
+
+All schema changes must be additive.
+
+Do NOT:
+- delete existing tables
+- rename existing tables
+- change existing IDs
+- modify existing Initiative/Project data
+- seed fake production Jira business data
+- import donor Jira data
+
+New Jira tables should initially contain only configuration/discovery records created during explicit testing.
+
+==================================================
+16. AUTOMATED VALIDATION
+==================================================
+
+Build automated tests with mocked Jira responses.
+
+Do not require live Jira credentials for the full automated test suite.
+
+Verify:
+
+A. Version = v1.3.0
+B. Existing Initiative count unchanged
+C. Existing Project count unchanged
+D. Jira connection-state persistence works
+E. Connection test success works
+F. Connection test failure sanitizes response
+G. Project discovery upserts correctly
+H. Rediscovery preserves Hub project mappings
+I. One Hub Project can map to multiple Jira Projects
+J. Jira Project maps to at most one Hub Project
+K. Project deletion sets Jira mapping NULL
+L. Field discovery works
+M. Field mappings persist
+N. Status discovery works
+O. Explicit status mappings survive rediscovery
+P. No Jira token in API responses
+Q. No Jira token in frontend/browser config
+R. Auth required on all Jira routes
+S. Existing Innovation functionality regression passes
+T. Existing Project/Portfolio/Resources/Reports regression passes
+U. /matrix/app-info still works
+V. /matrix/health still works
+W. Typecheck passes
+X. Full automated suite passes
+Y. No destructive schema changes
+Z. Donor reference docs preserved in repository
+
+==================================================
+17. LIVE CREDENTIALS
+==================================================
+
+If JIRA_BASE_URL, JIRA_EMAIL, and JIRA_API_TOKEN are NOT present:
+
+Do NOT block completion.
+
+Use mocked Jira tests and report:
+
+LIVE JIRA VALIDATION PENDING — CREDENTIALS NOT CONFIGURED
+
+Do not invent credentials.
+
+Do not ask for them in the middle of the build.
+
+We will configure them after J1 code validation if needed.
+
+==================================================
+18. DO NOT IMPLEMENT YET
+==================================================
+
+Do NOT implement in J1:
+
+- Jira issue sync
+- jira_issues
+- jira_sync_runs
+- snapshots
+- deterministic health scoring
+- alerts
+- aging/overdue/stale analytics
+- Project Detail Jira tab
+- Portfolio Jira signal
+- Dashboard Jira summary
+- reporting additions
+- scheduled sync
+- webhooks
+
+Those belong to later phases.
+
+==================================================
+19. STOP BEFORE PUBLISH
+==================================================
+
+Do NOT deploy automatically.
+
+Return:
+
+WORKSPACE
+Confirmed Matrix Innovation Hub:
+
+DONOR REFERENCE
+ZIP inspected:
+Reference docs preserved:
+Donor behaviors intentionally retained:
+Donor behaviors intentionally rejected:
+
+VERSION
+Before:
+After:
+
+DATABASE TABLES ADDED
+[list]
+
+API ROUTES ADDED
+[list]
+
+ADMIN UI
+Connection:
+Projects:
+Fields:
+Statuses:
+Sync placeholder:
+
+SECURITY
+Token server-side only:
+Token stored in DB:
+Token exposed in API:
+Token exposed in browser:
+Auth required:
+
+JIRA CLIENT
+REST API:
+Timeout:
+429-aware:
+Error sanitization:
+
+PROJECT MAPPING
+Hub Project -> Jira Projects:
+Mapping persistence:
+Deletion behavior:
+
+FIELD MAPPING
+Implemented:
+
+STATUS MAPPING
+Implemented:
+
+LIVE JIRA
+Credentials configured:
+Live connection tested:
+Result:
+
+DATA SAFETY
+Initiatives before/after:
+Projects before/after:
+Existing data preserved:
+
+PLATFORM
+Slug unchanged:
+Audience unchanged:
+Gateway unchanged:
+/matrix/app-info:
+/matrix/health:
+
+VALIDATION
+A-Z PASS/FAIL
+
+FILES CHANGED
+
+DATABASE MIGRATIONS
+
+KNOWN ISSUES
+[list only actual issues]
+
+DEPLOYED
+NO
+
+FINAL LINE:
+
+MATRIX INNOVATION HUB JIRA CONSOLIDATION J1 READY FOR REVIEW

@@ -24,3 +24,4 @@ export * from "./providerTests";export * from "./backlog";
 export * from "./environment";
 
 export * from "./execution";
+export * from "./jira";

@@ -12,6 +12,7 @@ import governanceRouter from "./governance";
 import portfolioRouter from "./portfolio";
 import resourcesRouter from "./resources";
 import reportsRouter from "./reports";
+import jiraRouter from "./jira";
 
 const router: IRouter = Router();
 
@@ -28,5 +29,6 @@ router.use(governanceRouter);
 router.use(portfolioRouter);
 router.use(resourcesRouter);
 router.use(reportsRouter);
+router.use(jiraRouter);
 
 export default router;

@@ -5,6 +5,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and the
 project adheres to semantic versioning (patch = fixes/edits, minor = new
 features, major = breaking or milestone changes).
 
+## [1.3.0] - 2026-09-25
+
+### Jira foundation (J1)
+- Server-side environment credentials, connection test, project/field/status discovery.
+- Additive PostgreSQL connection metadata and project/status/field mappings.
+- Admin integration controls with generated OpenAPI clients; no issue synchronization.
+- HTTPS-only origin validation, blocked redirects, bounded timeout/rate-limit retries,
+  upstream DTO whitelists and credential redaction.
+- Preserved donor formulas and schema/sync references under `docs/reference/jira`.
+- Matrix authentication and identity contract unchanged. No deployment performed.
+
 ## [1.2.1] - 2026-08-23
 
 ### Branding cleanup — restore Matrix Innovation Hub name

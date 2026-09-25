@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
-  version: 0.1.0
+  version: 1.3.0
   description: API specification
 servers:
   - url: /api
@@ -31,6 +31,133 @@ tags:
   - name: reports
     description: Deterministic reporting engine and PDF export
 paths:
+  /jira/connection:
+    get:
+      operationId: getJiraConnection
+      tags: [jira]
+      responses:
+        "200":
+          description: Safe server configuration and latest test
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/JiraConnection" }
+  /jira/connection/test:
+    post:
+      operationId: testJiraConnection
+      tags: [jira]
+      responses:
+        "200":
+          description: Persisted test outcome
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/JiraConnection" }
+  /jira/projects:
+    get:
+      operationId: listJiraProjects
+      tags: [jira]
+      responses:
+        "200":
+          description: Discovered projects including historical projects
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/JiraProject" } }
+  /jira/projects/discover:
+    post:
+      operationId: discoverJiraProjects
+      tags: [jira]
+      responses:
+        "200":
+          description: Discovered projects
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/JiraProject" } }
+  /jira/projects/{id}:
+    patch:
+      operationId: updateJiraProject
+      tags: [jira]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/JiraProjectInput" }
+      responses:
+        "200":
+          description: Saved mapping
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/JiraProject" }
+  /jira/fields:
+    get:
+      operationId: listJiraFields
+      tags: [jira]
+      responses:
+        "200":
+          description: Live system and custom field metadata
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/JiraField" } }
+  /jira/projects/{id}/field-mapping:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer, minimum: 1 } }
+    get:
+      operationId: getJiraFieldMapping
+      tags: [jira]
+      responses:
+        "200":
+          description: Project field overrides
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/JiraFieldMapping" }
+    put:
+      operationId: saveJiraFieldMapping
+      tags: [jira]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/JiraFieldMapping" }
+      responses:
+        "200":
+          description: Saved field overrides
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/JiraFieldMapping" }
+  /jira/statuses:
+    post:
+      operationId: discoverJiraStatuses
+      tags: [jira]
+      responses:
+        "200":
+          description: Global default statuses; explicit mappings retained
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/JiraStatusMapping" } }
+  /jira/status-mappings:
+    get:
+      operationId: listJiraStatusMappings
+      tags: [jira]
+      responses:
+        "200":
+          description: Global and project mappings
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/JiraStatusMapping" } }
+    put:
+      operationId: saveJiraStatusMapping
+      tags: [jira]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/JiraStatusMappingInput" }
+      responses:
+        "200":
+          description: Saved status mapping
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/JiraStatusMapping" }
   /healthz:
     get:
       operationId: healthCheck
@@ -1939,6 +2066,67 @@ paths:
                 $ref: "#/components/schemas/ExecutionSummary"
 components:
   schemas:
+    JiraConnection:
+      type: object
+      required: [configured, baseUrl, accountEmailMasked, lastTestAt, lastTestStatus, lastTestMessage]
+      properties:
+        configured: { type: boolean }
+        baseUrl: { type: string, nullable: true }
+        accountEmailMasked: { type: string, nullable: true }
+        lastTestAt: { type: string, nullable: true }
+        lastTestStatus: { type: string, nullable: true }
+        lastTestMessage: { type: string, nullable: true }
+    JiraProject:
+      type: object
+      required: [id, jiraProjectId, key, name, projectType, projectId, syncEnabled, lastDiscoveredAt]
+      properties:
+        id: { type: integer }
+        jiraProjectId: { type: string }
+        key: { type: string }
+        name: { type: string }
+        projectType: { type: string, nullable: true }
+        projectId: { type: integer, nullable: true }
+        syncEnabled: { type: boolean }
+        lastDiscoveredAt: { type: string }
+    JiraProjectInput:
+      type: object
+      properties:
+        projectId: { type: integer, nullable: true, minimum: 1 }
+        syncEnabled: { type: boolean }
+    JiraField:
+      type: object
+      required: [id, name, custom, fieldType]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        custom: { type: boolean }
+        fieldType: { type: string, nullable: true }
+    JiraFieldMapping:
+      type: object
+      required: [dueDateField, blockedField, storyPointsField, additionalMappings]
+      properties:
+        dueDateField: { type: string, nullable: true, maxLength: 255 }
+        blockedField: { type: string, nullable: true, maxLength: 255 }
+        storyPointsField: { type: string, nullable: true, maxLength: 255 }
+        additionalMappings:
+          type: object
+          nullable: true
+          additionalProperties: { type: string, maxLength: 255 }
+    JiraStatusMappingInput:
+      type: object
+      required: [jiraProjectId, jiraStatusId, jiraStatusName, canonicalCategory]
+      properties:
+        jiraProjectId: { type: integer, nullable: true, minimum: 1 }
+        jiraStatusId: { type: string, minLength: 1, maxLength: 255 }
+        jiraStatusName: { type: string, minLength: 1, maxLength: 255 }
+        canonicalCategory: { type: string, enum: [todo, in_progress, blocked, done] }
+    JiraStatusMapping:
+      allOf:
+        - { $ref: "#/components/schemas/JiraStatusMappingInput" }
+        - type: object
+          required: [id]
+          properties:
+            id: { type: integer }
     HealthStatus:
       type: object
       properties:

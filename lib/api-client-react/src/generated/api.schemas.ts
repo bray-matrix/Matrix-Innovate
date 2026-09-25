@@ -3,8 +3,83 @@
  * Do not edit manually.
  * Api
  * API specification
- * OpenAPI spec version: 0.1.0
+ * OpenAPI spec version: 1.3.0
  */
+export interface JiraConnection {
+  configured: boolean;
+  baseUrl: string | null;
+  accountEmailMasked: string | null;
+  lastTestAt: string | null;
+  lastTestStatus: string | null;
+  lastTestMessage: string | null;
+}
+
+export interface JiraProject {
+  id: number;
+  jiraProjectId: string;
+  key: string;
+  name: string;
+  projectType: string | null;
+  projectId: number | null;
+  syncEnabled: boolean;
+  lastDiscoveredAt: string;
+}
+
+export interface JiraProjectInput {
+  /** @minimum 1 */
+  projectId?: number | null;
+  syncEnabled?: boolean;
+}
+
+export interface JiraField {
+  id: string;
+  name: string;
+  custom: boolean;
+  fieldType: string | null;
+}
+
+export type JiraFieldMappingAdditionalMappings = {[key: string]: string} | null;
+
+export interface JiraFieldMapping {
+  /** @maxLength 255 */
+  dueDateField: string | null;
+  /** @maxLength 255 */
+  blockedField: string | null;
+  /** @maxLength 255 */
+  storyPointsField: string | null;
+  additionalMappings: JiraFieldMappingAdditionalMappings;
+}
+
+export type JiraStatusMappingInputCanonicalCategory = typeof JiraStatusMappingInputCanonicalCategory[keyof typeof JiraStatusMappingInputCanonicalCategory];
+
+
+export const JiraStatusMappingInputCanonicalCategory = {
+  todo: 'todo',
+  in_progress: 'in_progress',
+  blocked: 'blocked',
+  done: 'done',
+} as const;
+
+export interface JiraStatusMappingInput {
+  /** @minimum 1 */
+  jiraProjectId: number | null;
+  /**
+     * @minLength 1
+     * @maxLength 255
+     */
+  jiraStatusId: string;
+  /**
+     * @minLength 1
+     * @maxLength 255
+     */
+  jiraStatusName: string;
+  canonicalCategory: JiraStatusMappingInputCanonicalCategory;
+}
+
+export type JiraStatusMapping = JiraStatusMappingInput & {
+  id: number;
+};
+
 export interface HealthStatus {
   status: string;
 }
