@@ -47,3 +47,6 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# Transient uploaded Brian-rule prompts; retained locally, not release content.
+/attached_assets/Pasted-BRIAN-RULE-*.txt
