@@ -1,6 +1,6 @@
 // interviewEngine (v0.1.3)
 // -----------------------------------------------------------------------------
-// The ADAPTIVE decision logic for the AI Innovation Interview.
+// The deterministic adaptive decision logic for the Innovation Interview.
 //
 // This is the single module a future OpenAI integration would replace: it owns
 // (1) how an initiative is classified into a category, (2) which questions are
@@ -62,50 +62,48 @@ interface CategoryDefinition {
 const OPENING_QUESTIONS: InterviewQuestion[] = [
   {
     id: "idea",
-    prompt: "Tell me about your idea.",
-    hint: "A sentence or two is perfect — what are you imagining?",
-    placeholder:
-      "e.g. An assistant that drafts responses to routine customer emails...",
+    prompt: "What problem or opportunity would you like to address?",
+    hint: "Describe it in your own words. You do not need to know the solution.",
+    placeholder: "e.g. Our team spends too much time handling routine requests...",
   },
   {
     id: "problem",
-    prompt: "What business problem are you solving?",
-    hint: "What's painful, slow, costly, or error-prone today?",
-    placeholder:
-      "e.g. Agents spend hours each day writing near-identical replies...",
+    prompt: "What happens today, and who is affected?",
+    hint: "Describe the current process and the people or customers it affects.",
+    placeholder: "e.g. Our account managers manually follow up with each customer...",
   },
 ];
 
 const CLOSING_QUESTIONS: InterviewQuestion[] = [
   {
-    id: "loss",
-    prompt: "Approximately how much time or money is lost today?",
-    hint: "A rough estimate is fine — hours per month, dollars, or both.",
-    placeholder: "e.g. Roughly 400 hours a month, around $60,000 a year in labor...",
+    id: "frequency",
+    prompt: "How often does this happen?",
+    hint: "Daily, weekly, or occasionally? A rough estimate is fine.",
+    placeholder: "e.g. About 20 requests per week...",
   },
   {
     id: "success",
-    prompt: "What would success look like?",
-    hint: "Describe the outcome and how you'd measure it.",
-    placeholder: "e.g. Reply time cut in half with quality kept high...",
+    prompt: "What would a better outcome look like?",
+    hint: "How would you know this has improved?",
+    placeholder: "e.g. Faster responses with fewer errors...",
   },
   {
-    id: "ai",
-    prompt: "How could AI help?",
-    hint: "Your best guess — we'll refine it together.",
-    placeholder: "e.g. Generate a draft reply from the email and our knowledge base...",
+    id: "loss",
+    prompt: "What impact does this have on time, cost, revenue, customers, quality, or compliance?",
+    hint: "Share what you know; 'not yet known' is a useful answer. Only include estimates you can support.",
+    placeholder: "e.g. Delays customer responses; we don't know the cost yet...",
   },
   {
-    id: "prototype",
-    prompt: "What can realistically be proven within two weeks?",
-    hint: "The smallest slice that would build confidence.",
-    placeholder: "e.g. Draft replies for the top 3 request types on last month's emails...",
+    id: "deadline",
+    prompt: "Is there a deadline or business reason to act now?",
+    hint: "If there isn't one, that's fine.",
+    placeholder: "e.g. Before next quarter's renewal cycle...",
   },
   {
     id: "notes",
-    prompt: "Anything else we should know?",
-    hint: "Constraints, risks, data, stakeholders — optional but helpful.",
-    placeholder: "e.g. Data lives in Zendesk; compliance must review customer-facing text...",
+    prompt: "What else is known, and what still needs to be figured out?",
+    hint: "Constraints, stakeholders, risks, or uncertainties are helpful. Optional.",
+    placeholder: "e.g. We need to confirm ownership and the scope...",
   },
 ];
 
@@ -547,8 +545,8 @@ function classify(answers: AnswerMap): CategoryDetection {
     }
   }
 
-  // No signal yet (e.g. very short first answer) → treat as Experimental.
-  const chosen = best ?? DEFINITION_BY_CATEGORY.get("Experimental")!;
+  // No signal is not evidence that the request is an experiment.
+  const chosen = best ?? DEFINITION_BY_CATEGORY.get("Operations")!;
   const confidence = total > 0 ? Math.min(1, bestScore / total) : 0;
   return {
     category: chosen.category,
@@ -570,12 +568,26 @@ function toSignal(detection: CategoryDetection): CategorySignal {
 // then the detected category's questions (only once the idea is answered), then
 // the shared closing questions.
 function planQuestions(answers: AnswerMap): InterviewQuestion[] {
-  const plan: InterviewQuestion[] = [...OPENING_QUESTIONS];
+  const plan: InterviewQuestion[] = OPENING_QUESTIONS.filter(q =>
+    !(answers.jiraIssueId && (q.id === "idea" || (q.id === "problem" && answers.problem?.trim())))
+  ).map(q => q.id === "problem" && answers.jiraIssueId
+    ? { ...q, prompt: "The Jira request gives us a starting point. What happens today, and who is affected?" }
+    : q);
   const ideaAnswered = (answers.idea ?? "").trim().length > 0;
   if (ideaAnswered) {
     const detection = classify(answers);
-    const def = DEFINITION_BY_CATEGORY.get(detection.category);
-    if (def) plan.push(...def.questions);
+    // Ask only business-level follow-ups; do not require implementation design.
+    const followUps: Record<InitiativeCategory, InterviewQuestion> = {
+      Operations: { id: "category_detail", prompt: "Which steps take the most effort today?", hint: "People, handoffs or repeated work are all relevant.", placeholder: "e.g. Manual approvals and re-entry..." },
+      Production: { id: "category_detail", prompt: "Where are delays or quality issues most noticeable?", hint: "A rough description is enough.", placeholder: "e.g. Inspection creates a bottleneck..." },
+      "Customer Experience": { id: "category_detail", prompt: "How does this affect the customer experience?", hint: "Consider waiting, errors, or missed needs.", placeholder: "e.g. Customers wait days for an answer..." },
+      "Revenue Growth": { id: "category_detail", prompt: "Who would benefit, and what opportunity could this unlock?", hint: "No market-size estimate is required.", placeholder: "e.g. Existing customers could renew more easily..." },
+      "Internal Productivity": { id: "category_detail", prompt: "Which teams are involved and where does work slow down?", hint: "Describe the experience rather than the technology.", placeholder: "e.g. Finance waits for approval from operations..." },
+      Compliance: { id: "category_detail", prompt: "What obligation or risk should this address?", hint: "Share known requirements, if any.", placeholder: "e.g. We need a clearer audit trail..." },
+      Technology: { id: "category_detail", prompt: "What work or outcome would improve for the people using this?", hint: "Technical details can come later.", placeholder: "e.g. Teams could find information in one place..." },
+      Experimental: { id: "category_detail", prompt: "What is the most important thing we need to learn?", hint: "What is still uncertain?", placeholder: "e.g. Whether customers would use it..." },
+    };
+    plan.push(followUps[detection.category]);
   }
   plan.push(...CLOSING_QUESTIONS);
   return plan;
@@ -584,10 +596,9 @@ function planQuestions(answers: AnswerMap): InterviewQuestion[] {
 export const interviewEngine: InterviewEngine = {
   getIntro(): string {
     return (
-      "Hi! I'm your AI Innovation guide. I'll ask a few short questions, one at a " +
-      "time. After your first answer I'll detect what kind of initiative this is " +
-      "and adapt my follow-up questions to match. There are no wrong answers — a " +
-      "rough idea is enough to start. Let's begin."
+      "Welcome to the Innovation Interview. I'll ask a few business-focused questions " +
+      "to understand the opportunity. You don't need to know the technical solution, " +
+      "and it's okay if some numbers aren't known yet."
     );
   },
 

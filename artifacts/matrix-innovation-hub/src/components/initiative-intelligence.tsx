@@ -175,7 +175,7 @@ function ConfidenceMeter({ value }: { value: number }) {
   );
 }
 
-export function InitiativeIntelligence({ initiativeId }: { initiativeId: number }) {
+export function InitiativeIntelligence({ initiativeId, hasPrototype = false }: { initiativeId: number; hasPrototype?: boolean }) {
   const { data, isLoading, isError } = useGetInitiativeRecommendations(
     initiativeId,
     {
@@ -217,12 +217,12 @@ export function InitiativeIntelligence({ initiativeId }: { initiativeId: number 
         </div>
       )}
 
-      {data && <IntelligenceCards data={data} />}
+      {data && <IntelligenceCards data={data} hasPrototype={hasPrototype} />}
     </div>
   );
 }
 
-function IntelligenceCards({ data }: { data: InitiativeRecommendations }) {
+function IntelligenceCards({ data, hasPrototype }: { data: InitiativeRecommendations; hasPrototype: boolean }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       {/* Recommended Next Action — full width, most prominent */}
@@ -267,7 +267,7 @@ function IntelligenceCards({ data }: { data: InitiativeRecommendations }) {
         )}
       </IntelligenceCard>
 
-      <IntelligenceCard
+      {hasPrototype && <IntelligenceCard
         icon={FlaskConical}
         title="Recommended Prototype Scope"
         accent="border-l-[#7C3AED]"
@@ -276,7 +276,7 @@ function IntelligenceCards({ data }: { data: InitiativeRecommendations }) {
         source={data.sourceLabel}
       >
         <p className="text-sm leading-relaxed">{data.prototypeScope}</p>
-      </IntelligenceCard>
+      </IntelligenceCard>}
 
       <IntelligenceCard
         icon={Layers}
@@ -297,7 +297,7 @@ function IntelligenceCards({ data }: { data: InitiativeRecommendations }) {
         <BulletList items={data.complexityFactors} />
       </IntelligenceCard>
 
-      <IntelligenceCard
+      {hasPrototype && data.estimatedPrototypeDurationDays > 0 && <IntelligenceCard
         icon={Timer}
         title="Estimated Prototype Duration"
         accent="border-l-[#00A3E0]"
@@ -310,10 +310,10 @@ function IntelligenceCards({ data }: { data: InitiativeRecommendations }) {
             {data.estimatedPrototypeDurationDays}
           </span>
           <span className="text-sm text-muted-foreground">
-            days (within the standard 14-day sprint)
+            days (planning estimate, not an approved deadline)
           </span>
         </div>
-      </IntelligenceCard>
+      </IntelligenceCard>}
 
       <IntelligenceCard
         icon={Users}
@@ -328,6 +328,7 @@ function IntelligenceCards({ data }: { data: InitiativeRecommendations }) {
           </Badge>
         }
       >
+        <p className="mb-2 text-xs text-muted-foreground">Planning suggestions, not assigned staff or approved resource commitments.</p>
         <BulletList items={data.teamRoles} />
       </IntelligenceCard>
 
@@ -344,6 +345,7 @@ function IntelligenceCards({ data }: { data: InitiativeRecommendations }) {
           </Badge>
         }
       >
+        <p className="mb-2 text-xs text-muted-foreground">Potential risks for review, not logged project risks.</p>
         <BulletList items={data.risks} />
       </IntelligenceCard>
 

@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Api
  * API specification
- * OpenAPI spec version: 1.4.0
+ * OpenAPI spec version: 1.5.0
  */
 import * as zod from 'zod';
 
@@ -123,6 +123,38 @@ export const SearchJiraIssuesResponseItem = zod.object({
   "updated": zod.string().nullable()
 })
 export const SearchJiraIssuesResponse = zod.array(SearchJiraIssuesResponseItem)
+
+
+/**
+ * @summary Resolve a selected Jira issue and its bounded plain-text description for intake
+ */
+export const getJiraIssueIntakeContextPathIssueIdRegExp = new RegExp('^\\d{1,30}$');
+
+
+export const GetJiraIssueIntakeContextParams = zod.object({
+  "issueId": zod.coerce.string().regex(getJiraIssueIntakeContextPathIssueIdRegExp)
+})
+
+export const getJiraIssueIntakeContextResponseTwoDescriptionMax = 4000;
+
+
+
+export const GetJiraIssueIntakeContextResponse = zod.object({
+  "jiraIssueId": zod.string(),
+  "jiraIssueKey": zod.string(),
+  "jiraIssueType": zod.string(),
+  "summary": zod.string(),
+  "status": zod.string(),
+  "jiraProjectId": zod.string(),
+  "jiraProjectKey": zod.string(),
+  "jiraProjectName": zod.string(),
+  "url": zod.string(),
+  "assignee": zod.string().nullable(),
+  "priority": zod.string().nullable(),
+  "updated": zod.string().nullable()
+}).and(zod.object({
+  "description": zod.string().max(getJiraIssueIntakeContextResponseTwoDescriptionMax).describe('Sanitized plain text extracted from Jira ADF; no markup.')
+}))
 
 
 
@@ -274,6 +306,11 @@ export const HealthCheckResponse = zod.object({
 export const ListInitiativesResponseItem = zod.object({
   "id": zod.number(),
   "title": zod.string(),
+  "jiraLinks": zod.array(zod.object({
+  "jiraIssueId": zod.string(),
+  "jiraIssueKey": zod.string(),
+  "jiraIssueType": zod.string()
+})),
   "department": zod.string(),
   "submitterName": zod.string(),
   "businessOwner": zod.string().nullish(),
@@ -321,10 +358,12 @@ export const ListInitiativesResponse = zod.array(ListInitiativesResponseItem)
  * @summary Create a new initiative
  */
 
+export const createInitiativeBodyJiraIssueIdRegExp = new RegExp('^\\d{1,30}$');
 
 
 export const CreateInitiativeBody = zod.object({
   "title": zod.string().min(1),
+  "jiraIssueId": zod.string().regex(createInitiativeBodyJiraIssueIdRegExp).optional().describe('Optional selected Jira issue ID; verified live before initiative creation.'),
   "department": zod.string(),
   "submitterName": zod.string(),
   "businessOwner": zod.string().optional(),
@@ -353,6 +392,11 @@ export const CreateInitiativeBody = zod.object({
 export const CreateInitiativeResponse = zod.object({
   "id": zod.number(),
   "title": zod.string(),
+  "jiraLinks": zod.array(zod.object({
+  "jiraIssueId": zod.string(),
+  "jiraIssueKey": zod.string(),
+  "jiraIssueType": zod.string()
+})),
   "department": zod.string(),
   "submitterName": zod.string(),
   "businessOwner": zod.string().nullish(),
@@ -405,6 +449,11 @@ export const GetInitiativeParams = zod.object({
 export const GetInitiativeResponse = zod.object({
   "id": zod.number(),
   "title": zod.string(),
+  "jiraLinks": zod.array(zod.object({
+  "jiraIssueId": zod.string(),
+  "jiraIssueKey": zod.string(),
+  "jiraIssueType": zod.string()
+})),
   "department": zod.string(),
   "submitterName": zod.string(),
   "businessOwner": zod.string().nullish(),
@@ -497,6 +546,11 @@ export const UpdateInitiativeBody = zod.object({
 export const UpdateInitiativeResponse = zod.object({
   "id": zod.number(),
   "title": zod.string(),
+  "jiraLinks": zod.array(zod.object({
+  "jiraIssueId": zod.string(),
+  "jiraIssueKey": zod.string(),
+  "jiraIssueType": zod.string()
+})),
   "department": zod.string(),
   "submitterName": zod.string(),
   "businessOwner": zod.string().nullish(),
@@ -614,6 +668,11 @@ export const RecalculateInitiativeResponse = zod.object({
   "initiative": zod.object({
   "id": zod.number(),
   "title": zod.string(),
+  "jiraLinks": zod.array(zod.object({
+  "jiraIssueId": zod.string(),
+  "jiraIssueKey": zod.string(),
+  "jiraIssueType": zod.string()
+})),
   "department": zod.string(),
   "submitterName": zod.string(),
   "businessOwner": zod.string().nullish(),
@@ -738,6 +797,11 @@ export const GetDashboardSummaryResponse = zod.object({
   "recentInitiatives": zod.array(zod.object({
   "id": zod.number(),
   "title": zod.string(),
+  "jiraLinks": zod.array(zod.object({
+  "jiraIssueId": zod.string(),
+  "jiraIssueKey": zod.string(),
+  "jiraIssueType": zod.string()
+})),
   "department": zod.string(),
   "submitterName": zod.string(),
   "businessOwner": zod.string().nullish(),

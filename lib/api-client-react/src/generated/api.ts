@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Api
  * API specification
- * OpenAPI spec version: 1.4.0
+ * OpenAPI spec version: 1.5.0
  */
 import {
   useMutation,
@@ -47,6 +47,7 @@ import type {
   JiraConnection,
   JiraField,
   JiraFieldMapping,
+  JiraIntakeContext,
   JiraProject,
   JiraProjectInput,
   JiraStatusMapping,
@@ -613,6 +614,83 @@ export function useSearchJiraIssues<TData = Awaited<ReturnType<typeof searchJira
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getSearchJiraIssuesQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetJiraIssueIntakeContextUrl = (issueId: string,) => {
+
+
+
+
+  return `/api/jira/issues/${issueId}/intake-context`
+}
+
+/**
+ * @summary Resolve a selected Jira issue and its bounded plain-text description for intake
+ */
+export const getJiraIssueIntakeContext = async (issueId: string, options?: RequestInit): Promise<JiraIntakeContext> => {
+
+  return customFetch<JiraIntakeContext>(getGetJiraIssueIntakeContextUrl(issueId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetJiraIssueIntakeContextQueryKey = (issueId: string,) => {
+    return [
+    `/api/jira/issues/${issueId}/intake-context`
+    ] as const;
+    }
+
+
+export const getGetJiraIssueIntakeContextQueryOptions = <TData = Awaited<ReturnType<typeof getJiraIssueIntakeContext>>, TError = ErrorType<void>>(issueId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getJiraIssueIntakeContext>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetJiraIssueIntakeContextQueryKey(issueId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getJiraIssueIntakeContext>>> = ({ signal }) => getJiraIssueIntakeContext(issueId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: issueId !== null && issueId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getJiraIssueIntakeContext>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetJiraIssueIntakeContextQueryResult = NonNullable<Awaited<ReturnType<typeof getJiraIssueIntakeContext>>>
+export type GetJiraIssueIntakeContextQueryError = ErrorType<void>
+
+
+/**
+ * @summary Resolve a selected Jira issue and its bounded plain-text description for intake
+ */
+
+export function useGetJiraIssueIntakeContext<TData = Awaited<ReturnType<typeof getJiraIssueIntakeContext>>, TError = ErrorType<void>>(
+ issueId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getJiraIssueIntakeContext>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetJiraIssueIntakeContextQueryOptions(issueId,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

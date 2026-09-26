@@ -45,6 +45,11 @@ router.get("/jira/issues/search", handle(async (req, res) => {
   res.json(await new JiraClient().searchIssues(parsed.data.q, parsed.data.projectKey, parsed.data.limit));
 }));
 
+router.get("/jira/issues/:issueId/intake-context", handle(async (req, res) => {
+  if (typeof req.params.issueId !== "string") throw new JiraError("Invalid Jira issue ID.", 400);
+  res.json(await new JiraClient().intakeContext(req.params.issueId));
+}));
+
 router.get("/projects/:projectId/jira-links", handle(async (req, res) => {
   const projectId = await requireProject(req);
   const saved = await db.select().from(links).where(eq(links.projectId, projectId)).orderBy(asc(links.displayOrder), asc(links.id));

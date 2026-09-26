@@ -52,6 +52,32 @@ export interface InitiativeDraftFields {
   aiReadiness: string;
 }
 
+export const REQUIRED_INITIATIVE_FIELDS = [
+  "title", "department", "category", "submitterName", "problemStatement",
+] as const satisfies readonly (keyof InitiativeDraftFields)[];
+
+export function validateInitiativeDraft(
+  fields: InitiativeDraftFields,
+  departments: string[],
+  categories: string[],
+): Partial<Record<(typeof REQUIRED_INITIATIVE_FIELDS)[number], string>> {
+  const errors: Partial<Record<(typeof REQUIRED_INITIATIVE_FIELDS)[number], string>> = {};
+  for (const key of REQUIRED_INITIATIVE_FIELDS) {
+    if (!fields[key].trim()) errors[key] = "This field is required.";
+  }
+  // An admin category suggestion can be a nonempty string without matching
+  // an actual option. Radix then renders an empty trigger; treat it as invalid.
+  if (!departments.length)
+    errors.department = "Departments could not be loaded. Please try again.";
+  else if (!errors.department && !departments.includes(fields.department))
+    errors.department = "Select a department from the list.";
+  if (!categories.length)
+    errors.category = "Categories could not be loaded. Please try again.";
+  else if (!errors.category && !categories.includes(fields.category))
+    errors.category = "Select a category from the list.";
+  return errors;
+}
+
 export interface OpportunityCanvas {
   executiveSummary: string;
   problem: string;
@@ -97,6 +123,10 @@ const CORE_IDS = new Set([
   "ai",
   "prototype",
   "notes",
+  "frequency",
+  "deadline",
+  "category_detail",
+  "jiraIssueId",
 ]);
 
 export function isCoreQuestion(id: string): boolean {
@@ -126,12 +156,8 @@ export function parseLoss(answer: string): {
   costSavings: number;
 } {
   const lower = (answer ?? "").toLowerCase();
-  const numbers = (lower.match(/\d[\d,]*(\.\d+)?/g) || []).map((n) =>
-    Number(n.replace(/,/g, "")),
-  );
-
   let hours = 0;
-  const hoursMatch = lower.match(/(\d[\d,]*)\s*(hours?|hrs?)/);
+  const hoursMatch = lower.match(/(\d[\d,]*)\s*(hours?|hrs?)\s*(?:per|a|\/)\s*month\b/);
   if (hoursMatch) hours = Number(hoursMatch[1].replace(/,/g, ""));
 
   const moneyMatches = lower.match(/\$\s*(\d[\d,]*(\.\d+)?)(\s*[kmb])?/g) || [];
@@ -146,11 +172,8 @@ export function parseLoss(answer: string): {
   const revenue = hasAny(lower, ["revenue", "sales", "growth", "upsell"])
     ? Math.max(0, ...(moneyValues.length ? moneyValues : [0]))
     : 0;
-  const costSavings = moneyValues.length
-    ? Math.max(...moneyValues)
-    : numbers.length && !hours
-      ? Math.max(...numbers)
-      : 0;
+  const costSavings = moneyValues.length && hasAny(lower, ["saving", "cost", "expense", "labor"])
+    ? Math.max(...moneyValues) : 0;
 
   return {
     hours,
@@ -165,13 +188,24 @@ function firstSentence(text: string): string {
   return (match ? match[0] : trimmed).trim();
 }
 
-function toTitle(idea: string): string {
-  const cleaned = (idea ?? "")
-    .trim()
-    .replace(/^(i want to|we want to|a |an |the )/i, "");
-  const words = cleaned.split(/\s+/).slice(0, 9).join(" ");
-  const capped = words.charAt(0).toUpperCase() + words.slice(1);
-  return capped.replace(/[.,;:!?]+$/, "") || "Untitled AI Initiative";
+export function toTitle(idea: string): string {
+  const sentence = (idea ?? "").trim().split(/[.!?\n]/)[0]
+    .replace(/^(?:i think |i'd like to |i want to |we want to |we need to |please |request to |idea to |the idea is to |can we |could we )/i, "")
+    .replace(/^(?:build|create|develop|implement|improve|streamline|establish|make)\s+(?:a|an|the)?\s*/i, "")
+    .replace(/^(?:a|an|the)\s+/i, "")
+    .replace(/\s+(?:that|which|so that|in order to|because|where|by)\b.*$/i, "")
+    .replace(/^(?:centralized|shared|automated|new)\s+/i, (match) => match)
+    .trim();
+  // Prefer a complete noun phrase before a purpose clause, never cut mid-word/sentence.
+  const phrase = sentence.split(/\s+(?:to help|to support|for the purpose of|in order to)\s+/i)[0]
+    .replace(/[,:;.\s]+$/, "");
+  const candidate = phrase.split(/\s+/).length > 9
+    ? phrase.split(/\s+(?:for|across|with|through|using|from)\s+/i)[0]
+    : phrase;
+  const result = candidate.split(/\s+/).length > 9 ? "Business Process Improvement" : candidate;
+  return result ? result.replace(/\b[a-z][a-z]+\b/gi, w =>
+    ["and", "of", "for", "the", "in", "to", "with"].includes(w.toLowerCase())
+      ? w.toLowerCase() : w.charAt(0).toUpperCase() + w.slice(1)) : "New Business Initiative";
 }
 
 export function computeScore(c: ScoringComponents): number {
@@ -206,19 +240,17 @@ function deriveScoring(
   const idea = a.idea ?? "";
   const problem = a.problem ?? "";
   const success = a.success ?? "";
-  const ai = a.ai ?? "";
-  const prototype = a.prototype ?? "";
   const all = `${Object.values(a).join(" ")} ${contextText}`;
 
   const businessValue = clamp(12 + richness(`${idea} ${problem}`, 13), 0, 25);
   const revenuePotential =
-    loss.revenue > 0 || signal.category === "Revenue Growth"
+    loss.revenue > 0
       ? clamp(9 + richness(`${a.loss ?? ""} ${contextText}`, 6), 0, 15)
-      : clamp(richness(success, 8), 0, 15);
+      : 0;
   const costSavingsScore =
     loss.hours > 0 || loss.costSavings > 0
       ? clamp(9 + richness(a.loss ?? "", 6), 0, 15)
-      : clamp(richness(a.loss ?? "", 9), 0, 15);
+      : 0;
   const customerImpactScore = hasAny(all, [
     "customer",
     "client",
@@ -238,9 +270,9 @@ function deriveScoring(
     "history",
     "api",
   ])
-    ? clamp(6 + richness(ai, 4), 0, 10)
-    : clamp(richness(ai, 7), 0, 10);
-  const prototypeConfidence = clamp(5 + richness(prototype, 5), 0, 10);
+    ? clamp(6 + richness(a.notes ?? "", 4), 0, 10)
+    : clamp(richness(success, 7), 0, 10);
+  const prototypeConfidence = clamp(5 + richness(`${success} ${a.category_detail ?? ""}`, 5), 0, 10);
 
   const complexityHeavy =
     hasAny(all, [
@@ -301,16 +333,16 @@ function buildFields(
     : success;
 
   return {
-    title: toTitle(idea),
+    title: toTitle(idea || problem),
     department: "",
     category: signal.suggestedInitiativeCategory,
     submitterName: "",
     businessOwner: "",
     executiveSponsor: "",
     problemStatement: problem,
-    currentProcess: contextText.trim(),
+    currentProcess: [problem, contextText.trim(), a.frequency ? `Frequency: ${a.frequency}` : ""].filter(Boolean).join("\n\n"),
     desiredOutcome,
-    aiConcept: (a.ai ?? "").trim() || idea,
+    aiConcept: (a.ai ?? "").trim(),
     prototypeGoal: (a.prototype ?? "").trim(),
     successMetric: firstSentence(success) || success,
     estimatedHoursSavedMonthly: loss.hours,
@@ -368,16 +400,9 @@ function buildExecutiveSummary(
 
   return (
     `Classified as a ${signal.label} initiative. ` +
-    `${fields.title} proposes to use AI to address a clear business problem: ` +
-    `${problem} ` +
-    `The concept is to ${fields.aiConcept.charAt(0).toLowerCase()}${fields.aiConcept.slice(1)}`.replace(
-      /\.?$/,
-      ".",
-    ) +
-    `${valueText} A two-week prototype would aim to ${fields.prototypeGoal.charAt(0).toLowerCase()}${fields.prototypeGoal.slice(1)}`.replace(
-      /\.?$/,
-      ".",
-    ) +
+    `${fields.title} addresses: ${problem || "a business opportunity to be clarified"}. ` +
+    `${fields.desiredOutcome ? `Desired outcome: ${firstSentence(fields.desiredOutcome)}. ` : ""}` +
+    `${valueText || " Value not yet quantified."}` +
     ` Based on the interview, this initiative scores ${score}/100 (${priority} priority).`
   );
 }
@@ -406,10 +431,10 @@ function buildCanvas(
     aiOpportunity: fields.aiConcept,
     expectedValue: valueParts.length
       ? `Estimated ${valueParts.join(", ")}.`
-      : "Value to be quantified during the prototype.",
+       : "Value not yet quantified.",
     prototypeGoal: fields.prototypeGoal,
     successMetric: fields.successMetric,
-    risks: `Compliance: ${fields.complianceRisk}. Technical: ${fields.technicalComplexity}. Data readiness: ${fields.aiReadiness}.`,
+    risks: `Compliance: ${fields.complianceRisk}. Complexity: ${fields.technicalComplexity}.`,
     recommendedNextStep:
       priority === "Critical" || priority === "High"
         ? `Fast-track to review — ${priority} priority (score ${score}/100) warrants prompt sponsor attention.`

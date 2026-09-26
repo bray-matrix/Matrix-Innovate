@@ -6,10 +6,8 @@
  * OpenAPI spec version: 1.5.0
  */
 
-export interface FieldComparison {
-  field: string;
-  label: string;
-  previous: string;
-  current: string;
-  changed: boolean;
+export interface InitiativeJiraLink {
+  jiraIssueId: string;
+  jiraIssueKey: string;
+  jiraIssueType: string;
 }

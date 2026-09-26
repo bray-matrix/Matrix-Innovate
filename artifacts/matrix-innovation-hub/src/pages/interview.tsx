@@ -11,6 +11,8 @@ import {
 import {
   computeScore,
   derivePriority,
+  validateInitiativeDraft,
+  REQUIRED_INITIATIVE_FIELDS,
   type InterviewDraft,
   type InterviewQuestion,
   type ScoringComponents,
@@ -35,6 +37,8 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { RULE_ENGINE_SOURCE_LABEL } from "@/lib/aiSource";
+import { fetchSessionUser } from "@/lib/matrix-platform";
+import { InterviewJiraPicker, type JiraIntakeContext } from "@/components/interview-jira-picker";
 import {
   Bot,
   User as UserIcon,
@@ -55,7 +59,7 @@ interface ChatMessage {
   text: string;
 }
 
-type Phase = "chat" | "processing" | "review";
+type Phase = "jira" | "chat" | "processing" | "review";
 
 type AnswerMap = Record<string, string>;
 
@@ -78,7 +82,9 @@ export default function AIInnovationInterview() {
   const createInitiative = useCreateInitiative();
   const updateInitiative = useUpdateInitiative();
 
-  const [phase, setPhase] = useState<Phase>("chat");
+  const [phase, setPhase] = useState<Phase>("jira");
+  const [jira, setJira] = useState<JiraIntakeContext | null>(null);
+  const [submitterName, setSubmitterName] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   // Answers keyed by question id so the plan can grow/change adaptively.
   const [answers, setAnswers] = useState<AnswerMap>({});
@@ -93,6 +99,11 @@ export default function AIInnovationInterview() {
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const startedRef = useRef(false);
+  useEffect(() => {
+    void fetchSessionUser().then(user => {
+      if (user?.name) setSubmitterName(user.name);
+    }).catch(() => { /* session unavailable: submitter can be entered at review */ });
+  }, []);
 
   const scrollToBottom = useCallback(() => {
     requestAnimationFrame(() => {
@@ -119,9 +130,14 @@ export default function AIInnovationInterview() {
         const parsed = JSON.parse(saved) as {
           answers?: AnswerMap;
           currentIndex?: number;
+          jira?: JiraIntakeContext | null;
+          jiraChoice?: boolean;
         };
+        if (parsed.jiraChoice) setPhase("chat");
+        if (parsed.jira) setJira(parsed.jira);
         if (parsed.answers && typeof parsed.answers === "object") {
-          resumed = true;
+          resumed = !!parsed.jiraChoice;
+          if (!resumed) return;
           const savedAnswers = parsed.answers;
           const resumedPlan = interviewEngine.planQuestions(savedAnswers);
           const idx = Math.min(
@@ -157,15 +173,7 @@ export default function AIInnovationInterview() {
       resumed = false;
     }
 
-    if (!resumed) {
-      setMessages([{ role: "ai", text: interviewEngine.getIntro() }]);
-      setIsTyping(true);
-      const t = setTimeout(() => {
-        setMessages((prev) => [...prev, { role: "ai", text: plan[0].prompt }]);
-        setIsTyping(false);
-      }, 900);
-      return () => clearTimeout(t);
-    }
+    if (!resumed) setMessages([]);
     return undefined;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [toast]);
@@ -173,23 +181,41 @@ export default function AIInnovationInterview() {
   const totalQuestions = plan.length;
   const isLastQuestion = currentIndex === totalQuestions - 1;
   const currentQuestion = plan[currentIndex];
-  const canSubmitAnswer = input.trim().length > 0 || isLastQuestion;
+  const canSubmitAnswer = input.trim().length > 0 || currentQuestion?.id !== "idea";
 
   const persistDraft = (nextAnswers: AnswerMap, nextIndex: number) => {
     try {
       localStorage.setItem(
         DRAFT_KEY,
-        JSON.stringify({ answers: nextAnswers, currentIndex: nextIndex }),
+        JSON.stringify({ answers: nextAnswers, currentIndex: nextIndex, jira, jiraChoice: true }),
       );
     } catch {
       /* ignore quota errors */
     }
   };
+  const startInterview = (item: JiraIntakeContext | null) => {
+    setJira(item);
+    const initialAnswers: AnswerMap = item
+      ? { jiraIssueId: item.jiraIssueId, idea: item.summary.trim(), ...(item.description?.trim() ? { problem: item.description.trim() } : {}) }
+      : {};
+    const initialPlan = interviewEngine.planQuestions(initialAnswers);
+    setAnswers(initialAnswers);
+    setPlan(initialPlan);
+    setCurrentIndex(0);
+    setMessages([
+      { role: "ai", text: interviewEngine.getIntro() },
+      ...(item ? [{ role: "ai" as const, text: `I found ${item.jiraIssueKey}: ${item.summary}. ${item.description?.trim() ? "I have its description too, so we can focus on what is missing." : "Let's add the business context that's missing."}` }] : []),
+      { role: "ai", text: initialPlan[0].prompt },
+    ]);
+    if (item) setDetection(interviewEngine.classify(initialAnswers));
+    setPhase("chat");
+    try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ answers: initialAnswers, currentIndex: 0, jira: item, jiraChoice: true })); } catch { /* storage unavailable */ }
+  };
 
   const handleNext = async () => {
     if (isTyping) return;
     const trimmed = input.trim();
-    if (!trimmed && !isLastQuestion) return;
+    if (!trimmed && currentQuestion.id === "idea") return;
 
     const nextAnswers: AnswerMap = { ...answers, [currentQuestion.id]: trimmed };
     setAnswers(nextAnswers);
@@ -302,6 +328,8 @@ export default function AIInnovationInterview() {
     return (
       <ReviewDraft
         draft={draft}
+        jira={jira}
+        submitterName={submitterName}
         departments={settings?.departments ?? []}
         categories={settings?.categories ?? []}
         levels={[...LEVELS]}
@@ -309,7 +337,7 @@ export default function AIInnovationInterview() {
         onBack={resumeInterview}
         onSave={(fields, scoring) => {
           createInitiative.mutate(
-            { data: fields },
+            { data: { ...fields, ...(jira ? { jiraIssueId: jira.jiraIssueId } : {}) } },
             {
               onSuccess: (created) => {
                 updateInitiative.mutate(
@@ -329,7 +357,7 @@ export default function AIInnovationInterview() {
                       }
                       toast({
                         title: "Initiative created",
-                        description: "Your AI initiative has been saved and scored.",
+                        description: "Your initiative has been saved and scored.",
                       });
                       setLocation(`/initiatives/${created.id}`);
                     },
@@ -361,6 +389,7 @@ export default function AIInnovationInterview() {
       />
     );
   }
+  if (phase === "jira") return <InterviewJiraPicker onConfirm={startInterview} onSkip={() => startInterview(null)} />;
 
   // -------- Processing --------
   if (phase === "processing") {
@@ -376,8 +405,7 @@ export default function AIInnovationInterview() {
           Structuring your initiative
         </h2>
         <p className="text-muted-foreground mt-2 max-w-md">
-          Building your AI Opportunity Canvas, calculating the initial Innovation
-          Score, and drafting an executive summary from your answers.
+          Applying {RULE_ENGINE_SOURCE_LABEL} to structure your answers and calculate an initial Innovation Score.
         </p>
       </div>
     );
@@ -392,12 +420,13 @@ export default function AIInnovationInterview() {
         <div>
           <h2 className="text-2xl font-bold tracking-tight flex items-center gap-2">
             <Sparkles className="h-6 w-6 text-secondary" />
-            AI Innovation Interview
+            Innovation Interview
           </h2>
           <p className="text-muted-foreground text-sm">
             A guided conversation that adapts to your idea and turns it into a
             scored initiative.
           </p>
+          <p className="text-xs text-muted-foreground">Adaptive questions and draft: {RULE_ENGINE_SOURCE_LABEL}. No AI model is used.</p>
         </div>
         <div className="text-right min-w-[9rem]">
           <div className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">
@@ -423,7 +452,7 @@ export default function AIInnovationInterview() {
         </div>
 
         <div className="border-t bg-muted/20 p-4 space-y-3 shrink-0">
-          {!isLastQuestion && currentQuestion?.hint && (
+      {!isLastQuestion && currentQuestion?.hint && (
             <p className="text-xs text-muted-foreground px-1">
               {currentQuestion.hint}
             </p>
@@ -464,7 +493,7 @@ export default function AIInnovationInterview() {
             <div className="flex items-center gap-2">
               {!isLastQuestion ? (
                 <Button onClick={handleNext} disabled={!canSubmitAnswer || isTyping}>
-                  Next <ArrowRight className="ml-1 h-4 w-4" />
+                   {input.trim() ? "Next" : "Skip / Not known yet"} <ArrowRight className="ml-1 h-4 w-4" />
                 </Button>
               ) : (
                 <>
@@ -549,6 +578,8 @@ function TypingIndicator() {
 // ------------------------------------------------------------------
 interface ReviewProps {
   draft: InterviewDraft;
+  jira: JiraIntakeContext | null;
+  submitterName: string;
   departments: string[];
   categories: string[];
   levels: string[];
@@ -559,6 +590,8 @@ interface ReviewProps {
 
 function ReviewDraft({
   draft,
+  jira,
+  submitterName,
   departments,
   categories,
   levels,
@@ -566,14 +599,20 @@ function ReviewDraft({
   onBack,
   onSave,
 }: ReviewProps) {
-  const [fields, setFields] = useState<InitiativeDraftFields>(draft.fields);
+  const [fields, setFields] = useState<InitiativeDraftFields>({ ...draft.fields, submitterName: submitterName || draft.fields.submitterName });
   const [scoring, setScoring] = useState<ScoringComponents>(draft.scoring);
-  const [error, setError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Partial<Record<keyof InitiativeDraftFields, string>>>({});
+  useEffect(() => {
+    if (submitterName) setFields(prev => prev.submitterName ? prev : { ...prev, submitterName });
+  }, [submitterName]);
 
   const setField = <K extends keyof InitiativeDraftFields>(
     key: K,
     value: InitiativeDraftFields[K],
-  ) => setFields((prev) => ({ ...prev, [key]: value }));
+  ) => {
+    setFields((prev) => ({ ...prev, [key]: value }));
+    setErrors(prev => ({ ...prev, [key]: undefined }));
+  };
 
   const setScore = (key: keyof ScoringComponents, value: string) => {
     const num = parseInt(value, 10);
@@ -586,14 +625,17 @@ function ReviewDraft({
   const canvas = draft.canvas;
 
   const handleSave = () => {
-    if (!fields.title.trim()) return setError("Please provide a title.");
-    if (!fields.department) return setError("Please select a department.");
-    if (!fields.category) return setError("Please select a category.");
-    if (!fields.submitterName.trim())
-      return setError("Please provide the submitter's name.");
-    if (!fields.problemStatement.trim())
-      return setError("Please provide a problem statement.");
-    setError(null);
+    const missing = validateInitiativeDraft(fields, departments, categories);
+    setErrors(missing);
+    if (Object.keys(missing).length) {
+      const first = REQUIRED_INITIATIVE_FIELDS.find(key => missing[key]);
+      if (first) requestAnimationFrame(() => {
+        const element = document.getElementById(`review-${first}`);
+        element?.scrollIntoView({ behavior: "smooth", block: "center" });
+        element?.focus();
+      });
+      return;
+    }
     onSave(fields, scoring);
   };
 
@@ -607,8 +649,8 @@ function ReviewDraft({
     { key: "costSavingsScore", label: "Cost Savings", max: 15 },
     { key: "customerImpactScore", label: "Customer Impact", max: 15 },
     { key: "strategicAlignment", label: "Strategic Alignment", max: 10 },
-    { key: "aiReadinessScore", label: "AI Readiness", max: 10 },
-    { key: "prototypeConfidence", label: "Prototype Confidence", max: 10 },
+    { key: "aiReadinessScore", label: "Readiness (scoring model)", max: 10 },
+    { key: "prototypeConfidence", label: "Delivery Confidence (scoring model)", max: 10 },
   ];
 
   return (
@@ -629,6 +671,7 @@ function ReviewDraft({
       </div>
 
       <DetectedTypeBadge label={draft.detectedCategoryLabel} />
+      {jira && <div className="rounded-md border bg-muted/30 p-3 text-sm">Starting Jira request: <strong>{jira.jiraIssueKey}</strong> — {jira.summary}. This read-only link will be saved with the initiative.</div>}
 
       <Card className="bg-primary text-primary-foreground border-primary">
         <CardHeader className="pb-2">
@@ -649,10 +692,10 @@ function ReviewDraft({
       <div className="space-y-3">
         <div className="flex items-center gap-2">
           <Sparkles className="h-5 w-5 text-secondary" />
-          <h3 className="text-lg font-bold">AI Opportunity Canvas</h3>
+          <h3 className="text-lg font-bold">Innovation Canvas</h3>
           <span className="text-xs text-muted-foreground">
-            Auto-generated from your answers by {RULE_ENGINE_SOURCE_LABEL} —
-            edit the fields below to refine it.
+            Drafted from your answers by {RULE_ENGINE_SOURCE_LABEL}.
+            Review and refine the initiative fields below before saving.
           </span>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -661,9 +704,9 @@ function ReviewDraft({
               ["Problem", canvas.problem],
               ["Current Process", canvas.currentProcess],
               ["Desired Outcome", canvas.desiredOutcome],
-              ["AI Opportunity", canvas.aiOpportunity],
+              ...(fields.aiConcept ? [["AI Opportunity", canvas.aiOpportunity]] : []),
               ["Expected Value", canvas.expectedValue],
-              ["Prototype Goal", canvas.prototypeGoal],
+              ...(fields.prototypeGoal ? [["Prototype Goal", canvas.prototypeGoal]] : []),
               ["Success Metric", canvas.successMetric],
               ["Risks & Complexity", canvas.risks],
               ["Recommended Next Step", canvas.recommendedNextStep],
@@ -691,19 +734,21 @@ function ReviewDraft({
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2 md:col-span-2">
-                <Label>Initiative Title</Label>
+                 <Label htmlFor="review-title">Initiative Title <span className="text-destructive">*</span></Label>
                 <Input
+                   id="review-title" aria-invalid={!!errors.title} aria-describedby={errors.title ? "error-title" : undefined}
                   value={fields.title}
                   onChange={(e) => setField("title", e.target.value)}
                 />
+                 {errors.title && <p id="error-title" role="alert" className="text-xs text-destructive">{errors.title}</p>}
               </div>
               <div className="space-y-2">
-                <Label>Department</Label>
+                 <Label htmlFor="review-department">Department <span className="text-destructive">*</span></Label>
                 <Select
-                  value={fields.department}
+                  value={departments.includes(fields.department) ? fields.department : ""}
                   onValueChange={(v) => setField("department", v)}
                 >
-                  <SelectTrigger>
+                   <SelectTrigger id="review-department" aria-invalid={!!errors.department} aria-describedby={errors.department ? "error-department" : undefined}>
                     <SelectValue placeholder="Select department" />
                   </SelectTrigger>
                   <SelectContent>
@@ -714,14 +759,15 @@ function ReviewDraft({
                     ))}
                   </SelectContent>
                 </Select>
+                 {errors.department && <p id="error-department" role="alert" className="text-xs text-destructive">{errors.department}</p>}
               </div>
               <div className="space-y-2">
-                <Label>Category</Label>
+                 <Label htmlFor="review-category">Category <span className="text-destructive">*</span></Label>
                 <Select
-                  value={fields.category}
+                  value={categories.includes(fields.category) ? fields.category : ""}
                   onValueChange={(v) => setField("category", v)}
                 >
-                  <SelectTrigger>
+                   <SelectTrigger id="review-category" aria-invalid={!!errors.category} aria-describedby={errors.category ? "error-category" : undefined}>
                     <SelectValue placeholder="Select category" />
                   </SelectTrigger>
                   <SelectContent>
@@ -732,13 +778,16 @@ function ReviewDraft({
                     ))}
                   </SelectContent>
                 </Select>
+                 {errors.category && <p id="error-category" role="alert" className="text-xs text-destructive">{errors.category}</p>}
               </div>
               <div className="space-y-2">
-                <Label>Submitter Name</Label>
+                 <Label htmlFor="review-submitterName">Submitter Name <span className="text-destructive">*</span></Label>
                 <Input
+                   id="review-submitterName" aria-invalid={!!errors.submitterName} aria-describedby={errors.submitterName ? "error-submitterName" : undefined}
                   value={fields.submitterName}
                   onChange={(e) => setField("submitterName", e.target.value)}
                 />
+                 {errors.submitterName && <p id="error-submitterName" role="alert" className="text-xs text-destructive">{errors.submitterName}</p>}
               </div>
               <div className="space-y-2">
                 <Label>Business Owner (optional)</Label>
@@ -763,12 +812,14 @@ function ReviewDraft({
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label>Problem Statement</Label>
+                 <Label htmlFor="review-problemStatement">Problem Statement <span className="text-destructive">*</span></Label>
                 <Textarea
+                   id="review-problemStatement" aria-invalid={!!errors.problemStatement} aria-describedby={errors.problemStatement ? "error-problemStatement" : undefined}
                   className="min-h-[100px]"
                   value={fields.problemStatement}
                   onChange={(e) => setField("problemStatement", e.target.value)}
                 />
+                 {errors.problemStatement && <p id="error-problemStatement" role="alert" className="text-xs text-destructive">{errors.problemStatement}</p>}
               </div>
               <div className="space-y-2">
                 <Label>Current Process</Label>
@@ -791,11 +842,11 @@ function ReviewDraft({
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">AI Concept & Goal</CardTitle>
+               <CardTitle className="text-lg">Approach & Success</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label>AI Concept</Label>
+                 <Label>AI Concept (only if relevant)</Label>
                 <Textarea
                   className="min-h-[90px]"
                   value={fields.aiConcept}
@@ -803,7 +854,7 @@ function ReviewDraft({
                 />
               </div>
               <div className="space-y-2">
-                <Label>Prototype Goal (2-week sprint)</Label>
+                 <Label>Prototype Goal (only if appropriate)</Label>
                 <Textarea
                   className="min-h-[80px]"
                   value={fields.prototypeGoal}
@@ -898,13 +949,15 @@ function ReviewDraft({
               <CardTitle className="text-lg">Impact & Readiness</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              <p className="text-xs text-muted-foreground">Leave estimates blank when not yet known. Value not yet quantified is not the same as no value.</p>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
                   <Label className="text-xs">Hours Saved / mo</Label>
                   <Input
                     type="number"
                     min={0}
-                    value={fields.estimatedHoursSavedMonthly}
+                     value={fields.estimatedHoursSavedMonthly || ""}
+                     placeholder="Not yet quantified"
                     onChange={(e) =>
                       setField(
                         "estimatedHoursSavedMonthly",
@@ -918,7 +971,8 @@ function ReviewDraft({
                   <Input
                     type="number"
                     min={0}
-                    value={fields.estimatedRevenueOpportunity}
+                     value={fields.estimatedRevenueOpportunity || ""}
+                     placeholder="Not yet quantified"
                     onChange={(e) =>
                       setField(
                         "estimatedRevenueOpportunity",
@@ -932,7 +986,8 @@ function ReviewDraft({
                   <Input
                     type="number"
                     min={0}
-                    value={fields.estimatedCostSavings}
+                     value={fields.estimatedCostSavings || ""}
+                     placeholder="Not yet quantified"
                     onChange={(e) =>
                       setField(
                         "estimatedCostSavings",
@@ -996,7 +1051,7 @@ function ReviewDraft({
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-xs">AI Readiness</Label>
+                   <Label className="text-xs">AI Readiness (if relevant)</Label>
                   <Select
                     value={fields.aiReadiness}
                     onValueChange={(v) => setField("aiReadiness", v)}
@@ -1019,9 +1074,7 @@ function ReviewDraft({
         </div>
       </div>
 
-      {error && (
-        <p className="text-sm text-destructive font-medium">{error}</p>
-      )}
+      {Object.keys(errors).length > 0 && <p role="alert" className="text-sm text-destructive font-medium">Please complete all marked fields before saving.</p>}
 
       <div className="flex items-center justify-end gap-3">
         <Button variant="outline" onClick={onBack} disabled={saving}>

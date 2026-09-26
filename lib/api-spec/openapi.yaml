@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
-  version: 1.4.0
+  version: 1.5.0
   description: API specification
 servers:
   - url: /api
@@ -115,6 +115,25 @@ paths:
               schema: { type: array, items: { $ref: "#/components/schemas/JiraWorkItem" } }
         "400":
           description: Invalid search parameters
+        "503":
+          description: Jira temporarily unavailable
+  /jira/issues/{issueId}/intake-context:
+    get:
+      operationId: getJiraIssueIntakeContext
+      tags: [jira]
+      summary: Resolve a selected Jira issue and its bounded plain-text description for intake
+      parameters:
+        - { name: issueId, in: path, required: true, schema: { type: string, pattern: '^\d{1,30}$' } }
+      responses:
+        "200":
+          description: Live read-only Jira issue context
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/JiraIntakeContext" }
+        "400":
+          description: Invalid Jira issue ID
+        "404":
+          description: Jira issue not found
         "503":
           description: Jira temporarily unavailable
   /jira/projects/{id}/field-mapping:
@@ -2211,6 +2230,20 @@ components:
         assignee: { type: string, nullable: true }
         priority: { type: string, nullable: true }
         updated: { type: string, nullable: true }
+    JiraIntakeContext:
+      allOf:
+        - { $ref: "#/components/schemas/JiraWorkItem" }
+        - type: object
+          required: [description]
+          properties:
+            description: { type: string, maxLength: 4000, description: "Sanitized plain text extracted from Jira ADF; no markup." }
+    InitiativeJiraLink:
+      type: object
+      required: [jiraIssueId, jiraIssueKey, jiraIssueType]
+      properties:
+        jiraIssueId: { type: string }
+        jiraIssueKey: { type: string }
+        jiraIssueType: { type: string }
     ProjectJiraLinkCreate:
       type: object
       required: [jiraIssueId]
@@ -2251,6 +2284,7 @@ components:
       required:
         - id
         - title
+        - jiraLinks
         - department
         - submitterName
         - category
@@ -2293,6 +2327,9 @@ components:
           type: integer
         title:
           type: string
+        jiraLinks:
+          type: array
+          items: { $ref: "#/components/schemas/InitiativeJiraLink" }
         department:
           type: string
         submitterName:
@@ -2388,6 +2425,10 @@ components:
         title:
           type: string
           minLength: 1
+        jiraIssueId:
+          type: string
+          pattern: '^\d{1,30}$'
+          description: "Optional selected Jira issue ID; verified live before initiative creation."
         department:
           type: string
         submitterName:

@@ -3,6 +3,8 @@ import { useRoute, Link, useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useGetProject,
+  useGetInitiative,
+  useGetInitiativeRecommendations,
   useUpdateProject,
   useDeleteProject,
   useListProjectMilestones,
@@ -30,6 +32,8 @@ import {
   useDeleteProjectResourceAssignment,
   useListResources,
   getGetProjectQueryKey,
+  getGetInitiativeQueryKey,
+  getGetInitiativeRecommendationsQueryKey,
   getListProjectsQueryKey,
   getListProjectMilestonesQueryKey,
   getListProjectRisksQueryKey,
@@ -110,6 +114,16 @@ const READINESS_COLORS: Record<string, string> = {
   "Not Started": "bg-slate-100 text-slate-600 border-slate-200",
 };
 
+function EmptyTab({ title, description, action, onAction }: { title: string; description: string; action: string; onAction: () => void }) {
+  return (
+    <div className="flex flex-col items-center gap-3 rounded-md border border-dashed px-6 py-8 text-center">
+      <p className="font-medium text-sm">{title}</p>
+      <p className="text-sm text-muted-foreground max-w-md">{description}</p>
+      <Button size="sm" variant="outline" onClick={onAction}>{action}</Button>
+    </div>
+  );
+}
+
 export default function ProjectDetailPage() {
   const [, params] = useRoute("/projects/:id");
   const id = params?.id ? parseInt(params.id, 10) : 0;
@@ -118,6 +132,13 @@ export default function ProjectDetailPage() {
 
   const { data: project, isLoading } = useGetProject(id, {
     query: { enabled: !!id, queryKey: getGetProjectQueryKey(id) }
+  });
+  const initiativeId = project?.initiativeId ?? 0;
+  const { data: sourceInitiative } = useGetInitiative(initiativeId, {
+    query: { enabled: !!initiativeId, queryKey: getGetInitiativeQueryKey(initiativeId) }
+  });
+  const { data: planningSuggestions } = useGetInitiativeRecommendations(initiativeId, {
+    query: { enabled: !!initiativeId, queryKey: getGetInitiativeRecommendationsQueryKey(initiativeId) }
   });
   
   const { data: milestones } = useListProjectMilestones(id, {
@@ -542,7 +563,7 @@ export default function ProjectDetailPage() {
             {project.initiativeId && (
               <Link href={`/initiatives/${project.initiativeId}`} className="flex items-center gap-1 hover:text-primary transition-colors">
                 <Link2 className="h-4 w-4" />
-                From Initiative: {project.initiativeTitle || `INI-${String(project.initiativeId).padStart(4,"0")}`}
+                From Initiative INI-{String(project.initiativeId).padStart(4,"0")}: {project.initiativeTitle || sourceInitiative?.title}
               </Link>
             )}
           </div>
@@ -585,6 +606,27 @@ export default function ProjectDetailPage() {
                       <div className="text-sm mt-1">{project.supportingOwners || "—"}</div>
                     </div>
                   </div>
+                  {sourceInitiative && (
+                    <div className="rounded-md border bg-muted/30 p-4 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <Label className="font-semibold">Initiative planning context</Label>
+                        <Badge variant="outline">Source: INI-{String(sourceInitiative.id).padStart(4, "0")}</Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground">Source information for planning; not approved execution records.</p>
+                      {sourceInitiative.desiredOutcome && <div><Label className="text-xs text-muted-foreground">Desired outcome</Label><p className="text-sm whitespace-pre-wrap">{sourceInitiative.desiredOutcome}</p></div>}
+                      {sourceInitiative.successMetric && <div><Label className="text-xs text-muted-foreground">Success measures</Label><p className="text-sm whitespace-pre-wrap">{sourceInitiative.successMetric}</p></div>}
+                      {sourceInitiative.currentProcess && <div><Label className="text-xs text-muted-foreground">Current process</Label><p className="text-sm whitespace-pre-wrap">{sourceInitiative.currentProcess}</p></div>}
+                      {sourceInitiative.complianceRisk && <p className="text-sm">Compliance consideration: {sourceInitiative.complianceRisk} (review before adding a project risk).</p>}
+                      {sourceInitiative.prototypeGoal && !/^(n\/a|none|not applicable|not specified|to be determined|tbd)$/i.test(sourceInitiative.prototypeGoal.trim()) && <div><Label className="text-xs text-muted-foreground">Proposed prototype scope (not committed)</Label><p className="text-sm whitespace-pre-wrap">{sourceInitiative.prototypeGoal}</p></div>}
+                      {planningSuggestions && (
+                        <div className="space-y-2 border-t pt-3">
+                          <p className="text-xs font-medium">Planning suggestions · {planningSuggestions.sourceLabel} · Not approved execution records</p>
+                          {!!planningSuggestions.risks.length && <div><Label className="text-xs text-muted-foreground">Potential risks to assess</Label><ul className="list-disc pl-5 text-sm">{planningSuggestions.risks.map(risk => <li key={risk}>{risk}</li>)}</ul></div>}
+                          {!!planningSuggestions.teamRoles.length && <div><Label className="text-xs text-muted-foreground">Possible roles to consider (not assigned resources)</Label><p className="text-sm">{planningSuggestions.teamRoles.join(", ")}</p></div>}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
@@ -602,9 +644,7 @@ export default function ProjectDetailPage() {
                 </CardHeader>
                 <CardContent>
                   {sortedMilestones.length === 0 ? (
-                    <div className="text-center py-8 text-sm text-muted-foreground border rounded-md border-dashed">
-                      No milestones defined yet.
-                    </div>
+                    <EmptyTab title="No milestones have been added yet" description="Add delivery checkpoints, dates and stage gates when the plan is agreed." action="Add Milestone" onAction={() => openMilestoneDialog(null)} />
                   ) : (
                     <div className="space-y-4">
                       {sortedMilestones.map((ms) => (
@@ -650,9 +690,7 @@ export default function ProjectDetailPage() {
                 </CardHeader>
                 <CardContent>
                   {(!risks || risks.length === 0) ? (
-                    <div className="text-center py-8 text-sm text-muted-foreground border rounded-md border-dashed">
-                      No risks logged.
-                    </div>
+                    <EmptyTab title="No project risks have been logged yet" description="Review potential concerns from the initiative, then log only risks confirmed for this project." action="Add Risk" onAction={() => openRiskDialog(null)} />
                   ) : (
                     <div className="space-y-4">
                       {risks.map((r) => (
@@ -724,9 +762,7 @@ export default function ProjectDetailPage() {
                 </CardHeader>
                 <CardContent>
                   {sortedApprovals.length === 0 ? (
-                    <div className="text-center py-8 text-sm text-muted-foreground border rounded-md border-dashed">
-                      No approvals requested yet.
-                    </div>
+                    <EmptyTab title="No approvals have been requested yet" description="Request a stage-gate, change or go-live decision when sign-off is needed." action="Request Approval" onAction={() => setApprovalOpen(true)} />
                   ) : (
                     <div className="space-y-4">
                       {sortedApprovals.map((a) => (
@@ -785,9 +821,7 @@ export default function ProjectDetailPage() {
                 </CardHeader>
                 <CardContent>
                   {(!assessments || assessments.length === 0) ? (
-                    <div className="text-center py-8 text-sm text-muted-foreground border rounded-md border-dashed">
-                      No readiness assessments created.
-                    </div>
+                    <EmptyTab title="No readiness assessment has been started yet" description="Create a checklist when you are ready to evaluate requirements, testing and operational go-live." action="New Assessment" onAction={() => setReadinessOpen(true)} />
                   ) : (
                     <div className="space-y-8">
                       {assessments.map((assessment) => {
@@ -883,9 +917,7 @@ export default function ProjectDetailPage() {
                 </CardHeader>
                 <CardContent>
                   {(!resourcesData || resourcesData.length === 0) ? (
-                    <div className="text-center py-8 text-sm text-muted-foreground border rounded-md border-dashed">
-                      No resources assigned to this project.
-                    </div>
+                    <EmptyTab title="No resources have been assigned yet" description="Add an actual resource or a reviewed department demand. Suggested initiative roles are not assignments." action="Add Resource" onAction={() => { setEditingAssignment(null); setAssignmentMode("named"); setAssignmentForm({ resourceId: "", department: "", roleDescription: "", allocationPercent: "100", plannedHours: "", startDate: "", endDate: "", status: "Planned" }); setResourceOpen(true); }} />
                   ) : (
                     <div className="space-y-4">
                       {resourcesData.map(assignment => (

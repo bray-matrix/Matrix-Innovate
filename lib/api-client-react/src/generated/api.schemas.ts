@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Api
  * API specification
- * OpenAPI spec version: 1.4.0
+ * OpenAPI spec version: 1.5.0
  */
 export interface JiraConnection {
   configured: boolean;
@@ -95,6 +95,20 @@ export interface JiraWorkItem {
   updated: string | null;
 }
 
+export type JiraIntakeContext = JiraWorkItem & {
+  /**
+     * Sanitized plain text extracted from Jira ADF; no markup.
+     * @maxLength 4000
+     */
+  description: string;
+};
+
+export interface InitiativeJiraLink {
+  jiraIssueId: string;
+  jiraIssueKey: string;
+  jiraIssueType: string;
+}
+
 export interface ProjectJiraLinkCreate {
   /**
      * @minLength 1
@@ -126,6 +140,7 @@ export interface Error {
 export interface Initiative {
   id: number;
   title: string;
+  jiraLinks: InitiativeJiraLink[];
   department: string;
   submitterName: string;
   /** @nullable */
@@ -178,6 +193,11 @@ export interface Initiative {
 export interface InitiativeInput {
   /** @minLength 1 */
   title: string;
+  /**
+     * Optional selected Jira issue ID; verified live before initiative creation.
+     * @pattern ^\d{1,30}$
+     */
+  jiraIssueId?: string;
   department: string;
   submitterName: string;
   businessOwner?: string;

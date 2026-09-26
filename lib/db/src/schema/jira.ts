@@ -1,6 +1,7 @@
 import { pgTable, serial, text, integer, boolean, timestamp, jsonb, uniqueIndex, check } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { projectsTable } from "./execution";
+import { initiativesTable } from "./initiatives";
 
 const dates = () => ({
   createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -72,3 +73,16 @@ export const projectJiraLinksTable = pgTable("project_jira_links", {
 ]);
 
 export type ProjectJiraLinkRecord = typeof projectJiraLinksTable.$inferSelect;
+
+// Intake preserves only a verified Jira identity; details remain Jira-owned.
+export const initiativeJiraLinksTable = pgTable("initiative_jira_links", {
+  id: serial("id").primaryKey(),
+  initiativeId: integer("initiative_id").notNull().references(() => initiativesTable.id, { onDelete: "cascade" }),
+  jiraProjectId: integer("jira_project_id").references(() => jiraProjectsTable.id, { onDelete: "set null" }),
+  jiraIssueId: text("jira_issue_id").notNull(),
+  jiraIssueKey: text("jira_issue_key").notNull(),
+  jiraIssueType: text("jira_issue_type").notNull(),
+  ...dates(),
+}, (t) => [
+  uniqueIndex("initiative_jira_links_initiative_issue_unique").on(t.initiativeId, t.jiraIssueId),
+]);

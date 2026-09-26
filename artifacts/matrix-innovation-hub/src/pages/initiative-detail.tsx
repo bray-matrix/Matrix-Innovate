@@ -83,9 +83,23 @@ import type {
 const PROTOTYPE_SPRINT_DAYS = 14;
 const RISK_LEVELS = ["Low", "Medium", "High"] as const;
 
-// Local helper to compose AI Opportunity Canvas strings.
-// // TODO: OpenAI can be wired in here later to generate more sophisticated summaries.
+function isAiInitiative(initiative: Initiative): boolean {
+  return /\b(ai|artificial intelligence|machine learning|llm|generative ai|natural language processing)\b/i.test(
+    `${initiative.title} ${initiative.aiConcept} ${initiative.prototypeGoal}`,
+  );
+}
+
+function hasPrototypeGoal(initiative: Initiative): boolean {
+  return !!initiative.prototypeGoal?.trim() && !/^(n\/a|none|not applicable|not specified|to be determined|tbd)$/i.test(initiative.prototypeGoal.trim());
+}
+
+// Display business inputs without claiming that unquantified value is zero.
 function generateOpportunityCanvas(initiative: Initiative) {
+  const value = [
+    initiative.estimatedHoursSavedMonthly > 0 && `${initiative.estimatedHoursSavedMonthly} hours saved per month`,
+    initiative.estimatedRevenueOpportunity > 0 && `$${initiative.estimatedRevenueOpportunity.toLocaleString()} revenue opportunity`,
+    initiative.estimatedCostSavings > 0 && `$${initiative.estimatedCostSavings.toLocaleString()} cost savings`,
+  ].filter(Boolean);
   return {
     executiveSummary:
       initiative.executiveSummary && initiative.executiveSummary.trim() !== ""
@@ -95,10 +109,10 @@ function generateOpportunityCanvas(initiative: Initiative) {
     currentProcess: initiative.currentProcess,
     desiredOutcome: initiative.desiredOutcome,
     aiOpportunity: initiative.aiConcept,
-    expectedValue: `Estimated ${initiative.estimatedHoursSavedMonthly} hrs/mo saved, $${initiative.estimatedRevenueOpportunity} revenue opportunity, $${initiative.estimatedCostSavings} cost savings.`,
+    expectedValue: value.length ? `Estimated ${value.join(", ")}.` : "Value not yet quantified. Confirm the expected business impact during planning.",
     prototypeGoal: initiative.prototypeGoal,
     successMetric: initiative.successMetric,
-    risks: `Compliance: ${initiative.complianceRisk}. Technical: ${initiative.technicalComplexity}. Data Readiness: ${initiative.aiReadiness}.`,
+    risks: `Compliance: ${initiative.complianceRisk}. Technical complexity: ${initiative.technicalComplexity}.${isAiInitiative(initiative) ? ` AI/data readiness: ${initiative.aiReadiness}.` : ""}`,
     recommendedNextStep: `Advance to next phase based on ${initiative.priority} priority and score of ${initiative.score}/100.`,
   };
 }
@@ -359,7 +373,7 @@ function PromoteDialog({
         <DialogHeader>
           <DialogTitle>Promote to Execution Project</DialogTitle>
           <DialogDescription>
-            Create an execution project linked to this initiative.
+            Create an execution project linked to {initiative.title} (INI-{String(initiative.id).padStart(4, "0")}). Its name comes from the initiative title.
           </DialogDescription>
         </DialogHeader>
 
@@ -381,6 +395,13 @@ function PromoteDialog({
         )}
 
         <div className="grid gap-4 py-2">
+          <div className="rounded-md border bg-muted/30 p-3 text-sm space-y-1">
+            <p className="font-medium">Planning context from initiative</p>
+            <p className="break-words">{initiative.problemStatement}</p>
+            <p className="text-muted-foreground">Priority: {initiative.priority} · Owner: {initiative.businessOwner || "Not specified"}</p>
+            <p className="text-xs text-muted-foreground">Recommendations are suggestions only. No milestones, risks, approvals or resource commitments are created here.</p>
+            {!!initiative.jiraLinks?.length && <p className="text-xs">Jira work to carry into Linked Work: {initiative.jiraLinks.map(link => link.jiraIssueKey).join(", ")}</p>}
+          </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-2">
               <Label>Project Type</Label>
@@ -433,6 +454,7 @@ function PromoteDialog({
             <div className="grid gap-2">
               <Label>Target Date (Optional)</Label>
               <Input type="date" value={form.targetDate} onChange={(e) => setForm(f => ({...f, targetDate: e.target.value}))} />
+              <p className="text-xs text-muted-foreground">Leave blank until a delivery date is agreed. A review date is not a project deadline.</p>
             </div>
           </div>
         </div>
@@ -841,6 +863,7 @@ export default function InitiativeDetail() {
       ? "—"
       : `Day ${initiative.prototypeDay} of ${PROTOTYPE_SPRINT_DAYS}`;
   const isEditing = editMode && draft !== null;
+  const jiraReferences = initiative.jiraLinks ?? [];
 
   return (
     <div className="space-y-8 pb-12">
@@ -867,6 +890,13 @@ export default function InitiativeDetail() {
               {format(new Date(initiative.createdAt), "MMM d, yyyy")}
             </span>
           </div>
+          {jiraReferences.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 mt-3 text-sm">
+              <span className="text-muted-foreground">Source Jira work:</span>
+              {jiraReferences.map((link) => <Badge key={link.jiraIssueId} variant="outline" className="font-mono">{link.jiraIssueKey}</Badge>)}
+              <span className="text-xs text-muted-foreground">Carried into Linked Work on project creation</span>
+            </div>
+          )}
           {isEditing ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4 max-w-xl">
               <div className="space-y-1">
@@ -1030,7 +1060,7 @@ export default function InitiativeDetail() {
       <div className="space-y-4">
         <div className="flex items-center">
           <Target className="mr-2 h-5 w-5 text-primary" />
-          <h2 className="text-xl font-bold">AI Opportunity Canvas</h2>
+           <h2 className="text-xl font-bold">Innovation Canvas</h2>
           <span className="ml-3 text-xs text-muted-foreground">
             Source: {RULE_ENGINE_SOURCE_LABEL}
           </span>
@@ -1071,7 +1101,7 @@ export default function InitiativeDetail() {
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm uppercase tracking-wider text-muted-foreground">
-                Problem
+                 Problem / Opportunity
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -1129,10 +1159,10 @@ export default function InitiativeDetail() {
             </CardContent>
           </Card>
 
-          <Card className="md:col-span-2 bg-secondary/5 border-secondary/20">
+           {(initiative.aiConcept?.trim() || isEditing) && <Card className="md:col-span-2 bg-secondary/5 border-secondary/20">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm uppercase tracking-wider text-secondary">
-                AI Opportunity
+                 Proposed Approach{isAiInitiative(initiative) ? " / AI Opportunity" : ""}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -1143,10 +1173,10 @@ export default function InitiativeDetail() {
                   onChange={(e) => updateDraft({ aiConcept: e.target.value })}
                 />
               ) : (
-                <p className="text-sm">{canvas.aiOpportunity}</p>
+                 <p className="text-sm">{canvas.aiOpportunity || "Approach to be determined during review."}</p>
               )}
             </CardContent>
-          </Card>
+           </Card>}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-1.5 text-sm uppercase tracking-wider text-muted-foreground">
@@ -1213,10 +1243,10 @@ export default function InitiativeDetail() {
             </CardContent>
           </Card>
 
-          <Card>
+          {(hasPrototypeGoal(initiative) || isEditing) && <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm uppercase tracking-wider text-muted-foreground">
-                Prototype Goal
+                Proposed Prototype Goal
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -1232,11 +1262,11 @@ export default function InitiativeDetail() {
                 <p className="text-sm">{canvas.prototypeGoal}</p>
               )}
             </CardContent>
-          </Card>
+          </Card>}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm uppercase tracking-wider text-muted-foreground">
-                Success Metric
+                Success Measures
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -1272,11 +1302,11 @@ export default function InitiativeDetail() {
                     value={draft.technicalComplexity}
                     onChange={(v) => updateDraft({ technicalComplexity: v })}
                   />
-                  <RiskLevelSelect
-                    label="Data Readiness"
+                  {isAiInitiative(initiative) && <RiskLevelSelect
+                    label="AI/Data Readiness"
                     value={draft.aiReadiness}
                     onChange={(v) => updateDraft({ aiReadiness: v })}
-                  />
+                  />}
                 </div>
               ) : (
                 <p className="text-sm">{canvas.risks}</p>
@@ -1308,7 +1338,7 @@ export default function InitiativeDetail() {
       </div>
 
       {/* Initiative Intelligence */}
-      <InitiativeIntelligence initiativeId={id} />
+      <InitiativeIntelligence initiativeId={id} hasPrototype={hasPrototypeGoal(initiative)} />
 
       {/* Tracking & Governance */}
       <div className="space-y-4">
@@ -1340,7 +1370,7 @@ export default function InitiativeDetail() {
                 }
               />
             </div>
-            <div className="space-y-1.5">
+            {(hasPrototypeGoal(initiative) || initiative.prototypeDay != null) && <div className="space-y-1.5">
               <Label htmlFor="prototypeDay">
                 Prototype Day (of {PROTOTYPE_SPRINT_DAYS})
               </Label>
@@ -1355,7 +1385,7 @@ export default function InitiativeDetail() {
                   setTracking((t) => ({ ...t, prototypeDay: e.target.value }))
                 }
               />
-            </div>
+            </div>}
             <div className="space-y-1.5">
               <Label htmlFor="nextReviewAt">Next Review Date</Label>
               <Input
@@ -1369,12 +1399,12 @@ export default function InitiativeDetail() {
             </div>
           </div>
           <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-muted-foreground">
-            <span>
+            {(hasPrototypeGoal(initiative) || initiative.prototypeDay != null) && <span>
               Prototype progress:{" "}
               <span className="font-medium text-foreground">
                 {prototypeDayLabel}
               </span>
-            </span>
+            </span>}
             <span>
               Last reviewed:{" "}
               <span className="font-medium text-foreground">

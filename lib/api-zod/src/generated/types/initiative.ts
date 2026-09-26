@@ -3,12 +3,14 @@
  * Do not edit manually.
  * Api
  * API specification
- * OpenAPI spec version: 1.4.0
+ * OpenAPI spec version: 1.5.0
  */
+import type { InitiativeJiraLink } from './initiativeJiraLink';
 
 export interface Initiative {
   id: number;
   title: string;
+  jiraLinks: InitiativeJiraLink[];
   department: string;
   submitterName: string;
   /** @nullable */

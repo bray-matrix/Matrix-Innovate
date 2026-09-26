@@ -4,9 +4,11 @@ import {
   initiativesTable,
   initiativeVersionsTable,
   calculationEventsTable,
+  initiativeJiraLinksTable,
+  jiraProjectsTable,
   type CalculationComponentChange,
 } from "@workspace/db";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, inArray } from "drizzle-orm";
 import {
   CreateInitiativeBody,
   UpdateInitiativeBody,
@@ -20,20 +22,39 @@ import {
 } from "../lib/scoring";
 import { bumpVersion, determineBumpKind, DEFAULT_VERSION } from "../lib/versioning";
 import { getAIProvider } from "../lib/ai";
+import { JiraClient, JiraError } from "../lib/jira-client";
 
 const router: IRouter = Router();
 
 const REVIEW_CYCLE_DAYS = 14;
 
-function serialize(row: typeof initiativesTable.$inferSelect) {
+type JiraIdentity = Pick<typeof initiativeJiraLinksTable.$inferSelect, "jiraIssueId" | "jiraIssueKey" | "jiraIssueType">;
+function serialize(row: typeof initiativesTable.$inferSelect, jiraLinks: JiraIdentity[] = []) {
   return {
     ...row,
+    jiraLinks,
     lastReviewedAt: row.lastReviewedAt ? row.lastReviewedAt.toISOString() : null,
     nextReviewAt: row.nextReviewAt ? row.nextReviewAt.toISOString() : null,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
 }
+
+async function linksByInitiative(ids: number[]): Promise<Map<number, JiraIdentity[]>> {
+  const result = new Map<number, JiraIdentity[]>();
+  if (!ids.length) return result;
+  const links = await db.select().from(initiativeJiraLinksTable)
+    .where(inArray(initiativeJiraLinksTable.initiativeId, ids))
+    .orderBy(initiativeJiraLinksTable.id);
+  for (const link of links) {
+    const list = result.get(link.initiativeId) ?? [];
+    list.push({ jiraIssueId: link.jiraIssueId, jiraIssueKey: link.jiraIssueKey, jiraIssueType: link.jiraIssueType });
+    result.set(link.initiativeId, list);
+  }
+  return result;
+}
+const withLinks = async (row: typeof initiativesTable.$inferSelect) =>
+  serialize(row, (await linksByInitiative([row.id])).get(row.id) ?? []);
 
 function serializeVersion(row: typeof initiativeVersionsTable.$inferSelect) {
   return {
@@ -98,16 +119,32 @@ router.get("/initiatives", async (_req, res) => {
     .select()
     .from(initiativesTable)
     .orderBy(desc(initiativesTable.createdAt));
-  res.json(rows.map(serialize));
+  const links = await linksByInitiative(rows.map(row => row.id));
+  res.json(rows.map(row => serialize(row, links.get(row.id) ?? [])));
 });
 
-router.post("/initiatives", async (req, res) => {
+router.post("/initiatives", async (req, res, next) => {
   const parsed = CreateInitiativeBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid initiative data" });
     return;
   }
   const data = parsed.data;
+  let issue: Awaited<ReturnType<JiraClient["issue"]>> | null = null;
+  try {
+    if (data.jiraIssueId !== undefined) {
+      // Verify server-side before persisting; never trust a browser-supplied
+      // key, project, or issue type. Jira reads cannot be rolled into a DB tx.
+      issue = await new JiraClient().issue(data.jiraIssueId);
+    }
+  } catch (error) {
+    if (error instanceof JiraError) {
+      res.status(error.status).json({ error: error.message });
+      return;
+    }
+    next(error);
+    return;
+  }
 
   const now = new Date();
   const status = data.status ?? "Idea";
@@ -161,11 +198,20 @@ router.post("/initiatives", async (req, res) => {
       summary: "Initiative created",
       snapshot: buildSnapshot(created),
     });
+    if (issue) {
+      const [project] = await tx.select({ id: jiraProjectsTable.id }).from(jiraProjectsTable)
+        .where(eq(jiraProjectsTable.jiraProjectId, issue.jiraProjectId)).limit(1);
+      await tx.insert(initiativeJiraLinksTable).values({
+        initiativeId: created.id, jiraProjectId: project?.id ?? null,
+        jiraIssueId: issue.jiraIssueId, jiraIssueKey: issue.jiraIssueKey,
+        jiraIssueType: issue.jiraIssueType,
+      });
+    }
 
     return created;
   });
 
-  res.status(201).json(serialize(row));
+  res.status(201).json(await withLinks(row));
 });
 
 router.get("/initiatives/:id/versions", async (req, res) => {
@@ -286,10 +332,10 @@ router.post("/initiatives/:id/recalculate", async (req, res) => {
   }
   const changedBy = existing.submitterName || "System";
 
-  const buildResult = (
+  const buildResult = async (
     row: typeof initiativesTable.$inferSelect,
   ) => ({
-    initiative: serialize(row),
+    initiative: await withLinks(row),
     changed,
     previousScore: existing.score,
     newScore: score,
@@ -312,7 +358,7 @@ router.post("/initiatives/:id/recalculate", async (req, res) => {
       newPriority: priority,
       changes: [],
     });
-    res.json(buildResult(existing));
+    res.json(await buildResult(existing));
     return;
   }
 
@@ -351,7 +397,7 @@ router.post("/initiatives/:id/recalculate", async (req, res) => {
     return updated;
   });
 
-  res.json(buildResult(row));
+  res.json(await buildResult(row));
 });
 
 router.get("/initiatives/:id/calculations", async (req, res) => {
@@ -471,7 +517,7 @@ router.get("/initiatives/:id", async (req, res) => {
     res.status(404).json({ error: "Initiative not found" });
     return;
   }
-  res.json(serialize(row));
+  res.json(await withLinks(row));
 });
 
 router.patch("/initiatives/:id", async (req, res) => {
@@ -629,7 +675,7 @@ router.patch("/initiatives/:id", async (req, res) => {
 
   // No meaningful change — return existing without bumping the version.
   if (changed.length === 0) {
-    res.json(serialize(existing));
+    res.json(await withLinks(existing));
     return;
   }
 
@@ -659,7 +705,7 @@ router.patch("/initiatives/:id", async (req, res) => {
     return updated;
   });
 
-  res.json(serialize(row));
+  res.json(await withLinks(row));
 });
 
 const FIELD_LABELS: Record<string, string> = {

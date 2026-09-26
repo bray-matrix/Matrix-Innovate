@@ -4,6 +4,8 @@ import { readFileSync } from "node:fs";
 import { JiraClient, jiraConfig } from "./src/lib/jira-client";
 import jiraRouter from "./src/routes/jira";
 import jiraLinksRouter from "./src/routes/jira-links";
+import initiativeRouter from "./src/routes/initiatives";
+import executionRouter from "./src/routes/execution";
 import matrixRouter from "./src/matrix/platform";
 import { requireMatrixSession, mintSessionToken, verifySessionToken } from "./src/matrix/auth";
 import { pool } from "@workspace/db";
@@ -310,6 +312,108 @@ test("J1 routes and PostgreSQL persistence in isolated TEMP tables", async t => 
       assert.deepEqual((await client.query("SELECT project_id FROM project_jira_links")).rows.map(row => row.project_id), [9000002]);
       await client.query("DELETE FROM projects WHERE id = 9000002");
     });
+    await t.test("Jira intake context and initiative-to-project references use read-only Jira and atomic local writes", async () => {
+      // Temporary shadow tables isolate every write; no permanent rows or live Jira.
+      await client.query(`CREATE TEMP TABLE initiatives (
+        id serial PRIMARY KEY, title text NOT NULL, department text NOT NULL, submitter_name text NOT NULL,
+        business_owner text, executive_sponsor text, executive_summary text, category text NOT NULL,
+        status text NOT NULL DEFAULT 'Idea', problem_statement text NOT NULL DEFAULT '',
+        current_process text NOT NULL DEFAULT '', desired_outcome text NOT NULL DEFAULT '',
+        ai_concept text NOT NULL DEFAULT '', prototype_goal text NOT NULL DEFAULT '', success_metric text NOT NULL DEFAULT '',
+        estimated_hours_saved_monthly double precision NOT NULL DEFAULT 0,
+        estimated_revenue_opportunity double precision NOT NULL DEFAULT 0,
+        estimated_cost_savings double precision NOT NULL DEFAULT 0,
+        customer_impact text NOT NULL DEFAULT '', compliance_risk text NOT NULL DEFAULT '',
+        technical_complexity text NOT NULL DEFAULT '', ai_readiness text NOT NULL DEFAULT '',
+        business_value integer NOT NULL DEFAULT 0, revenue_potential integer NOT NULL DEFAULT 0,
+        cost_savings_score integer NOT NULL DEFAULT 0, customer_impact_score integer NOT NULL DEFAULT 0,
+        strategic_alignment integer NOT NULL DEFAULT 0, ai_readiness_score integer NOT NULL DEFAULT 0,
+        prototype_confidence integer NOT NULL DEFAULT 0, technical_complexity_penalty integer NOT NULL DEFAULT 0,
+        risk_penalty integer NOT NULL DEFAULT 0, score integer NOT NULL DEFAULT 0,
+        priority text NOT NULL DEFAULT 'Low', version text NOT NULL DEFAULT 'v0.1.0',
+        assigned_team text, current_phase text, prototype_day integer,
+        last_reviewed_at timestamp, next_review_at timestamp,
+        created_at timestamp NOT NULL DEFAULT now(), updated_at timestamp NOT NULL DEFAULT now()
+      )`);
+      await client.query(`CREATE TEMP TABLE initiative_versions (
+        id serial PRIMARY KEY, initiative_id integer NOT NULL REFERENCES initiatives(id) ON DELETE CASCADE,
+        version text NOT NULL, changed_by text NOT NULL, summary text NOT NULL,
+        snapshot jsonb, created_at timestamp NOT NULL DEFAULT now()
+      )`);
+      await client.query(`CREATE TEMP TABLE initiative_jira_links (
+        id serial PRIMARY KEY, initiative_id integer NOT NULL REFERENCES initiatives(id) ON DELETE CASCADE,
+        jira_project_id integer REFERENCES jira_projects(id) ON DELETE SET NULL,
+        jira_issue_id text NOT NULL, jira_issue_key text NOT NULL, jira_issue_type text NOT NULL,
+        created_at timestamp NOT NULL DEFAULT now(), updated_at timestamp NOT NULL DEFAULT now(),
+        UNIQUE (initiative_id, jira_issue_id)
+      )`);
+      await client.query(`ALTER TABLE projects ADD COLUMN initiative_id integer REFERENCES initiatives(id) ON DELETE SET NULL,
+        ADD COLUMN organization_id integer, ADD COLUMN client_id integer, ADD COLUMN program_id integer,
+        ADD COLUMN name text, ADD COLUMN description text, ADD COLUMN project_type text,
+        ADD COLUMN lifecycle_stage text, ADD COLUMN state text, ADD COLUMN health text,
+        ADD COLUMN health_override_reason text, ADD COLUMN health_override_by text,
+        ADD COLUMN health_override_at timestamp,
+        ADD COLUMN priority text, ADD COLUMN primary_owner text, ADD COLUMN supporting_owners text,
+        ADD COLUMN target_date timestamp, ADD COLUMN created_at timestamp DEFAULT now(),
+        ADD COLUMN updated_at timestamp DEFAULT now()`);
+      await client.query("CREATE TEMP SEQUENCE intake_project_id_seq START 9900000");
+      await client.query("ALTER TABLE projects ALTER COLUMN id SET DEFAULT nextval('intake_project_id_seq')");
+      const requests: string[] = [];
+      globalThis.fetch = async (url, options) => {
+        assert.equal(options?.method ?? "GET", "GET", "intake never writes Jira");
+        requests.push(String(url));
+        if (String(url).includes("/issue/101")) return json({
+          ...issue("101", "KEY-101"),
+          fields: { ...issue("101", "KEY-101").fields, description: {
+            type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: `Business need ${env.JIRA_API_TOKEN} ` }, { type: "text", text: "Reduce wait" }] }],
+          } },
+        });
+        return json({ error: "unavailable" }, 503);
+      };
+      const intake = await call(jiraLinksRouter, "GET", "/jira/issues/:issueId/intake-context", {}, { issueId: "101" });
+      assert.equal(intake.status, 200);
+      assert.match(intake.body.description, /Reduce wait/);
+      noSecret(intake);
+      assert.equal((await call(jiraLinksRouter, "GET", "/jira/issues/:issueId/intake-context", {}, { issueId: "not-an-id" })).status, 400);
+      const body = {
+        title: "Improve Intake", department: "Operations", submitterName: "Test User",
+        category: "Process", problemStatement: "Waiting", currentProcess: "Manual triage",
+        desiredOutcome: "Faster turnaround", aiConcept: "", prototypeGoal: "",
+        successMetric: "Cycle time",
+      };
+      const create = (extra = {}) => call(initiativeRouter, "POST", "/initiatives", { ...body, ...extra });
+      const noJira = await create();
+      assert.equal(noJira.status, 201);
+      assert.deepEqual(noJira.body.jiraLinks, []);
+      const before = requests.length;
+      const linked = await create({ jiraIssueId: "101", jiraIssueKey: "FORGED-1" });
+      assert.equal(linked.status, 201);
+      assert.deepEqual(linked.body.jiraLinks, [{ jiraIssueId: "101", jiraIssueKey: "KEY-101", jiraIssueType: "Story" }]);
+      assert.equal(requests.length, before + 1);
+      assert.deepEqual((await call(initiativeRouter, "GET", "/initiatives/:id", {}, { id: String(linked.body.id) })).body.jiraLinks, linked.body.jiraLinks);
+      assert.equal((await client.query("SELECT count(*)::int AS n FROM initiative_versions")).rows[0].n, 2);
+      assert.equal((await client.query("SELECT count(*)::int AS n FROM initiative_jira_links")).rows[0].n, 1);
+      const rejected = await create({ jiraIssueId: "999" });
+      assert.equal(rejected.status, 503);
+      assert.equal((await client.query("SELECT count(*)::int AS n FROM initiatives")).rows[0].n, 2, "Jira outage cannot create an unlinked initiative");
+      const promote = (initiativeId: number, extra = {}) =>
+        call(executionRouter, "POST", "/initiatives/:id/promote", { projectType: "Innovation", primaryOwner: "Test User", ...extra }, { id: String(initiativeId) });
+      const beforePromotion = requests.length;
+      const promoted = await promote(linked.body.id);
+      assert.equal(promoted.status, 201);
+      assert.equal(promoted.body.targetDate, null, "no today's-date default");
+      assert.match(promoted.body.description, /Cycle time/);
+      assert.equal(requests.length, beforePromotion, "promotion must not contact Jira");
+      assert.deepEqual((await client.query("SELECT jira_issue_id, jira_issue_key FROM project_jira_links WHERE project_id = $1", [promoted.body.id])).rows,
+        [{ jira_issue_id: "101", jira_issue_key: "KEY-101" }]);
+      assert.equal((await promote(linked.body.id)).status, 409, "duplicate promotion blocked");
+      const additional = await promote(linked.body.id, { allowDuplicate: true });
+      assert.equal(additional.status, 201);
+      assert.equal((await client.query("SELECT count(*)::int AS n FROM project_jira_links WHERE project_id = $1", [additional.body.id])).rows[0].n, 1);
+      assert.equal((await promote(noJira.body.id)).status, 201);
+      assert.equal(requests.length, beforePromotion);
+      assert.equal((await client.query("SELECT count(*)::int AS n FROM initiative_versions")).rows[0].n, 2, "promotion leaves initiative history intact");
+    });
     await t.test("J2 auth and additive schema safety", async () => {
       for (const layer of (jiraLinksRouter as any).stack) {
         let status = 0;
@@ -326,11 +430,11 @@ test("J1 routes and PostgreSQL persistence in isolated TEMP tables", async t => 
     });
     await t.test("Matrix app-info and health version surfaces", async () => {
       const info = await call(matrixRouter, "GET", "/app-info");
-      assert.equal(info.body.version, "v1.4.0");
+      assert.equal(info.body.version, "v1.5.0");
       assert.equal(info.body.name, "Matrix Innovation Hub");
       noSecret(info);
       const health = await call(matrixRouter, "GET", "/health");
-      assert.equal(health.body.version, "v1.4.0"); noSecret(health);
+      assert.equal(health.body.version, "v1.5.0"); noSecret(health);
     });
     await t.test("unchanged Matrix session mint/verify", async () => {
       process.env.SESSION_SECRET = "J1-automated-test-session-secret-not-real";

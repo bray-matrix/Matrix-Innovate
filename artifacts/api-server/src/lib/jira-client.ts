@@ -19,6 +19,36 @@ export interface JiraWorkItem {
 }
 
 const issueFields = "summary,issuetype,status,assignee,priority,updated,project";
+// ADF is untrusted structured content. Extract text nodes only; do not render
+// marks, links, media, arbitrary attributes, or upstream HTML.
+function plainDescription(value: unknown, safe: (text: string, max: number) => string): string {
+  if (typeof value === "string") return safe(value, 4000);
+  if (!value || typeof value !== "object") return "";
+  const parts: string[] = [];
+  const stack: unknown[] = [value];
+  let visited = 0;
+  let length = 0;
+  while (stack.length && visited++ < 10000 && length < 4000) {
+    const node = stack.pop();
+    if (!node || typeof node !== "object") continue;
+    const item = node as { type?: unknown; text?: unknown; content?: unknown };
+    if (item.type === "text" && typeof item.text === "string") {
+      const text = safe(item.text, 4000 - length);
+      parts.push(text);
+      length += text.length;
+    } else if (item.type === "hardBreak") {
+      parts.push("\n");
+      length++;
+    } else if (Array.isArray(item.content)) {
+      // Bound breadth too, even for an unusually wide/hostile ADF document.
+      if (["paragraph", "heading", "listItem", "tableRow", "blockquote"].includes(String(item.type))) {
+        stack.push({ type: "hardBreak" });
+      }
+      for (const child of item.content.slice(0, 1000).reverse()) stack.push(child);
+    }
+  }
+  return parts.join("").replace(/[ \t]*\n[ \t]*/g, "\n").trim().slice(0, 4000);
+}
 // Escape JQL literals separately from Lucene text-search syntax.
 export const jiraLiteral = (value: string) => `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
 
@@ -127,6 +157,13 @@ export class JiraClient {
     const item = this.workItem(await this.get(`issue/${encodeURIComponent(id)}?fields=${issueFields}`, { workItem: true, signal }));
     if (item.jiraIssueId !== id) throw new JiraError("Jira returned an unexpected issue identity.");
     return item;
+  }
+  async intakeContext(id: string): Promise<JiraWorkItem & { description: string }> {
+    if (!/^\d{1,30}$/.test(id)) throw new JiraError("Invalid Jira issue ID.", 400);
+    const raw = await this.get(`issue/${encodeURIComponent(id)}?fields=${issueFields},description`, { workItem: true });
+    const item = this.workItem(raw);
+    if (item.jiraIssueId !== id) throw new JiraError("Jira returned an unexpected issue identity.");
+    return { ...item, description: plainDescription(raw.fields?.description, (text, max) => this.safe(text, max)) };
   }
   async searchIssues(q = "", projectKey = "", limit = 25): Promise<JiraWorkItem[]> {
     q = q.trim();

@@ -5,6 +5,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and the
 project adheres to semantic versioning (patch = fixes/edits, minor = new
 features, major = breaking or milestone changes).
 
+## [1.5.0] - 2026-09-25
+
+### Business-focused innovation intake
+- Business-focused deterministic interviews with optional existing Jira request context.
+- Jira identity references carry from intake to Initiative and into Project Linked Work without Jira writes.
+- Professional editable titles, clearer required-field validation, and Matrix session submitter prepopulation.
+- Improved project planning context, target-date defaults, and intentional empty states.
+- Conditional AI/prototype recommendations preserve broader business innovation use cases.
+- Approved-user owner selection is deferred pending a Matrix Platform eligible-user directory contract.
+- Matrix authentication and existing Jira linked-work behavior retained. No deployment performed.
+
 ## [1.4.0] - 2026-09-25
 
 ### Linked Jira work items (J2)

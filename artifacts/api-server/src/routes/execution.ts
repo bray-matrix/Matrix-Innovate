@@ -7,6 +7,8 @@ import {
   projectsTable,
   projectMilestonesTable,
   initiativesTable,
+  initiativeJiraLinksTable,
+  projectJiraLinksTable,
   type Organization,
   type Client,
   type Program,
@@ -787,7 +789,13 @@ router.post("/initiatives/:id/promote", async (req, res, next) => {
           programId: parsed.data.programId ?? null,
           name: initiative.title,
           description:
-            initiative.executiveSummary ?? initiative.problemStatement,
+            [
+              initiative.executiveSummary || initiative.problemStatement,
+              initiative.executiveSummary && initiative.problemStatement ? `Problem / Opportunity: ${initiative.problemStatement}` : null,
+              initiative.currentProcess ? `Current Process: ${initiative.currentProcess}` : null,
+              initiative.desiredOutcome ? `Desired Outcome: ${initiative.desiredOutcome}` : null,
+              initiative.successMetric ? `Success Measures: ${initiative.successMetric}` : null,
+            ].filter(Boolean).join("\n\n"),
           projectType: parsed.data.projectType,
           lifecycleStage: "Planning",
           state: "Active",
@@ -798,6 +806,15 @@ router.post("/initiatives/:id/promote", async (req, res, next) => {
           targetDate: toDate(parsed.data.targetDate),
         })
         .returning();
+      const jiraLinks = await tx.select().from(initiativeJiraLinksTable)
+        .where(eq(initiativeJiraLinksTable.initiativeId, id));
+      for (const link of jiraLinks) {
+        await tx.insert(projectJiraLinksTable).values({
+          projectId: created.id, jiraProjectId: link.jiraProjectId,
+          jiraIssueId: link.jiraIssueId, jiraIssueKey: link.jiraIssueKey,
+          jiraIssueType: link.jiraIssueType,
+        }).onConflictDoNothing({ target: [projectJiraLinksTable.projectId, projectJiraLinksTable.jiraIssueId] });
+      }
       return { kind: "created" as const, created };
     });
     if (result.kind === "notFound") {

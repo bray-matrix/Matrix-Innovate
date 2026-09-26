@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Api
  * API specification
- * OpenAPI spec version: 1.4.0
+ * OpenAPI spec version: 1.5.0
  */
 
 export * from './aIProviderConfig';
@@ -46,6 +46,7 @@ export * from './getReportPdfParams';
 export * from './healthStatus';
 export * from './initiative';
 export * from './initiativeInput';
+export * from './initiativeJiraLink';
 export * from './initiativeRecommendations';
 export * from './initiativeRecommendationsComplexity';
 export * from './initiativeUpdate';
@@ -54,6 +55,7 @@ export * from './jiraConnection';
 export * from './jiraField';
 export * from './jiraFieldMapping';
 export * from './jiraFieldMappingAdditionalMappings';
+export * from './jiraIntakeContext';
 export * from './jiraProject';
 export * from './jiraProjectInput';
 export * from './jiraStatusMapping';

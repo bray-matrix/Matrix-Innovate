@@ -3,12 +3,17 @@
  * Do not edit manually.
  * Api
  * API specification
- * OpenAPI spec version: 1.4.0
+ * OpenAPI spec version: 1.5.0
  */
 
 export interface InitiativeInput {
   /** @minLength 1 */
   title: string;
+  /**
+     * Optional selected Jira issue ID; verified live before initiative creation.
+     * @pattern ^\d{1,30}$
+     */
+  jiraIssueId?: string;
   department: string;
   submitterName: string;
   businessOwner?: string;

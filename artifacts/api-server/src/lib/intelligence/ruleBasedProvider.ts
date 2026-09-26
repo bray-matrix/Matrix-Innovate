@@ -14,6 +14,18 @@ const PROTOTYPE_SPRINT_DAYS = 14;
 const SIMILARITY_THRESHOLD = 30;
 const MAX_SIMILAR = 3;
 
+function involvesAI(initiative: InitiativeRecord): boolean {
+  // An intake channel or a readiness score alone is not evidence of an AI solution.
+  return /\b(ai|artificial intelligence|machine learning|llm|generative ai|natural language processing)\b/i.test(
+    `${initiative.title} ${initiative.aiConcept} ${initiative.prototypeGoal}`,
+  );
+}
+
+function hasPrototype(initiative: InitiativeRecord): boolean {
+  const goal = initiative.prototypeGoal?.trim();
+  return !!goal && !/^(n\/a|none|not applicable|not specified|to be determined|tbd)$/i.test(goal);
+}
+
 const STOP_WORDS = new Set([
   "the", "a", "an", "and", "or", "of", "to", "in", "for", "on", "with",
   "that", "this", "is", "are", "be", "by", "at", "from", "as", "it", "we",
@@ -129,10 +141,8 @@ export class RuleBasedRecommendationProvider implements RecommendationProvider {
     if (tech === 1) factors.push("Moderate technical complexity reported");
 
     const readiness = normalizeLevel(initiative.aiReadiness);
-    points += 2 - readiness;
-    if (readiness === 0) {
-      factors.push("Low AI/data readiness — data foundations may be missing");
-    }
+    if (involvesAI(initiative)) points += 2 - readiness;
+    if (readiness === 0 && involvesAI(initiative)) factors.push("Low AI/data readiness — data foundations may be missing");
 
     const compliance = normalizeLevel(initiative.complianceRisk);
     points += compliance;
@@ -149,9 +159,6 @@ export class RuleBasedRecommendationProvider implements RecommendationProvider {
       points += 1;
       factors.push("Cross-system integration signals detected");
     }
-    if (!containsAny(blob, ["api"])) {
-      factors.push("No existing API mentioned for the current process");
-    }
 
     let level: ComplexityLevel;
     if (points <= 2) level = "Low";
@@ -166,18 +173,21 @@ export class RuleBasedRecommendationProvider implements RecommendationProvider {
   }
 
   recommendPrototypeScope(initiative: InitiativeRecord): string {
+    if (!hasPrototype(initiative)) {
+      return "A prototype has not been defined. Confirm the proposed approach and success measures before deciding whether a proof of concept is useful.";
+    }
     const goal = initiative.prototypeGoal?.trim();
     const metric = initiative.successMetric?.trim();
     const base = goal
-      ? `Build a narrow proof-of-concept focused on: ${goal}`
-      : `Build a narrow proof-of-concept that demonstrates the core AI concept for "${initiative.title}"`;
+      ? `Consider a focused proof of concept for: ${goal}`
+      : `Consider a focused proof of concept for "${initiative.title}"`;
     const scope = [
       base,
-      `Limit the first sprint to a single ${initiative.department} workflow with a small, representative data sample.`,
+      `Start with one ${initiative.department} workflow and representative examples.`,
       metric
         ? `Define success up front against the stated metric: ${metric}.`
         : "Define one measurable success metric before development starts.",
-      `Timebox to the standard ${PROTOTYPE_SPRINT_DAYS}-day prototype sprint and demo working software, not slides.`,
+      "Agree a timebox with the project team before committing to delivery.",
     ];
     return scope.join(" ");
   }
@@ -194,10 +204,11 @@ export class RuleBasedRecommendationProvider implements RecommendationProvider {
     initiative: InitiativeRecord,
     complexity: ComplexityLevel,
   ): string[] {
-    const roles = ["AI Solutions Architect", "Business Analyst"];
+    const roles = ["Business Analyst"];
     roles.push(`${initiative.department} SME`);
+    if (involvesAI(initiative)) roles.push("AI Solutions Architect");
     if (
-      normalizeLevel(initiative.aiReadiness) === 0 ||
+      (involvesAI(initiative) && normalizeLevel(initiative.aiReadiness) === 0) ||
       containsAny(textBlob(initiative), ["data", "report", "document", "record"])
     ) {
       roles.push("Data Engineer");
@@ -213,13 +224,9 @@ export class RuleBasedRecommendationProvider implements RecommendationProvider {
 
   private identifyRisks(initiative: InitiativeRecord): string[] {
     const risks: string[] = [];
-    const blob = textBlob(initiative);
 
-    if (!containsAny(blob, ["api"])) {
-      risks.push("No existing API identified for the current process");
-    }
-    if (normalizeLevel(initiative.aiReadiness) <= 1) {
-      risks.push("Data quality and availability unknown");
+    if (involvesAI(initiative) && normalizeLevel(initiative.aiReadiness) === 0) {
+      risks.push("Data quality and availability should be confirmed");
     }
     const compliance = normalizeLevel(initiative.complianceRisk);
     if (compliance >= 1) {
@@ -233,9 +240,9 @@ export class RuleBasedRecommendationProvider implements RecommendationProvider {
       risks.push("No executive sponsor secured");
     }
     if (normalizeLevel(initiative.technicalComplexity) === 2) {
-      risks.push("High technical complexity may extend the prototype sprint");
+      risks.push("High technical complexity may affect delivery planning");
     }
-    risks.push(`Requires ${initiative.department} participation`);
+    risks.push(`Confirm ${initiative.department} participation during planning`);
     return risks;
   }
 
@@ -262,7 +269,7 @@ export class RuleBasedRecommendationProvider implements RecommendationProvider {
     const text =
       parts.length > 0
         ? `${band} value potential: ${parts.join(", ")}.`
-        : "Value estimates not yet provided — quantify savings, revenue, and hours before prototyping.";
+        : "Value not yet quantified — confirm time, cost, revenue, or other business outcomes during planning.";
     return { text, annualValue };
   }
 
@@ -273,8 +280,8 @@ export class RuleBasedRecommendationProvider implements RecommendationProvider {
     let confidence = 40;
     confidence += Math.round((initiative.score / 100) * 30);
     const readiness = normalizeLevel(initiative.aiReadiness);
-    if (readiness === 2) confidence += 15;
-    if (readiness === 1) confidence += 8;
+    if (involvesAI(initiative) && readiness === 2) confidence += 15;
+    if (involvesAI(initiative) && readiness === 1) confidence += 8;
     if (complexity === "High") confidence -= 10;
     if (complexity === "Medium") confidence -= 5;
     if (initiative.executiveSponsor?.trim()) confidence += 10;
@@ -291,11 +298,11 @@ export class RuleBasedRecommendationProvider implements RecommendationProvider {
       case "Review":
         return "Present at the next innovation review meeting";
       case "Approved":
-        return "Schedule Prototype Planning Meeting";
+        return hasPrototype(initiative) ? "Plan the proposed proof of concept and confirm its scope" : "Agree the delivery approach and next planning steps";
       case "Prototype":
         return (initiative.prototypeDay ?? 0) >= 10
-          ? "Prepare the prototype demo — the 14-day deadline is approaching"
-          : "Continue the 14-day prototype sprint and hold a mid-sprint checkpoint";
+          ? "Review prototype findings and prepare to share the results"
+          : "Review prototype progress and confirm the next checkpoint";
       case "Pilot":
         return initiative.successMetric?.trim()
           ? `Collect pilot results against the success metric: ${initiative.successMetric}`
@@ -326,10 +333,9 @@ export class RuleBasedRecommendationProvider implements RecommendationProvider {
       prototypeScope: this.recommendPrototypeScope(initiative),
       complexity,
       complexityFactors: factors,
-      estimatedPrototypeDurationDays: this.estimateDurationDays(
-        complexity,
-        initiative,
-      ),
+      estimatedPrototypeDurationDays: hasPrototype(initiative)
+        ? this.estimateDurationDays(complexity, initiative)
+        : 0,
       teamRoles: this.suggestTeamRoles(initiative, complexity),
       risks: this.identifyRisks(initiative),
       expectedBusinessValue: value.text,
