@@ -23,3 +23,11 @@ needs no changes.
   dropdown via `suggestedInitiativeCategory`). It is NOT persisted — no DB/schema field.
 - Only show the "Detected Initiative Type" badge once `answers.idea` is non-empty
   (including the localStorage resume path).
+
+## Verification boundary
+
+Use browser-only Matrix/Jira fixtures to verify interview navigation without weakening real authentication; verify actual relationship persistence separately with isolated database route tests.
+
+**Why:** A browser fixture can make a save look successful even with an invalid Jira identity or shared Initiative state. Conversely, incomplete fixture response shapes can make a working detail page appear broken.
+
+**How to apply:** Require contract-valid IDs, separate records for Jira/non-Jira paths, captured save/promotion payloads, and normal first-project promotion. Clearly label browser fixture evidence separately from database persistence evidence.
