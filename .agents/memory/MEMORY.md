@@ -8,3 +8,4 @@
 - [Deterministic health & readiness rules](health-calculation-rules.md) — all health/readiness calc lives in one server lib; overrides and decidedAt stamp only on real transitions.
 - [pdfmake server usage](pdfmake-server-usage.md) — pdfmake 0.3 exports a singleton (setFonts/createPdf), not a Printer class; keep it esbuild-external; local access policy must allow standard font names.
 - [Promotion duplicate guard & zod dates](promotion-duplicate-guard.md) — promote must lock initiative row in a tx; api-zod coerces date-time bodies to Date, string-only parsing nulls them.
+- [Platform server SDK](platform-server-sdk.md) — outbound directory access must use the managed server SDK, not a separately implemented Bridge client.
