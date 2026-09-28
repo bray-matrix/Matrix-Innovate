@@ -24,6 +24,7 @@ import {
 } from "recharts";
 import {
   AlertTriangle,
+  ArrowRight,
   BadgeDollarSign,
   CheckCircle2,
   Clock,
@@ -361,28 +362,48 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8">
-      {/* Banner */}
-      <div className="bg-primary text-primary-foreground p-8 rounded-xl shadow-lg relative overflow-hidden flex justify-between items-center">
-        <div className="relative z-10">
-          <h2 className="text-3xl font-bold tracking-tight">
-            Executive Command Center
-          </h2>
-          <p className="mt-2 text-primary-foreground/80 text-lg">
-            Every prototype must prove value within two weeks.
-          </p>
+      {/* Front door */}
+      <section className="bg-primary text-primary-foreground rounded-xl shadow-lg overflow-hidden" data-testid="section-front-door">
+        <div className="p-6 md:p-8 grid gap-6 lg:grid-cols-[1.1fr_1fr] items-start">
+          <div>
+            <p className="text-xs font-semibold tracking-[0.18em] text-[#FFC72C] uppercase">Matrix Innovation Hub</p>
+            <h2 className="mt-2 text-2xl md:text-3xl font-bold tracking-tight">Have an idea? Start here.</h2>
+            <p className="mt-2 text-primary-foreground/80 max-w-xl">
+              Bring an idea, problem, client request, or improvement. We help shape it, review it, and turn the best ones into real projects.
+            </p>
+            <ol className="mt-5 flex flex-wrap items-center gap-x-1.5 gap-y-2 text-xs font-medium" aria-label="How ideas move through Innovation Hub" data-testid="list-workflow">
+              {["Idea", "Initiative", "Review / Prioritize", "Project", "Execution"].map((step, i, arr) => (
+                <li key={step} className="flex items-center gap-1.5">
+                  <span className={`rounded-full px-2.5 py-1 ${i === 0 ? "bg-[#FFC72C] text-[#002D72]" : "bg-white/10 text-primary-foreground/90"}`}>{step}</span>
+                  {i < arr.length - 1 && <ArrowRight className="h-3 w-3 text-primary-foreground/50" aria-hidden />}
+                </li>
+              ))}
+            </ol>
+          </div>
+          <div className="grid gap-3">
+            <Link href="/interview" data-testid="link-start-interview" className="group block rounded-lg bg-white text-[#231F20] p-4 shadow-md transition-transform duration-150 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFC72C]">
+              <div className="flex items-center gap-3">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-[#FFC72C] text-[#002D72]"><Lightbulb className="h-5 w-5" /></span>
+                <div className="flex-1">
+                  <div className="font-semibold text-[#002D72]">Start an Idea <span className="text-muted-foreground font-normal">- Guided Idea Interview</span></div>
+                  <p className="text-sm text-muted-foreground mt-0.5">Use this when you have an idea, problem, client request, or improvement opportunity and want Innovation Hub to help develop it.</p>
+                </div>
+                <ArrowRight className="h-4 w-4 text-[#002D72] transition-transform group-hover:translate-x-0.5" />
+              </div>
+            </Link>
+            <Link href="/submit" data-testid="link-quick-submit" className="group block rounded-lg border border-white/25 p-4 transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFC72C]">
+              <div className="flex items-center gap-3">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-white/10"><PlusCircle className="h-5 w-5" /></span>
+                <div className="flex-1">
+                  <div className="font-semibold">Quick Submit</div>
+                  <p className="text-sm text-primary-foreground/75 mt-0.5">Use this when the idea is already well defined and you simply want to enter it directly.</p>
+                </div>
+                <ArrowRight className="h-4 w-4 opacity-70 transition-transform group-hover:translate-x-0.5" />
+              </div>
+            </Link>
+          </div>
         </div>
-        <div className="relative z-10 hidden sm:block">
-          <Link href="/submit">
-            <Button
-              size="lg"
-              variant="secondary"
-              className="font-semibold shadow-md"
-            >
-              <PlusCircle className="mr-2 h-5 w-5" /> Quick Submit
-            </Button>
-          </Link>
-        </div>
-      </div>
+      </section>
 
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-sm font-medium text-muted-foreground mr-2">Quick Links:</span>

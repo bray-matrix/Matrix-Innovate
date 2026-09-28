@@ -15,7 +15,6 @@ import {
 } from "@/components/ui/sidebar";
 import { useGetSettings } from "@workspace/api-client-react";
 import { useMatrixAuth } from "@/components/matrix-gate";
-import { Button } from "@/components/ui/button";
 import { 
   LayoutDashboard, 
   PlusCircle, 
@@ -23,7 +22,6 @@ import {
   KanbanSquare, 
   FileText, 
   Settings, 
-  Compass, 
   Sparkles, 
   ClipboardCheck, 
   ListTodo, 
@@ -52,8 +50,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     {
       label: "INNOVATION",
       items: [
-        { href: "/interview", label: "AI Innovation Interview", icon: Sparkles },
-        { href: "/submit", label: "Submit Initiative", icon: PlusCircle },
+        { href: "/interview", label: "Guided Idea Interview", icon: Sparkles },
+        { href: "/submit", label: "Quick Submit", icon: PlusCircle },
         { href: "/initiatives", label: "Initiatives", icon: List },
         { href: "/kanban", label: "Kanban", icon: KanbanSquare },
       ]
@@ -96,17 +94,21 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     }
   ];
 
+  const displayName = user.name ?? user.email ?? user.sub ?? "";
   const currentLabel = navGroups.flatMap(g => g.items).find(i => i.href === location)?.label || "Matrix Innovation Hub";
 
   return (
     <SidebarProvider>
       <div className="min-h-[100dvh] flex w-full bg-muted/20">
-        <Sidebar variant="sidebar" className="border-r">
-          <SidebarHeader className="h-16 flex items-center px-4 border-b">
-            <div className="flex items-center gap-2 font-bold text-primary">
-              <Compass className="h-5 w-5" />
-              <span>Matrix Innovation Hub</span>
-            </div>
+        <Sidebar variant="sidebar" collapsible="icon" className="border-r">
+          <SidebarHeader className="h-16 justify-center px-3 border-b border-sidebar-border">
+            <Link href="/" data-testid="link-brand" aria-label="Matrix Innovation Hub home" className="flex items-center gap-2.5 min-w-0 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground font-black text-sm tracking-tight">M</span>
+              <span className="flex flex-col leading-tight min-w-0 group-data-[collapsible=icon]:hidden">
+                <span className="text-sm font-bold tracking-[0.14em] uppercase text-sidebar-foreground">Matrix</span>
+                <span className="text-[11px] text-sidebar-foreground/70 truncate">Innovation Hub</span>
+              </span>
+            </Link>
           </SidebarHeader>
           <SidebarContent className="p-2 gap-0">
             {navGroups.map((group) => (
@@ -118,8 +120,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                   <SidebarMenu>
                     {group.items.map((item) => (
                       <SidebarMenuItem key={item.href}>
-                        <SidebarMenuButton asChild isActive={location === item.href || (item.href !== '/' && location.startsWith(item.href))}>
-                          <Link href={item.href}>
+                        <SidebarMenuButton asChild tooltip={item.label} isActive={location === item.href || (item.href !== '/' && location.startsWith(item.href))}>
+                          <Link href={item.href} data-testid={`link-nav-${item.href.replace(/\//g, "") || "dashboard"}`}>
                             <item.icon />
                             <span>{item.label}</span>
                           </Link>
@@ -131,36 +133,33 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               </SidebarGroup>
             ))}
           </SidebarContent>
-          <SidebarFooter className="border-t px-4 py-3">
-            <div className="text-xs text-sidebar-foreground/70">
-              <div className="font-medium">Matrix Innovation Hub</div>
-              <div className="font-mono mt-0.5">
-                {settings?.applicationVersion ?? ""}
-              </div>
+          <SidebarFooter className="border-t border-sidebar-border p-2 gap-1">
+            <div className="flex items-center gap-2 px-2 py-1.5 min-w-0 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:justify-center" title={displayName}>
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-sidebar-accent text-[11px] font-semibold">
+                {displayName.slice(0, 1).toUpperCase()}
+              </span>
+              <span className="text-xs font-medium truncate group-data-[collapsible=icon]:sr-only" data-testid="text-user-name">{displayName}</span>
+            </div>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton tooltip="Log out" onClick={() => void logout()} data-testid="button-logout" className="text-sidebar-foreground/80">
+                  <LogOut />
+                  <span>Log out</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+            <div className="px-2 pt-1 text-[11px] text-sidebar-foreground/60 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:text-center group-data-[collapsible=icon]:text-[9px]">
+              <span className="font-mono" data-testid="text-app-version">{settings?.applicationVersion ?? ""}</span>
             </div>
           </SidebarFooter>
         </Sidebar>
 
         <main className="flex-1 flex flex-col min-w-0">
           <header className="h-16 flex items-center px-4 border-b bg-card shrink-0 gap-4">
-            <SidebarTrigger />
+            <SidebarTrigger aria-label="Toggle navigation" data-testid="button-toggle-sidebar" />
             <h1 className="font-semibold text-lg text-foreground">
               {currentLabel}
             </h1>
-            <div className="ml-auto flex items-center gap-3">
-              <span className="text-xs text-muted-foreground">
-                {user.name ?? user.email ?? user.sub}
-              </span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => void logout()}
-                className="text-muted-foreground"
-              >
-                <LogOut className="h-4 w-4 mr-1" />
-                Log out
-              </Button>
-            </div>
           </header>
           <div className="flex-1 overflow-auto p-4 md:p-8">
             <div className="max-w-7xl mx-auto w-full">

@@ -5,6 +5,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and the
 project adheres to semantic versioning (patch = fixes/edits, minor = new
 features, major = breaking or milestone changes).
 
+## [1.5.1] - 2026-09-27
+
+### Application shell and first-use clarity
+- Matrix branding and collapsible left navigation, with authenticated user and Logout in the navigation footer.
+- Preserve the application version in the navigation footer.
+- Make Guided Idea Interview the primary Dashboard entry point and Quick Submit the secondary direct-entry option.
+- Explain the Idea → Initiative → Review / Prioritize → Project → Execution workflow.
+- Preserve existing interview, Jira, scoring, project, reporting, portfolio, and Matrix launch/session behavior.
+- Primary Owner and Platform server SDK integration remain outside this release.
+
 ## [1.5.0] - 2026-09-25
 
 ### Business-focused innovation intake
