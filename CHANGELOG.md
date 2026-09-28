@@ -5,6 +5,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and the
 project adheres to semantic versioning (patch = fixes/edits, minor = new
 features, major = breaking or milestone changes).
 
+## [1.5.2] - 2026-09-28
+
+### Navigation and dashboard clarity
+- Relocate sidebar collapse control; group Programs with management navigation.
+- Remove the fabricated M mark; the actual Matrix logo asset is unavailable.
+- Clean up lifecycle dashboard copy to reflect real capabilities, while preserving the top first-use panel.
+
 ## [1.5.1] - 2026-09-27
 
 ### Application shell and first-use clarity

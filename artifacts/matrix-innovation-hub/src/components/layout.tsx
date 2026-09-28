@@ -11,7 +11,7 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarProvider,
-  SidebarTrigger,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { useGetSettings } from "@workspace/api-client-react";
 import { useMatrixAuth } from "@/components/matrix-gate";
@@ -31,7 +31,10 @@ import {
   Users,
   Building2,
   PieChart,
-  CheckSquare
+  CheckSquare,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Menu,
 } from "lucide-react";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
@@ -60,7 +63,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       label: "EXECUTION",
       items: [
         { href: "/projects", label: "Projects", icon: Briefcase },
-        { href: "/programs", label: "Programs", icon: FolderKanban },
         { href: "/clients", label: "Clients", icon: Users },
         { href: "/organizations", label: "Organizations", icon: Building2 },
         { href: "/resources", label: "Resources", icon: Users },
@@ -78,6 +80,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       items: [
         { href: "/validation", label: "Validation", icon: ClipboardCheck },
         { href: "/documents", label: "Documents", icon: FileText },
+      ]
+    },
+    {
+      label: "MANAGEMENT",
+      items: [
+        { href: "/programs", label: "Programs", icon: FolderKanban },
       ]
     },
     {
@@ -101,14 +109,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     <SidebarProvider>
       <div className="min-h-[100dvh] flex w-full bg-muted/20">
         <Sidebar variant="sidebar" collapsible="icon" className="border-r">
-          <SidebarHeader className="h-16 justify-center px-3 border-b border-sidebar-border">
-            <Link href="/" data-testid="link-brand" aria-label="Matrix Innovation Hub home" className="flex items-center gap-2.5 min-w-0 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring">
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground font-black text-sm tracking-tight">M</span>
-              <span className="flex flex-col leading-tight min-w-0 group-data-[collapsible=icon]:hidden">
-                <span className="text-sm font-bold tracking-[0.14em] uppercase text-sidebar-foreground">Matrix</span>
-                <span className="text-[11px] text-sidebar-foreground/70 truncate">Innovation Hub</span>
-              </span>
+          <SidebarHeader className="h-16 flex-row items-center justify-between gap-1 px-3 border-b border-sidebar-border group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
+            <Link href="/" data-testid="link-brand" aria-label="Matrix Innovation Hub home" className="flex flex-col leading-tight min-w-0 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring group-data-[collapsible=icon]:hidden">
+              <span className="text-sm font-bold tracking-[0.14em] uppercase text-sidebar-foreground">Matrix</span>
+              <span className="text-[11px] text-sidebar-foreground/70 truncate">Innovation Hub</span>
             </Link>
+            <SidebarCollapseButton />
           </SidebarHeader>
           <SidebarContent className="p-2 gap-0">
             {navGroups.map((group) => (
@@ -156,7 +162,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
         <main className="flex-1 flex flex-col min-w-0">
           <header className="h-16 flex items-center px-4 border-b bg-card shrink-0 gap-4">
-            <SidebarTrigger aria-label="Toggle navigation" data-testid="button-toggle-sidebar" />
+            <MobileMenuButton />
             <h1 className="font-semibold text-lg text-foreground">
               {currentLabel}
             </h1>
@@ -169,5 +175,42 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </main>
       </div>
     </SidebarProvider>
+  );
+}
+
+function SidebarCollapseButton() {
+  const { state, isMobile, toggleSidebar } = useSidebar();
+  const expanded = isMobile || state === "expanded";
+  const Icon = isMobile || expanded ? PanelLeftClose : PanelLeftOpen;
+  const label = isMobile ? "Close navigation" : expanded ? "Collapse navigation" : "Expand navigation";
+  return (
+    <button
+      type="button"
+      onClick={toggleSidebar}
+      aria-label={label}
+      title={label}
+      aria-expanded={expanded}
+      data-testid="button-toggle-sidebar"
+      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-sidebar-accent text-sidebar-foreground transition-colors hover:bg-sidebar-accent/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+    >
+      <Icon className="h-4 w-4" />
+    </button>
+  );
+}
+
+function MobileMenuButton() {
+  const { isMobile, openMobile, setOpenMobile } = useSidebar();
+  if (!isMobile) return null;
+  return (
+    <button
+      type="button"
+      onClick={() => setOpenMobile(true)}
+      aria-label="Open navigation"
+      aria-expanded={openMobile}
+      data-testid="button-open-mobile-nav"
+      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-sidebar text-sidebar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+    >
+      <Menu className="h-5 w-5" />
+    </button>
   );
 }

@@ -11,7 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { StatusBadge, PriorityBadge } from "@/components/badges";
+import { PriorityBadge } from "@/components/badges";
 import {
   Bar,
   BarChart,
@@ -28,7 +28,6 @@ import {
   BadgeDollarSign,
   CheckCircle2,
   Clock,
-  FlaskConical,
   Gauge,
   Hourglass,
   Lightbulb,
@@ -37,12 +36,10 @@ import {
   ParkingCircle,
   PlusCircle,
   Tag,
-  Timer,
   TrendingUp,
   UserX,
   Briefcase,
   AlertCircle,
-  CalendarClock,
   Target,
   Flag,
   PieChart,
@@ -50,8 +47,6 @@ import {
   Users
 } from "lucide-react";
 
-const PROTOTYPE_SPRINT_DAYS = 14;
-const NEARING_DEADLINE_DAY = 10;
 const ACTIVE_STATUSES = new Set([
   "Idea",
   "Review",
@@ -98,11 +93,6 @@ const compactNumber = new Intl.NumberFormat("en-US", {
 
 function computeExecutiveMetrics(initiatives: Initiative[]) {
   const active = initiatives.filter((i) => ACTIVE_STATUSES.has(i.status));
-  const prototypes = initiatives.filter((i) => i.status === "Prototype");
-  const advanced = initiatives.filter(
-    (i) => i.status === "Pilot" || i.status === "Production",
-  );
-  const everPrototyped = prototypes.length + advanced.length;
 
   const annualSavings = initiatives.reduce(
     (sum, i) => sum + (i.estimatedCostSavings ?? 0),
@@ -123,25 +113,14 @@ function computeExecutiveMetrics(initiatives: Initiative[]) {
       ? scored.reduce((sum, i) => sum + i.score, 0) / scored.length
       : 0;
 
-  const withDay = initiatives.filter(
-    (i) => i.prototypeDay !== null && i.prototypeDay !== undefined,
-  );
-  const avgPrototypeDuration =
-    withDay.length > 0
-      ? withDay.reduce((sum, i) => sum + (i.prototypeDay ?? 0), 0) /
-        withDay.length
-      : null;
-
   return {
     annualSavings,
     annualRevenue,
     annualHours,
     activeInitiatives: active.length,
-    activePrototypes: prototypes.length,
-    successRate:
-      everPrototyped > 0 ? (advanced.length / everPrototyped) * 100 : null,
+    awaitingReview: initiatives.filter((i) => i.status === "Review").length,
+    approved: initiatives.filter((i) => i.status === "Approved").length,
     avgScore,
-    avgPrototypeDuration,
   };
 }
 
@@ -210,7 +189,7 @@ function AttentionGroup({
 }
 
 export default function Dashboard() {
-  const { data: initiatives, isLoading } = useListInitiatives();
+  const { data: initiatives, isLoading, isError, refetch } = useListInitiatives();
   const [, setLocation] = useLocation();
 
   const metrics = useMemo(
@@ -221,27 +200,13 @@ export default function Dashboard() {
   const attention = useMemo(() => {
     const list = initiatives ?? [];
     const awaitingReview = list.filter((i) => i.status === "Review");
-    const nearingDeadline = list.filter(
-      (i) =>
-        i.status === "Prototype" &&
-        i.prototypeDay !== null &&
-        i.prototypeDay !== undefined &&
-        i.prototypeDay >= NEARING_DEADLINE_DAY,
-    );
     const highValueNoSponsor = list.filter(
       (i) =>
         ACTIVE_STATUSES.has(i.status) &&
         (i.priority === "High" || i.priority === "Critical" || i.score >= 70) &&
         !i.executiveSponsor,
     );
-    const recentlyCompleted = list
-      .filter((i) => i.status === "Pilot" || i.status === "Production")
-      .sort(
-        (a, b) =>
-          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
-      )
-      .slice(0, 5);
-    return { awaitingReview, nearingDeadline, highValueNoSponsor, recentlyCompleted };
+    return { awaitingReview, highValueNoSponsor };
   }, [initiatives]);
 
   const pipelineData = useMemo(() => {
@@ -285,6 +250,8 @@ export default function Dashboard() {
     );
   }
 
+  const initiativesFailed = isError || !initiatives;
+
   const kpis = [
     {
       title: "Potential Annual Savings",
@@ -319,20 +286,17 @@ export default function Dashboard() {
       iconColor: "text-primary",
     },
     {
-      title: "Active Prototypes",
-      value: String(metrics.activePrototypes),
-      sub: `${PROTOTYPE_SPRINT_DAYS}-day sprints in flight`,
-      icon: FlaskConical,
-      accent: "border-l-[#7C3AED]",
-      iconColor: "text-[#7C3AED]",
+      title: "Awaiting Review",
+      value: String(metrics.awaitingReview),
+      sub: "initiatives in Review status",
+      icon: Clock,
+      accent: "border-l-[#FFC72C]",
+      iconColor: "text-[#B58900]",
     },
     {
-      title: "Prototype Success Rate",
-      value:
-        metrics.successRate === null
-          ? "—"
-          : `${metrics.successRate.toFixed(0)}%`,
-      sub: "advanced to pilot or production",
+      title: "Approved Initiatives",
+      value: String(metrics.approved),
+      sub: "in Approved status",
       icon: CheckCircle2,
       accent: "border-l-[#2E7D32]",
       iconColor: "text-[#2E7D32]",
@@ -344,17 +308,6 @@ export default function Dashboard() {
       icon: Gauge,
       accent: "border-l-[#00A3E0]",
       iconColor: "text-[#00A3E0]",
-    },
-    {
-      title: "Average Prototype Duration",
-      value:
-        metrics.avgPrototypeDuration === null
-          ? "—"
-          : `${metrics.avgPrototypeDuration.toFixed(1)} days`,
-      sub: `target under ${PROTOTYPE_SPRINT_DAYS} days`,
-      icon: Timer,
-      accent: "border-l-[#FFC72C]",
-      iconColor: "text-[#B58900]",
     },
   ];
 
@@ -430,6 +383,16 @@ export default function Dashboard() {
       {/* Execution Summary */}
       <ExecutionSummaryWidget />
 
+      {initiativesFailed ? (
+        <Card className="border-destructive/40" data-testid="error-initiatives">
+          <CardContent className="flex flex-wrap items-center justify-between gap-3 py-4">
+            <span className="flex items-center gap-2 text-sm text-destructive">
+              <AlertCircle className="h-4 w-4" /> Initiative metrics could not be loaded. Values are not shown to avoid reporting false zeros.
+            </span>
+            <Button variant="outline" size="sm" onClick={() => void refetch()} data-testid="button-retry-initiatives">Retry</Button>
+          </CardContent>
+        </Card>
+      ) : (<>
       {/* KPI grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         {kpis.map((k) => (
@@ -457,7 +420,7 @@ export default function Dashboard() {
           <AlertTriangle className="h-5 w-5 text-[#B58900]" />
           <h2 className="text-xl font-bold">My Attention Required</h2>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <AttentionGroup
             icon={Clock}
             iconColor="text-amber-500"
@@ -470,27 +433,6 @@ export default function Dashboard() {
                 key={i.id}
                 initiative={i}
                 detail={<PriorityBadge priority={i.priority} />}
-                onClick={() => goTo(i.id)}
-              />
-            ))}
-          </AttentionGroup>
-
-          <AttentionGroup
-            icon={Timer}
-            iconColor="text-red-500"
-            title="Nearing 14-Day Deadline"
-            count={attention.nearingDeadline.length}
-            emptyText="No prototypes close to deadline."
-          >
-            {attention.nearingDeadline.map((i) => (
-              <AttentionItem
-                key={i.id}
-                initiative={i}
-                detail={
-                  <Badge variant="destructive" className="font-mono">
-                    Day {i.prototypeDay}/{PROTOTYPE_SPRINT_DAYS}
-                  </Badge>
-                }
                 onClick={() => goTo(i.id)}
               />
             ))}
@@ -517,22 +459,6 @@ export default function Dashboard() {
             ))}
           </AttentionGroup>
 
-          <AttentionGroup
-            icon={CheckCircle2}
-            iconColor="text-green-600"
-            title="Recently Completed Prototypes"
-            count={attention.recentlyCompleted.length}
-            emptyText="No prototypes completed recently."
-          >
-            {attention.recentlyCompleted.map((i) => (
-              <AttentionItem
-                key={i.id}
-                initiative={i}
-                detail={<StatusBadge status={i.status} />}
-                onClick={() => goTo(i.id)}
-              />
-            ))}
-          </AttentionGroup>
         </div>
       </div>
 
@@ -540,7 +466,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Pipeline Distribution</CardTitle>
+            <CardTitle className="text-base">Initiative Status Distribution</CardTitle>
           </CardHeader>
           <CardContent>
             {pipelineData.length === 0 ? (
@@ -651,6 +577,8 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      </>)}
 
       <div className="flex justify-end">
         <Link href="/initiatives">
