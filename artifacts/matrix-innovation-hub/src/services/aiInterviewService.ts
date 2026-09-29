@@ -107,6 +107,12 @@ export interface InterviewDraft {
 // agnostic to how many questions were asked or in what order.
 export type AnswerMap = Record<string, string>;
 
+// Completion arrives after the final answer was submitted. The review button
+// must not replace that answer with the now-empty/disabled composer.
+export function answersForReview(answers: AnswerMap, questionId: string, input: string, readyToReview: boolean): AnswerMap {
+  return readyToReview ? answers : { ...answers, [questionId]: input.trim() };
+}
+
 // Lightweight description of the detected initiative category, passed in by the
 // engine so the scoring/draft heuristics can factor it in.
 export interface CategorySignal {

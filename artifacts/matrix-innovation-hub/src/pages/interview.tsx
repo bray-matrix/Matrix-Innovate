@@ -12,6 +12,7 @@ import {
   computeScore,
   derivePriority,
   validateInitiativeDraft,
+  answersForReview,
   REQUIRED_INITIATIVE_FIELDS,
   type InterviewDraft,
   type InterviewQuestion,
@@ -38,6 +39,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { RULE_ENGINE_SOURCE_LABEL } from "@/lib/aiSource";
 import { fetchSessionUser } from "@/lib/matrix-platform";
+import { withBase } from "@/lib/base-path";
 import { InterviewJiraPicker, type JiraIntakeContext } from "@/components/interview-jira-picker";
 import {
   Bot,
@@ -53,6 +55,24 @@ import {
 } from "lucide-react";
 
 const DRAFT_KEY = "matrix-interview-draft-v2";
+const MAX_QUESTIONS = 12;
+interface AIInterviewResult {
+  knownFacts: { category: string; value: string; evidence: string; source: "user" | "jira" }[];
+  inferredSuggestions: string[];
+  unknowns: string[];
+  nextQuestion: string;
+  interviewComplete: boolean;
+  suggestedInitiativeType: string;
+  suggestedTitle: string;
+  draft: {
+    problemStatement: string;
+    currentProcess: string;
+    desiredOutcome: string;
+    expectedValue: string;
+    successMetric: string;
+    risks: string;
+  };
+}
 
 interface ChatMessage {
   role: "ai" | "user";
@@ -96,6 +116,9 @@ export default function AIInnovationInterview() {
   const [isTyping, setIsTyping] = useState(false);
   const [draft, setDraft] = useState<InterviewDraft | null>(null);
   const [detection, setDetection] = useState<CategoryDetection | null>(null);
+  const [aiResult, setAiResult] = useState<AIInterviewResult | null>(null);
+  const [fallback, setFallback] = useState(false);
+  const [readyToReview, setReadyToReview] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const startedRef = useRef(false);
@@ -132,6 +155,10 @@ export default function AIInnovationInterview() {
           currentIndex?: number;
           jira?: JiraIntakeContext | null;
           jiraChoice?: boolean;
+          plan?: InterviewQuestion[];
+          fallback?: boolean;
+          aiResult?: AIInterviewResult | null;
+          readyToReview?: boolean;
         };
         if (parsed.jiraChoice) setPhase("chat");
         if (parsed.jira) setJira(parsed.jira);
@@ -139,13 +166,16 @@ export default function AIInnovationInterview() {
           resumed = !!parsed.jiraChoice;
           if (!resumed) return;
           const savedAnswers = parsed.answers;
-          const resumedPlan = interviewEngine.planQuestions(savedAnswers);
+          const resumedPlan = parsed.plan?.length ? parsed.plan : interviewEngine.planQuestions(savedAnswers);
           const idx = Math.min(
             Math.max(0, parsed.currentIndex ?? 0),
             resumedPlan.length - 1,
           );
           setAnswers(savedAnswers);
           setPlan(resumedPlan);
+          setFallback(!!parsed.fallback);
+          setAiResult(parsed.aiResult ?? null);
+          setReadyToReview(!!parsed.readyToReview);
           setCurrentIndex(idx);
           if ((savedAnswers.idea ?? "").trim().length > 0) {
             setDetection(interviewEngine.classify(savedAnswers));
@@ -179,15 +209,15 @@ export default function AIInnovationInterview() {
   }, [toast]);
 
   const totalQuestions = plan.length;
-  const isLastQuestion = currentIndex === totalQuestions - 1;
+  const isLastQuestion = readyToReview || (fallback && currentIndex === totalQuestions - 1);
   const currentQuestion = plan[currentIndex];
   const canSubmitAnswer = input.trim().length > 0 || currentQuestion?.id !== "idea";
 
-  const persistDraft = (nextAnswers: AnswerMap, nextIndex: number) => {
+  const persistDraft = (nextAnswers: AnswerMap, nextIndex: number, nextPlan = plan, usingFallback = fallback) => {
     try {
       localStorage.setItem(
         DRAFT_KEY,
-        JSON.stringify({ answers: nextAnswers, currentIndex: nextIndex, jira, jiraChoice: true }),
+        JSON.stringify({ answers: nextAnswers, currentIndex: nextIndex, plan: nextPlan, fallback: usingFallback, aiResult: usingFallback ? null : aiResult, readyToReview, jira, jiraChoice: true }),
       );
     } catch {
       /* ignore quota errors */
@@ -202,6 +232,9 @@ export default function AIInnovationInterview() {
     setAnswers(initialAnswers);
     setPlan(initialPlan);
     setCurrentIndex(0);
+    setFallback(false);
+    setReadyToReview(false);
+    setAiResult(null);
     setMessages([
       { role: "ai", text: interviewEngine.getIntro() },
       ...(item ? [{ role: "ai" as const, text: `I found ${item.jiraIssueKey}: ${item.summary}. ${item.description?.trim() ? "I have its description too, so we can focus on what is missing." : "Let's add the business context that's missing."}` }] : []),
@@ -218,6 +251,9 @@ export default function AIInnovationInterview() {
     if (!trimmed && currentQuestion.id === "idea") return;
 
     const nextAnswers: AnswerMap = { ...answers, [currentQuestion.id]: trimmed };
+    if (currentQuestion.id.startsWith("ai_") && trimmed) {
+      nextAnswers.aiContext = [answers.aiContext, `${currentQuestion.prompt}: ${trimmed}`].filter(Boolean).join("\n");
+    }
     setAnswers(nextAnswers);
 
     setMessages((prev) => [
@@ -226,35 +262,82 @@ export default function AIInnovationInterview() {
     ]);
     setInput("");
 
-    // Re-plan and re-classify: the detected category (and therefore the
-    // follow-up questions) can change as new answers come in.
     const newDetection = interviewEngine.classify(nextAnswers);
     setDetection(newDetection);
+    const nextIndex = currentIndex + 1;
+    setIsTyping(true);
+    if (!fallback) {
+      try {
+        const turns = plan.slice(0, nextIndex).map(q => ({
+          question: q.prompt, answer: nextAnswers[q.id] ?? "",
+        }));
+        const response = await fetch(withBase("/api/interview/advance"), {
+          method: "POST", credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ turns, jira: jira ? { summary: jira.summary, description: jira.description ?? "" } : null }),
+        });
+        if (!response.ok) throw new Error("Interview service unavailable");
+        const result = await response.json() as AIInterviewResult;
+        if (typeof result.interviewComplete !== "boolean" ||
+          !Array.isArray(result.knownFacts) || !Array.isArray(result.inferredSuggestions) ||
+          (!result.interviewComplete && !result.nextQuestion?.trim())) throw new Error("Invalid interview response");
+        setAiResult(result);
+        if (result.interviewComplete || nextIndex >= MAX_QUESTIONS) {
+          setReadyToReview(true);
+          setMessages(prev => [...prev, { role: "ai", text: "Looks like I have enough to draft this initiative." }]);
+          setIsTyping(false);
+          try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ answers: nextAnswers, currentIndex, plan, jira, jiraChoice: true, fallback: false, aiResult: result, readyToReview: true })); } catch { /* storage unavailable */ }
+          return;
+        }
+        const nextQuestion = { id: `ai_${nextIndex}`, prompt: result.nextQuestion, hint: "A rough answer is fine. You can also skip what you don't know.", placeholder: "Share what you know..." };
+        const nextPlan = [...plan.slice(0, nextIndex), nextQuestion];
+        setPlan(nextPlan);
+        setMessages(prev => [...prev, { role: "ai", text: nextQuestion.prompt }]);
+        setCurrentIndex(nextIndex);
+        setIsTyping(false);
+        try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ answers: nextAnswers, currentIndex: nextIndex, plan: nextPlan, jira, jiraChoice: true, fallback: false, aiResult: result, readyToReview: false })); } catch { /* storage unavailable */ }
+        return;
+      } catch {
+        setFallback(true);
+        setAiResult(null);
+        setMessages(prev => [...prev, { role: "ai", text: "The guided assistant is temporarily unavailable. We'll continue with the standard interview." }]);
+      }
+    }
     const newPlan = interviewEngine.planQuestions(nextAnswers);
     setPlan(newPlan);
-
-    const nextIndex = currentIndex + 1;
-    if (nextIndex >= newPlan.length) {
-      persistDraft(nextAnswers, currentIndex);
-      await runProcessing(nextAnswers, newPlan);
+    // AI questions are not positions in the rule engine's plan. Resume at the
+    // first unanswered rule question, retaining AI answers for the final draft.
+    const fallbackIndex = fallback ? Math.min(nextIndex, newPlan.length) :
+      newPlan.findIndex(q => !nextAnswers[q.id]?.trim() && !plan.slice(0, nextIndex).some(asked => asked.id === q.id));
+    if (fallbackIndex < 0 || fallbackIndex >= newPlan.length) {
+      setIsTyping(false);
+      persistDraft(nextAnswers, currentIndex, newPlan, true);
+      await runProcessing(nextAnswers, newPlan, false);
       return;
     }
 
-    persistDraft(nextAnswers, nextIndex);
-    setIsTyping(true);
-
+    persistDraft(nextAnswers, fallbackIndex, newPlan, true);
     const ack = await interviewEngine.acknowledge(currentIndex);
     setMessages((prev) => [...prev, { role: "ai", text: ack }]);
     await new Promise((r) => setTimeout(r, 450));
-    const nextQuestion = newPlan[nextIndex];
+    const nextQuestion = newPlan[fallbackIndex];
     setMessages((prev) => [...prev, { role: "ai", text: nextQuestion.prompt }]);
     setIsTyping(false);
-    setCurrentIndex(nextIndex);
+    setCurrentIndex(fallbackIndex);
     setInput(nextAnswers[nextQuestion.id] ?? "");
   };
 
   const handleBack = () => {
     if (isTyping || currentIndex === 0) return;
+    if (!fallback) {
+      const prevIndex = currentIndex - 1;
+      setCurrentIndex(prevIndex);
+      setReadyToReview(false);
+      setAiResult(null);
+      setInput(answers[plan[prevIndex].id] ?? "");
+      setMessages(prev => prev.slice(0, -2));
+      return;
+    }
     const nextAnswers: AnswerMap = {
       ...answers,
       [currentQuestion.id]: input.trim(),
@@ -298,22 +381,39 @@ export default function AIInnovationInterview() {
   const runProcessing = async (
     finalAnswers: AnswerMap,
     finalPlan: InterviewQuestion[],
+    useAI = !fallback,
   ) => {
     setPhase("processing");
     const answerMap = buildAnswerMap(finalPlan, finalAnswers);
+    if (finalAnswers.aiContext) answerMap.notes = [answerMap.notes, finalAnswers.aiContext].filter(Boolean).join("\n");
     const result = await interviewEngine.generateDraft(answerMap, finalPlan);
+    if (aiResult && useAI) {
+      const business = aiResult.draft;
+      result.fields.title = aiResult.suggestedTitle.trim() || result.fields.title;
+      result.fields.problemStatement = business.problemStatement.trim() || result.fields.problemStatement;
+      result.fields.currentProcess = business.currentProcess.trim() || result.fields.currentProcess;
+      result.fields.desiredOutcome = business.desiredOutcome.trim() || result.fields.desiredOutcome;
+      result.fields.successMetric = business.successMetric.trim() || result.fields.successMetric;
+      result.canvas.problem = result.fields.problemStatement;
+      result.canvas.currentProcess = result.fields.currentProcess;
+      result.canvas.desiredOutcome = result.fields.desiredOutcome;
+      result.canvas.successMetric = result.fields.successMetric;
+      result.canvas.expectedValue = business.expectedValue.trim() || "Value not yet quantified";
+      result.canvas.risks = business.risks.trim();
+      result.executiveSummary = `${result.fields.title} addresses: ${result.fields.problemStatement}. ${result.fields.desiredOutcome ? `Desired outcome: ${result.fields.desiredOutcome}.` : ""} ${result.canvas.expectedValue}.`;
+      result.canvas.executiveSummary = result.executiveSummary;
+    }
     setDraft(result);
     setPhase("review");
   };
 
   const handleFinish = async () => {
     if (isTyping) return;
-    const nextAnswers: AnswerMap = {
-      ...answers,
-      [currentQuestion.id]: input.trim(),
-    };
+    // A completed AI turn was already saved and the disabled input is empty.
+    // Do not replace its answer when moving to review.
+    const nextAnswers = answersForReview(answers, currentQuestion.id, input, readyToReview);
     setAnswers(nextAnswers);
-    const finalPlan = interviewEngine.planQuestions(nextAnswers);
+    const finalPlan = fallback ? interviewEngine.planQuestions(nextAnswers) : plan;
     setPlan(finalPlan);
     persistDraft(nextAnswers, currentIndex);
     await runProcessing(nextAnswers, finalPlan);
@@ -328,6 +428,7 @@ export default function AIInnovationInterview() {
     return (
       <ReviewDraft
         draft={draft}
+        aiResult={!fallback ? aiResult : null}
         jira={jira}
         submitterName={submitterName}
         departments={settings?.departments ?? []}
@@ -405,14 +506,14 @@ export default function AIInnovationInterview() {
           Structuring your initiative
         </h2>
         <p className="text-muted-foreground mt-2 max-w-md">
-          Applying {RULE_ENGINE_SOURCE_LABEL} to structure your answers and calculate an initial Innovation Score.
+          Structuring your answers and calculating an initial Innovation Score.
         </p>
       </div>
     );
   }
 
   // -------- Chat interview --------
-  const progressValue = (currentIndex / totalQuestions) * 100;
+  const progressValue = readyToReview ? 100 : Math.min(95, ((currentIndex + 1) / MAX_QUESTIONS) * 100);
 
   return (
     <div className="max-w-3xl mx-auto flex flex-col h-[calc(100dvh-8rem)]">
@@ -426,12 +527,11 @@ export default function AIInnovationInterview() {
             A guided conversation that adapts to your idea and turns it into a
             scored initiative.
           </p>
-          <p className="text-xs text-muted-foreground">Adaptive questions and draft: {RULE_ENGINE_SOURCE_LABEL}. No AI model is used.</p>
+           <p className="text-xs text-muted-foreground">Guided interview that builds on what you tell us.{fallback ? " Standard guided questions are in use for now." : ""}</p>
         </div>
         <div className="text-right min-w-[9rem]">
           <div className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">
-            Question {Math.min(currentIndex + 1, totalQuestions)} of{" "}
-            {totalQuestions}
+             {readyToReview ? "Ready to review" : `Business context · ${currentIndex + 1} ${currentIndex === 0 ? "answer" : "answers"}`}
           </div>
           <Progress value={progressValue} className="h-2 mt-2 w-36" />
         </div>
@@ -452,13 +552,14 @@ export default function AIInnovationInterview() {
         </div>
 
         <div className="border-t bg-muted/20 p-4 space-y-3 shrink-0">
-      {!isLastQuestion && currentQuestion?.hint && (
+       {currentQuestion?.hint && !readyToReview && (
             <p className="text-xs text-muted-foreground px-1">
               {currentQuestion.hint}
             </p>
           )}
           <Textarea
             value={input}
+            maxLength={1000}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
               if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
@@ -469,7 +570,7 @@ export default function AIInnovationInterview() {
             }}
             placeholder={currentQuestion?.placeholder}
             className="min-h-[80px] resize-none bg-background"
-            disabled={isTyping}
+             disabled={isTyping || readyToReview}
           />
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
@@ -491,7 +592,7 @@ export default function AIInnovationInterview() {
               </Button>
             </div>
             <div className="flex items-center gap-2">
-              {!isLastQuestion ? (
+               {!isLastQuestion ? (
                 <Button onClick={handleNext} disabled={!canSubmitAnswer || isTyping}>
                    {input.trim() ? "Next" : "Skip / Not known yet"} <ArrowRight className="ml-1 h-4 w-4" />
                 </Button>
@@ -505,8 +606,8 @@ export default function AIInnovationInterview() {
                   >
                     <Send className="mr-1 h-4 w-4" /> Send
                   </Button>
-                  <Button onClick={handleFinish} disabled={isTyping}>
-                    <CheckCircle2 className="mr-1 h-4 w-4" /> Finish Interview
+                   <Button onClick={handleFinish} disabled={isTyping}>
+                     <CheckCircle2 className="mr-1 h-4 w-4" /> Review Initiative
                   </Button>
                 </>
               )}
@@ -578,6 +679,7 @@ function TypingIndicator() {
 // ------------------------------------------------------------------
 interface ReviewProps {
   draft: InterviewDraft;
+  aiResult: AIInterviewResult | null;
   jira: JiraIntakeContext | null;
   submitterName: string;
   departments: string[];
@@ -590,6 +692,7 @@ interface ReviewProps {
 
 function ReviewDraft({
   draft,
+  aiResult,
   jira,
   submitterName,
   departments,
@@ -600,6 +703,8 @@ function ReviewDraft({
   onSave,
 }: ReviewProps) {
   const [fields, setFields] = useState<InitiativeDraftFields>({ ...draft.fields, submitterName: submitterName || draft.fields.submitterName });
+  const [expectedValue, setExpectedValue] = useState(draft.canvas.expectedValue);
+  const [considerations, setConsiderations] = useState(draft.canvas.risks);
   const [scoring, setScoring] = useState<ScoringComponents>(draft.scoring);
   const [errors, setErrors] = useState<Partial<Record<keyof InitiativeDraftFields, string>>>({});
   useEffect(() => {
@@ -636,7 +741,14 @@ function ReviewDraft({
       });
       return;
     }
-    onSave(fields, scoring);
+    onSave({
+      ...fields,
+      desiredOutcome: [
+        fields.desiredOutcome,
+        expectedValue.trim() ? `Expected business value (estimate for review): ${expectedValue.trim()}` : "",
+        considerations.trim() ? `Risks / considerations (to validate): ${considerations.trim()}` : "",
+      ].filter(Boolean).join("\n\n"),
+    }, scoring);
   };
 
   const positiveFields: {
@@ -680,7 +792,7 @@ function ReviewDraft({
               Executive Summary
             </CardTitle>
             <span className="text-xs opacity-75">
-              Source: {RULE_ENGINE_SOURCE_LABEL}
+               Draft for your review · scoring: {RULE_ENGINE_SOURCE_LABEL}
             </span>
           </div>
         </CardHeader>
@@ -694,7 +806,7 @@ function ReviewDraft({
           <Sparkles className="h-5 w-5 text-secondary" />
           <h3 className="text-lg font-bold">Innovation Canvas</h3>
           <span className="text-xs text-muted-foreground">
-            Drafted from your answers by {RULE_ENGINE_SOURCE_LABEL}.
+             Drafted from your interview.
             Review and refine the initiative fields below before saving.
           </span>
         </div>
@@ -725,6 +837,46 @@ function ReviewDraft({
           ))}
         </div>
       </div>
+
+      {aiResult && (
+        <Card>
+          <CardHeader><CardTitle className="text-lg">What we heard</CardTitle></CardHeader>
+          <CardContent className="grid gap-4 md:grid-cols-2 text-sm">
+            <div>
+              <h4 className="font-semibold">Supplied by you or Jira</h4>
+              <ul className="list-disc pl-5 space-y-1 mt-2">
+                {aiResult.knownFacts.map((fact, i) => (
+                  <li key={i}>{fact.value} <span className="text-muted-foreground">({fact.source === "jira" ? "Jira" : "your answers"})</span></li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold">Ideas to consider, not established facts</h4>
+              <ul className="list-disc pl-5 space-y-1 mt-2">
+                {aiResult.inferredSuggestions.map((item, i) => <li key={i}>{item}</li>)}
+              </ul>
+              {!!aiResult.unknowns.length && <p className="mt-3 text-muted-foreground">Not yet known: {aiResult.unknowns.join("; ")}</p>}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {aiResult && (
+        <Card>
+          <CardHeader><CardTitle className="text-lg">Expected value and considerations</CardTitle></CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">These draft notes are not established facts. Edit or remove them before saving; they will be included with the desired outcome.</p>
+            <div className="space-y-2">
+              <Label htmlFor="review-expectedValue">Expected business value</Label>
+              <Textarea id="review-expectedValue" value={expectedValue} onChange={e => setExpectedValue(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="review-considerations">Risks / considerations</Label>
+              <Textarea id="review-considerations" value={considerations} onChange={e => setConsiderations(e.target.value)} />
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">

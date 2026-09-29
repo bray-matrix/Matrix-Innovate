@@ -152,7 +152,7 @@ function envelope(
     reportKey: key,
     title: entry.title,
     generatedAt: new Date().toISOString(),
-    appName: "Matrix Innovation Hub",
+    appName: "Innovation Hub",
     appVersion: APPLICATION_VERSION,
     scopeLabel,
     sections,

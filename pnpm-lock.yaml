@@ -172,6 +172,9 @@ importers:
       '@workspace/db':
         specifier: workspace:*
         version: link:../../lib/db
+      '@workspace/matrix-sdk':
+        specifier: file:../../vendor/workspace-matrix-sdk-1.2.0.tgz
+        version: file:vendor/workspace-matrix-sdk-1.2.0.tgz
       cookie-parser:
         specifier: ^1.4.7
         version: 1.4.7
@@ -196,6 +199,9 @@ importers:
       pino-http:
         specifier: ^10.5.0
         version: 10.5.0
+      zod:
+        specifier: ^3.25.76
+        version: 3.25.76
     devDependencies:
       '@types/cookie-parser':
         specifier: ^1.4.10
@@ -1728,6 +1734,10 @@ packages:
     engines: {node: ^20.19.0 || >=22.12.0}
     peerDependencies:
       vite: ^4.2.0 || ^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0
+
+  '@workspace/matrix-sdk@file:vendor/workspace-matrix-sdk-1.2.0.tgz':
+    resolution: {integrity: sha512-A9IfXC8znyMKToQodv4fQtnCdbW9Qg5urbwL6/auDDV7HZWwjakZnh8pfrtdnPdf90V532ils9ANWWTi+NCUbA==, tarball: file:vendor/workspace-matrix-sdk-1.2.0.tgz}
+    version: 1.2.0
 
   accepts@2.0.0:
     resolution: {integrity: sha512-5cvg6CtKwfgdmVqY1WIiXKc3Q1bkRqGLi+2W/6ao+6Y7gu/RCwRuAhGEzh5B4KlszSuTLgZYuqFqo5bImjNKng==}
@@ -4469,6 +4479,11 @@ snapshots:
       vite: 7.3.5(@types/node@25.9.4)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4)(yaml@2.9.0)
     transitivePeerDependencies:
       - supports-color
+
+  '@workspace/matrix-sdk@file:vendor/workspace-matrix-sdk-1.2.0.tgz':
+    dependencies:
+      jose: 6.2.3
+      zod: 3.25.76
 
   accepts@2.0.0:
     dependencies:

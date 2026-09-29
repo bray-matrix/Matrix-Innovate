@@ -14,6 +14,7 @@ import resourcesRouter from "./resources";
 import reportsRouter from "./reports";
 import jiraRouter from "./jira";
 import jiraLinksRouter from "./jira-links";
+import interviewAiRouter from "./interview-ai";
 
 const router: IRouter = Router();
 
@@ -32,5 +33,6 @@ router.use(resourcesRouter);
 router.use(reportsRouter);
 router.use(jiraRouter);
 router.use(jiraLinksRouter);
+router.use(interviewAiRouter);
 
 export default router;

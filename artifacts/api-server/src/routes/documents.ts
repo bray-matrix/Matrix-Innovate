@@ -3,7 +3,7 @@ import { Router, type IRouter } from "express";
 const router: IRouter = Router();
 
 const DOCUMENTS = [
-  { id: 1, title: "Matrix Innovation Hub Charter" },
+  { id: 1, title: "Innovation Hub Charter" },
   { id: 2, title: "AI Opportunity Playbook" },
   { id: 3, title: "AI Innovation Office Operating Manual" },
   { id: 4, title: "AI Project Lifecycle" },

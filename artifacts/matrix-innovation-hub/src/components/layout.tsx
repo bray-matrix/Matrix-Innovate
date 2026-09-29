@@ -104,7 +104,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   ];
 
   const displayName = user.name ?? user.email ?? user.sub ?? "";
-  const currentLabel = navGroups.flatMap(g => g.items).find(i => i.href === location)?.label || "Matrix Innovation Hub";
+  const currentLabel = navGroups.flatMap(g => g.items).find(i => i.href === location)?.label || "Innovation Hub";
 
   return (
     <SidebarProvider>
@@ -112,7 +112,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <Sidebar variant="sidebar" collapsible="icon" className="border-r">
           <SidebarHeader className="min-h-28 flex-row items-start justify-between gap-1 px-5 pt-7 pb-3 border-b border-sidebar-border group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
             <div className="min-w-0 group-data-[collapsible=icon]:hidden">
-              <Link href="/" data-testid="link-brand" aria-label="Matrix Innovation Hub home" className="flex flex-col items-start gap-2 min-w-0 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring">
+              <Link href="/" data-testid="link-brand" aria-label="Innovation Hub home" className="flex flex-col items-start gap-2 min-w-0 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring">
                 <img src={withBase("/matrix-wordmark.png")} alt="Matrix" width={98} height={24} className="h-6 w-auto" />
                 <span className="text-[10px] font-semibold tracking-[0.28em] uppercase text-sidebar-foreground/90 whitespace-nowrap">Innovation Hub</span>
               </Link>

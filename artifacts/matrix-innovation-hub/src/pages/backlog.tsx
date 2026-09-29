@@ -287,7 +287,7 @@ function BacklogItemDialog({
           <DialogDescription>
             {editing
               ? "Update the details of this product backlog item."
-              : "Capture a feature, enhancement, bug, or idea for Matrix Innovation Hub itself."}
+              : "Capture a feature, enhancement, bug, or idea for Innovation Hub itself."}
           </DialogDescription>
         </DialogHeader>
 
@@ -954,7 +954,7 @@ export default function ProductBacklogPage() {
       <div className="flex flex-col gap-1">
         <h1 className="text-2xl font-bold tracking-tight">Product Backlog</h1>
         <p className="text-muted-foreground">
-          Matrix Innovation Hub manages its own evolution here — features,
+          Innovation Hub manages its own evolution here — features,
           fixes, technical debt, and parked ideas.
         </p>
       </div>

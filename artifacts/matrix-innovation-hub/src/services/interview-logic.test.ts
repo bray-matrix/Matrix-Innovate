@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { interviewEngine } from "./interviewEngine";
 import {
-  buildDraft, computeScore, toTitle, validateInitiativeDraft,
+  answersForReview, buildDraft, computeScore, toTitle, validateInitiativeDraft,
   type InitiativeDraftFields,
 } from "./aiInterviewService";
 
@@ -55,4 +55,10 @@ test("unknown impact does not manufacture monetary value; negative penalties sta
   assert.equal(draft.canvas.expectedValue, "Value not yet quantified.");
   assert.ok(draft.scoring.technicalComplexityPenalty < 0);
   assert.equal(computeScore(draft.scoring), draft.score);
+});
+
+test("completed AI interview preserves the final submitted answer through review", () => {
+  const answers = { idea: "Improve requests", ai_1: "The client is affected" };
+  assert.deepEqual(answersForReview(answers, "ai_1", "", true), answers);
+  assert.equal(answersForReview(answers, "ai_1", "Updated answer", false).ai_1, "Updated answer");
 });

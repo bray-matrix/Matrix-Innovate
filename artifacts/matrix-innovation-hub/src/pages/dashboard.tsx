@@ -319,7 +319,7 @@ export default function Dashboard() {
       <section className="bg-primary text-primary-foreground rounded-xl shadow-lg overflow-hidden" data-testid="section-front-door">
         <div className="p-6 md:p-8 grid gap-6 lg:grid-cols-[1.1fr_1fr] items-start">
           <div>
-            <p className="text-xs font-semibold tracking-[0.18em] text-[#FFC72C] uppercase">Matrix Innovation Hub</p>
+            <p className="text-xs font-semibold tracking-[0.18em] text-[#FFC72C] uppercase">Innovation Hub</p>
             <h2 className="mt-2 text-2xl md:text-3xl font-bold tracking-tight">Have an idea? Start here.</h2>
             <p className="mt-2 text-primary-foreground/80 max-w-xl">
               Bring an idea, problem, client request, or improvement. We help shape it, review it, and turn the best ones into real projects.
