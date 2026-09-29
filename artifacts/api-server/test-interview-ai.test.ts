@@ -191,3 +191,94 @@ test("route refuses malformed and over-budget context before Platform inference"
   assert.equal(buildInterviewMessages(overBudget), null);
   assert.equal((await post(overBudget)).status, 400);
 });
+
+test("production regression A/B: bounded fact evidence/value is normalized without truncating assertions", async () => {
+  const quote = "A".repeat(400);
+  const input = make([`${quote} Further detail.`]);
+  const result = await advanceInterview(input, success({
+    ...output(input), knownFacts: [
+      { category: "problem", evidence: `  ${quote}  `, value: `  ${quote}  `, source: "user" },
+      { category: "impact", evidence: `${quote} Further detail.`, value: `${quote} Further detail.`, source: "user" },
+    ],
+  }));
+  assert.equal(result?.knownFacts.length, 1, "oversized optional quote is dropped, not cut mid-claim");
+  assert.equal(result?.knownFacts[0].evidence, quote);
+  assert.equal(result?.knownFacts[0].value, quote);
+  const largeValue = await advanceInterview(input, success({
+    ...output(input), knownFacts: [
+      { category: "problem", evidence: quote, value: "X".repeat(701), source: "user" },
+    ],
+  }));
+  assert.deepEqual(largeValue?.knownFacts, [], "oversized value cannot leak into known facts");
+  const boundary = await advanceInterview(input, success({
+    ...output(input), knownFacts: [
+      { category: "problem", evidence: quote, value: quote, source: "user" },
+    ],
+  }));
+  assert.equal(boundary?.knownFacts[0].evidence.length, 400);
+});
+
+test("production regression B: oversized optional collections and prose cannot rewrite or persist claims", async () => {
+  const input = make(["Manual handoffs cause delays."]);
+  const raw = output(input);
+  raw.inferredSuggestions = [...Array.from({ length: 13 }, () => "Consider routing improvements"), "X".repeat(501)];
+  raw.unknowns = [...Array.from({ length: 16 }, () => "Impact unknown"), "X".repeat(201)];
+  raw.draft.problemStatement = `${"Manual handoffs cause delays. ".repeat(110)}but there is no delay.`;
+  const result = await advanceInterview(input, success(raw));
+  assert.equal(result?.inferredSuggestions.length, 12);
+  assert.equal(result?.unknowns.length, 15);
+  assert.equal(result?.draft.problemStatement, "", "a truncated prefix would misstate the assertion");
+});
+
+test("production regression C/D/E: invalid types are rejected; retry carries specific constraint and recovers", async () => {
+  const input = make(["Manual handoffs cause delays."]);
+  const invalid = { ...output(input), nextQuestion: "What effect does this have?".repeat(30) };
+  let calls = 0;
+  const failures: { path?: string; constraint?: string; retry?: boolean }[] = [];
+  const recovered = await advanceInterview(input, async request => {
+    calls++;
+    if (calls === 2) {
+      assert.match(request.instruction, /nextQuestion \(too_big:string:600\)/);
+      assert.ok(request.instruction.length + request.messages.reduce((n, m) => n + m.content.length, 0) <= 24000);
+    }
+    return { data: calls === 1 ? invalid : output(input) };
+  }, (_attempt, _category, details) => { failures.push(details ?? {}); });
+  assert.equal(calls, 2);
+  assert.equal(recovered?.nextQuestion, output(input).nextQuestion);
+  assert.deepEqual(failures, [{ path: "nextQuestion", constraint: "too_big:string:600", retry: true }].map(
+    expected => ({ ...expected, durationMs: failures[0].durationMs })));
+
+  calls = 0;
+  const malformed = { ...output(input), knownFacts: [{ category: "problem", evidence: 123, value: "claim", source: "user" }] };
+  assert.equal(await advanceInterview(input, async request => {
+    calls++;
+    if (calls === 2) assert.match(request.instruction, /knownFacts\[0\]\.evidence \(invalid_type\)/);
+    return { data: malformed };
+  }), null);
+  assert.equal(calls, 2);
+});
+
+test("production regression F: repeated local validation failure has exactly one feedback retry then fallback", async () => {
+  const input = make(["Manual handoffs cause delays."]);
+  let calls = 0;
+  const retry: boolean[] = [];
+  const invalid = { ...output(input), knownFacts: [{ category: "problem", evidence: false, value: "claim", source: "user" }] };
+  const result = await advanceInterview(input, async request => {
+    calls++;
+    if (calls === 2) assert.match(request.instruction, /knownFacts\[0\]\.evidence \(invalid_type\)/);
+    return { data: invalid };
+  }, (_attempt, _category, details) => retry.push(details!.retry));
+  assert.equal(result, null);
+  assert.equal(calls, 2);
+  assert.deepEqual(retry, [true, false]);
+});
+
+test("K: instruction prefers one primary question without making the interview rigid", async () => {
+  const input = make(["We need a better process."]);
+  await advanceInterview(input, async request => {
+    assert.match(request.instruction, /one primary ask per turn/i);
+    assert.match(request.instruction, /do not stack independent questions/i);
+    assert.match(request.instruction, /natural and adaptive/i);
+    return { data: output(input) };
+  });
+});

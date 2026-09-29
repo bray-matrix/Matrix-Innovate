@@ -593,6 +593,52 @@ function planQuestions(answers: AnswerMap): InterviewQuestion[] {
   return plan;
 }
 
+// Only user-supplied statements are evidence. This bridge is intentionally
+// conservative: it does not turn "regularly" into a numerical estimate, nor
+// treat an AI suggestion as a user answer. Keep the original wording as the
+// value so the final draft can retain its source.
+export function mapConversationToFallback(
+  answers: AnswerMap,
+  turns: { question: string; answer: string }[],
+): AnswerMap {
+  const mapped = { ...answers };
+  const unknown = /^(?:skip(?:ped)?|unknown|not (?:sure|known|yet)|(?:i |we )?don'?t know|n\/a|none|nothing to add)$/i;
+  const signals: { id: string; answer: RegExp; question: RegExp }[] = [
+    { id: "frequency", answer: /\b(?:regularly|frequently|often|occasionally|rarely|sometimes|daily|weekly|monthly|annually|every\s+(?:day|week|month|year)|\d[\d,]*\s*(?:times?|requests?|cases?|issues?)\s*(?:per|a|each|\/)\s*(?:day|week|month|year))\b/i, question: /\b(?:how often|frequency|how many times)\b/i },
+    { id: "problem", answer: /\b(?:currently|today|right now|at present|manual(?:ly)?|we (?:use|handle|track|rely)|(?:team|staff|employees?|users?|customers?|clients?)\s+(?:use|handle|track|wait|spend|are affected))\b/i, question: /\b(?:current|today|process|who|teams?|users?|affected|work)\b/i },
+    { id: "category_detail", answer: /\b(?:handoff|bottleneck|delays?|slow|errors?|rework|manual|waiting|approvals?|steps?|workflow|teams?|customers?|users?)\b/i, question: /\b(?:steps?|effort|delays?|quality|customer experience|teams?|work slow|obligation|risk|outcome|learn)\b/i },
+    { id: "success", answer: /\b(?:want|would like|aim|goal|improve|reduce|faster|better|increase|decrease|so that|should be able)\b/i, question: /\b(?:desired|outcome|success|better|improv|goal)\b/i },
+    { id: "loss", answer: /\b(?:impact|cost|lost|delay|time|hours?|revenue|quality|errors?|customers?|risk|compliance|missed)\b/i, question: /\b(?:impact|cost|value|loss|consequence)\b/i },
+    { id: "deadline", answer: /\b(?:deadline|by (?:next|the end|[A-Z][a-z]+|\d)|before|urgent|this quarter|next quarter)\b/i, question: /\b(?:deadline|when|timing|urgency|act now)\b/i },
+    { id: "notes", answer: /\b(?:constraint|risk|depend|require|must|cannot|can't|privacy|security|compliance)\b/i, question: /\b(?:constraint|risk|requirement|limitation)\b/i },
+  ];
+  const explicitFact: Partial<Record<string, RegExp>> = {
+    problem: /\b(?:our|the)\s+(?:team|staff|employees?|users?|customers?|clients?)\b.{0,80}\b(?:manual(?:ly)?|currently|today|wait|use|handle|track)\b/i,
+    category_detail: /\b(?:handoffs?|approvals?|bottlenecks?)\b.{0,80}\b(?:delay|slow|take|rework|repeat)\b/i,
+    loss: /\b(?:causes?|results? in|leads? to)\b.{0,80}\b(?:delays?|cost|lost|errors?|risks?|missed)\b/i,
+  };
+  for (const { question, answer } of turns) {
+    const evidence = answer.trim();
+    if (!evidence || unknown.test(evidence) || evidence === "(nothing to add)") continue;
+    for (const signal of signals) {
+      if (!mapped[signal.id]?.trim() &&
+        signal.answer.test(evidence) &&
+        (signal.id === "frequency" || signal.question.test(question) ||
+          explicitFact[signal.id]?.test(evidence) ||
+          // An explicit fact in a different answer also counts, but generic
+          // words alone do not establish that a domain was discussed.
+          (signal.id === "notes" && /\b(?:constraint|risk|require|must|cannot|can't)\b/i.test(evidence)))) {
+        mapped[signal.id] = evidence;
+      }
+    }
+  }
+  return mapped;
+}
+
+export function nextFallbackQuestion(plan: InterviewQuestion[], answers: AnswerMap): number {
+  return plan.findIndex(q => !answers[q.id]?.trim());
+}
+
 export const interviewEngine: InterviewEngine = {
   getIntro(): string {
     return (

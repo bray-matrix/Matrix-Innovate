@@ -43,6 +43,25 @@ const schema: AiRequest["schema"] = {
   additionalProperties: false,
 };
 
+// SDK's closed schema supports shapes/enums but not string or collection bounds.
+// Validate the whole shape before limiting optional collections: slicing first
+// could hide a malformed item outside the retained range.
+const structuralSchema = z.object({
+  knownFacts: z.array(z.object({
+    category: z.string(), value: z.string(), evidence: z.string(), source: z.enum(["user", "jira"]),
+  }).strict()),
+  inferredSuggestions: z.array(z.string()),
+  unknowns: z.array(z.string()),
+  nextQuestion: z.string(),
+  interviewComplete: z.boolean(),
+  suggestedInitiativeType: z.string(),
+  suggestedTitle: z.string(),
+  draft: z.object({
+    problemStatement: z.string(), currentProcess: z.string(), desiredOutcome: z.string(),
+    expectedValue: z.string(), successMetric: z.string(), risks: z.string(),
+  }).strict(),
+}).strict();
+
 const outputSchema = z.object({
   knownFacts: z.array(z.object({
     category: z.string().max(100), value: z.string().min(1).max(700),
@@ -64,7 +83,43 @@ const outputSchema = z.object({
   }).strict(),
 }).strict().refine(data => data.interviewComplete
   ? data.nextQuestion === ""
-  : data.nextQuestion.trim().length > 0);
+  : data.nextQuestion.trim().length > 0, { path: ["nextQuestion"] });
+
+function normalizeOutput(raw: unknown): unknown {
+  const parsed = structuralSchema.safeParse(raw);
+  if (!parsed.success) return raw;
+  const data = parsed.data;
+  const trim = (text: string) => text.trim();
+  // An overlong quote cannot be shortened without changing the asserted
+  // evidence. Drop that optional fact rather than create a partial assertion.
+  const knownFacts = data.knownFacts.flatMap(fact => {
+    const category = trim(fact.category);
+    const evidence = trim(fact.evidence);
+    const value = trim(fact.value);
+    return category.length <= 100 && evidence.length > 0 && evidence.length <= 400 &&
+      value.length > 0 && value.length <= 700
+      ? [{ ...fact, category, evidence, value }] : [];
+  }).slice(0, 30);
+  const bounded = (items: string[], max: number, count: number) =>
+    items.map(trim).filter(item => item.length <= max).slice(0, count);
+  const draft = Object.fromEntries(Object.entries(data.draft).map(([key, value]) => {
+    const cleaned = trim(value);
+    const max = ["expectedValue", "successMetric", "risks"].includes(key) ? 1200 : 2500;
+    // Optional draft prose is not evidence: omit an oversized assertion
+    // instead of persisting an arbitrary prefix that could invert its meaning.
+    return [key, cleaned.length <= max ? cleaned : ""];
+  })) as typeof data.draft;
+  return {
+    ...data, knownFacts,
+    inferredSuggestions: bounded(data.inferredSuggestions, 500, 12),
+    unknowns: bounded(data.unknowns, 200, 15),
+    nextQuestion: data.interviewComplete ? data.nextQuestion : trim(data.nextQuestion),
+    suggestedInitiativeType: trim(data.suggestedInitiativeType).length <= 80
+      ? trim(data.suggestedInitiativeType) : "",
+    suggestedTitle: trim(data.suggestedTitle).length <= 140 ? trim(data.suggestedTitle) : "",
+    draft,
+  };
+}
 
 let platform: ReturnType<typeof createPlatformClient> | undefined;
 function getPlatform() {
@@ -79,11 +134,29 @@ function getPlatform() {
 const instruction = `You are Innovation Hub's careful business analyst. Use the ENTIRE interview and Jira context.
 Extract the problem/opportunity, people affected, current process, pain, frequency/volume, business impact, desired outcome, urgency, constraints and existing Jira work where known. Unknown is acceptable.
 Return knownFacts ONLY if each fact's value AND evidence are the same EXACT short quoted substring in a user answer or Jira summary/description. Label its source correctly. Put hypotheses only in inferredSuggestions, never in knownFacts. Draft fields are suggestions for review, not established facts; do not invent numbers, savings or commitments.
-Choose ONE highest-value unanswered business question, understandable to a nontechnical employee. Ask for only ONE piece of information; do not combine two asks with "and". Acknowledge supplied context where helpful. Do not re-ask already answered facts: qualitative frequency IS frequency, though approximate request volume may still be unknown. Do not default to technical architecture or assume AI is the solution. Treat skips and "not known yet" as unknown, not as facts, and do not repeatedly press for them.
+Choose ONE highest-value unanswered business question, understandable to a nontechnical employee. Prefer one primary ask per turn: do not stack independent questions, including lists of unrelated possible impacts. One short illustrative example is fine when it clarifies the ask; keep the question natural and adaptive, not a rigid questionnaire. Acknowledge supplied context where helpful. Do not re-ask already answered facts: qualitative frequency IS frequency, though approximate request volume may still be unknown. Do not default to technical architecture or assume AI is the solution. Treat skips and "not known yet" as unknown, not as facts, and do not repeatedly press for them.
+Keep knownFacts evidence and value within 400 characters per exact quoted substring, category within 100 characters, and at most 30 facts. Keep suggestions within 500 characters (12 max), unknowns within 200 characters (15 max), nextQuestion within 600 characters, title within 140 characters, and draft prose concise. Never shorten a quote in a way that changes its meaning; omit an optional fact if no short exact quote supports it.
 Complete when enough information exists for a useful initiative, typically after 4-7 questions, sooner for well-described ideas. Never ask filler questions. Skipped/unknown facts need not be asked repeatedly. At 12 answers ALWAYS complete. When complete, nextQuestion must be empty; otherwise provide one question. Suggested title should be concise and professional, not a truncated quote. Draft concise existing business fields; value can be "Value not yet quantified". Leave unknown fields blank rather than fabricate.`;
 
 type Input = z.infer<typeof inputSchema>;
 type Output = z.infer<typeof outputSchema>;
+type Metadata = { requestId?: string; provider?: string; model?: string; usage?: {
+  inputTokens?: number | null; outputTokens?: number | null; totalTokens?: number | null;
+} };
+type Failure = { path: string; constraint: string; retry: boolean; durationMs: number };
+
+function failureFor(issue: z.ZodIssue): { path: string; constraint: string } {
+  const path = issue.path.reduce<string>((part, segment) =>
+    typeof segment === "number" ? `${part}[${segment}]` : `${part}${part ? "." : ""}${segment}`, "") || "root";
+  const constraint = issue.code === "too_big" || issue.code === "too_small"
+    ? `${issue.code}:${issue.type}:${issue.code === "too_big" ? issue.maximum : issue.minimum}`
+    : issue.code;
+  return { path, constraint };
+}
+
+function feedback(failure: { path: string; constraint: string }): string {
+  return `\nPrevious structured response failed local validation at ${failure.path} (${failure.constraint}). Return the same semantic result within that constraint. Preserve exact source-backed evidence; omit optional facts rather than shorten a quote misleadingly.`;
+}
 
 // Preserve every accepted turn verbatim. Platform limits each message to 8000
 // characters and instruction + all messages to 24000, not merely the HTTP body.
@@ -128,9 +201,10 @@ function sanitizeOutput(data: Output, userText: string, jiraText: string): Outpu
 
 export async function advanceInterview(
   input: Input,
-  infer: (request: AiRequest) => Promise<{ data?: unknown }>,
-  onInvalid: (attempt: number, category: string) => void = () => {},
+  infer: (request: AiRequest) => Promise<{ data?: unknown } & Metadata>,
+  onInvalid: (attempt: number, category: string, details?: Failure) => void = () => {},
   maxAttempts = 2,
+  onMetadata: (metadata: Metadata, attempt: number) => void = () => {},
 ): Promise<Output | null> {
   const messages = buildInterviewMessages(input);
   if (!messages) return null;
@@ -138,33 +212,55 @@ export async function advanceInterview(
   const jiraText = input.jira ? `${input.jira.summary}\n${input.jira.description}` : "";
   // Retry malformed structured output, including SDK invalid_response. Never
   // replay transient failures or paid inference on transport/availability errors.
-  for (let attempt = 0; attempt < Math.min(Math.max(1, maxAttempts), 2); attempt++) {
-    let result: { data?: unknown };
+  const limit = Math.min(Math.max(1, maxAttempts), 2);
+  let correction = "";
+  for (let attempt = 0; attempt < limit; attempt++) {
+    const retryInstruction = instruction + correction;
+    if (retryInstruction.length > 8000 ||
+        retryInstruction.length + messages.reduce((sum, m) => sum + m.content.length, 0) > 24000) return null;
+    const started = Date.now();
+    let result: { data?: unknown } & Metadata;
     try {
       result = await infer({
-        instruction, messages, schema,
+        instruction: retryInstruction, messages, schema,
         feature: "guided-interview-v2", maxOutputTokens: 2048,
       });
     } catch (error) {
       if (error instanceof PlatformServiceError && error.code === "invalid_response") {
-        onInvalid(attempt + 1, "sdk_invalid_response");
+        correction = "\nPrevious response failed the required structured JSON shape. Return all required fields with the specified types and no extra fields.";
+        onInvalid(attempt + 1, "sdk_invalid_response", {
+          path: "root", constraint: "sdk_invalid_response", retry: attempt + 1 < limit,
+          durationMs: Date.now() - started,
+        });
         continue;
       }
       throw error;
     }
-    const output = outputSchema.safeParse(result.data);
+    onMetadata(result, attempt + 1);
+    const output = outputSchema.safeParse(normalizeOutput(result.data));
     if (!output.success) {
-      const fields = [...new Set(output.error.issues.map(issue => String(issue.path[0] ?? "root")))].sort().join(",");
-      onInvalid(attempt + 1, `output_schema:${fields}`);
+      const failure = failureFor(output.error.issues[0]);
+      correction = feedback(failure);
+      onInvalid(attempt + 1, `output_schema:${failure.path}`, {
+        ...failure, retry: attempt + 1 < limit, durationMs: Date.now() - started,
+      });
       continue;
     }
     const data = sanitizeOutput(output.data, userText, jiraText);
     if (unsupportedQuantities(data.nextQuestion, `${userText}\n${jiraText}`)) {
-      onInvalid(attempt + 1, "question_unsupported_quantity");
+      correction = "\nPrevious nextQuestion contained an unsupported numeric claim. Ask a question without introducing unsupported numbers.";
+      onInvalid(attempt + 1, "question_unsupported_quantity", {
+        path: "nextQuestion", constraint: "unsupported_quantity", retry: attempt + 1 < limit,
+        durationMs: Date.now() - started,
+      });
       continue;
     }
     if (input.turns.length >= 12 && !data.interviewComplete) {
-      onInvalid(attempt + 1, "safety_max");
+      correction = "\nThe interview has reached 12 answers. Set interviewComplete to true and nextQuestion to an empty string.";
+      onInvalid(attempt + 1, "safety_max", {
+        path: "interviewComplete", constraint: "safety_max", retry: attempt + 1 < limit,
+        durationMs: Date.now() - started,
+      });
       continue;
     }
     return data;
@@ -184,18 +280,41 @@ router.post("/interview/advance", async (req, res) => {
     return;
   }
   const started = Date.now();
+  // Metadata is supplied by the SDK, not the model body. Bound it before logging.
+  const safeLabel = (value: string | undefined) =>
+    typeof value === "string" && /^[a-zA-Z0-9._:/-]{1,120}$/.test(value) ? value : undefined;
+  let sdkMetadata: Record<string, unknown> = {};
   try {
     const data = await advanceInterview(parsed.data, request => getPlatform().ai.generateStructured(request),
-      (attempt, category) => req.log.warn({ durationMs: Date.now() - started, attempt, category, validationFailure: true }, "Interview response validation failed"));
+      (attempt, category, details) => req.log.warn({
+        feature: "guided-interview-v2", ...sdkMetadata, attempt, category,
+        fieldPath: details?.path, constraint: details?.constraint,
+        durationMs: details?.durationMs, retryOccurred: details?.retry ?? false,
+        validationFailure: true,
+      }, "Interview response validation failed"), 2,
+      (metadata) => {
+        sdkMetadata = {
+          requestId: safeLabel(metadata.requestId),
+          provider: safeLabel(metadata.provider),
+          model: safeLabel(metadata.model),
+          ...(metadata.usage ? {
+            inputTokens: metadata.usage.inputTokens, outputTokens: metadata.usage.outputTokens,
+            totalTokens: metadata.usage.totalTokens,
+          } : {}),
+        };
+      });
     if (data) {
-      req.log.info({ durationMs: Date.now() - started, questionsAsked: turns.length, complete: data.interviewComplete, fallback: false }, "Interview AI succeeded");
+      req.log.info({ feature: "guided-interview-v2", ...sdkMetadata, durationMs: Date.now() - started,
+        questionsAsked: turns.length, complete: data.interviewComplete, fallback: false, outcome: "ai" }, "Interview AI succeeded");
       res.json(data);
       return;
     }
-    req.log.warn({ durationMs: Date.now() - started, questionsAsked: turns.length, fallback: true, validationFailure: true }, "Interview AI fallback");
+    req.log.warn({ feature: "guided-interview-v2", ...sdkMetadata, durationMs: Date.now() - started,
+      questionsAsked: turns.length, fallback: true, outcome: "fallback", validationFailure: true }, "Interview AI fallback");
     res.status(503).json({ error: "Guided interview temporarily unavailable" });
   } catch (error) {
-    req.log.warn({ durationMs: Date.now() - started, questionsAsked: turns.length, fallback: true,
+    req.log.warn({ feature: "guided-interview-v2", ...sdkMetadata, durationMs: Date.now() - started,
+      questionsAsked: turns.length, fallback: true, outcome: "fallback",
       code: error instanceof PlatformServiceError ? error.code : "unavailable" }, "Interview AI fallback");
     res.status(503).json({ error: "Guided interview temporarily unavailable" });
   }

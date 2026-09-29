@@ -5,6 +5,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and the
 project adheres to semantic versioning (patch = fixes/edits, minor = new
 features, major = breaking or milestone changes).
 
+## [1.6.1] - Unreleased
+
+### AI Business Analyst corrective release
+- Align structured AI output handling with local validation constraints, retaining evidence safeguards and bounded validation-aware retries with safe diagnostics.
+- Make deterministic interview fallback use already supplied context, prefer one primary AI question per turn, and allow confirmation before discarding an active unsaved interview.
+- Preserve saved Initiatives, Matrix Platform integration, Jira, scoring, and project/reporting behavior.
+
 ## [1.5.2] - 2026-09-28
 
 ### Navigation and dashboard clarity

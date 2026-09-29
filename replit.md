@@ -47,7 +47,8 @@ The innovation core: an internal web application for Matrix employees to submit 
 - Uses Replit's built-in PostgreSQL + Drizzle (not Supabase). Only `initiatives` is a real table; documents and admin settings are static server-side config.
 - Score and priority are computed server-side in `scoring.ts` on create/update — the frontend sends raw scoring components, never the final score, so the model stays authoritative in one place.
 - Matrix Platform endpoints live under /matrix (proxy routes /matrix to the API server) and are intentionally kept OUT of the business OpenAPI spec — platform infrastructure is separated from business logic per Matrix SDK best practices.
-- The AI Opportunity Canvas is composed client-side from initiative fields via a `generateOpportunityCanvas()` helper (placeholder for future OpenAI wiring — no AI calls yet, per MVP scope).
+- The interview uses the server-side AI advance endpoint when available, with a deterministic client-side fallback; scoring remains server-authoritative.
+- Interview transcript is durable state independent of the adaptive question plan/index: persist user/assistant turns on each transition and resume them verbatim; derive visible answer counts from retained submitted user turns. At AI-to-deterministic-fallback boundaries, map only explicit user/Jira evidence into known fields, retain original qualitative wording/source, and ask the next missing fact without inventing numeric estimates or requiring AI for recovery. Start Over clears only the active local interview draft, never saved Initiatives.
 
 ## Product
 

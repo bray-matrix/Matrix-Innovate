@@ -107,6 +107,20 @@ export interface InterviewDraft {
 // agnostic to how many questions were asked or in what order.
 export type AnswerMap = Record<string, string>;
 
+export const INTERVIEW_DRAFT_KEY = "matrix-interview-draft-v2";
+
+// Never clear the whole origin: other drafts, saved Initiatives and application
+// state are not part of this interview's lifecycle.
+export function discardActiveInterviewDraft(storage: Pick<Storage, "removeItem">): void {
+  storage.removeItem(INTERVIEW_DRAFT_KEY);
+}
+
+// Planner positions can restart at fallback (or skip a known field). Count
+// submitted user turns from the retained transcript, not the current question.
+export function countTranscriptAnswers(messages: readonly { role: "ai" | "user"; text: string }[]): number {
+  return messages.filter(message => message.role === "user" && message.text.trim() !== "(nothing to add)").length;
+}
+
 // Completion arrives after the final answer was submitted. The review button
 // must not replace that answer with the now-empty/disabled composer.
 export function answersForReview(answers: AnswerMap, questionId: string, input: string, readyToReview: boolean): AnswerMap {
