@@ -308,6 +308,10 @@ test("corrected browser review content does not orphan the last Supporting Conte
   assert.equal(actual.assessment.readiness, "83% — Strong Business Context");
   assert.equal(actual.supportingContext.facts.length, 4);
   assert.match(actual.risks.text, /Limited credential-management visibility creates security and compliance exposure/);
+  // Keep the modest Word-only paragraph gaps used to make room for all
+  // Supporting Context facts; line height, text size and content stay unchanged.
+  assert.match(xml, /<w:spacing w:after="20" w:line="270"\/>/);
+  assert.match(xml, /<w:spacing w:after="50" w:before="60"\/>/);
   for (const section of briefSections(actual)) {
     assert.ok(xml.includes(section.title.replace(/&/g, "&amp;")), `Word missing ${section.title}`);
     for (const row of section.rows)

@@ -73,6 +73,20 @@ export function cleanBriefProse(value: string | undefined | null): string {
     return true;
   }).join(" ");
 }
+/** Completion-only treatment of transcript wrappers; never apply to reviewed prose. */
+export function editorialAnswer(value: string): string {
+  return cleanBriefProse(value
+    .replace(/\b(?:System prompt|Prompt|Instruction|Transcript metadata)\s*:\s*[^\n]*?(?=\b(?:Additional notes|Interview answer|Answer)\s*:|\n|$)/gi, "")
+    .replace(/\b(?:Additional notes|Interview question|Question|Interview answer|Answer)\s*:\s*(?:[^?\n:]{1,240}\?\s*:?\s*)?/gi, "")
+    .replace(/(?:^|\n)\s*(?:question[_ -]?id|prompt|field[_ -]?name)\s*:\s*[^\n]*/gi, " ")
+    .replace(/^\s*(?:What|How|Why|Who|When|Where|Which|Would|Could|Do|Does|Is|Are)\b[^?\n]{0,240}\?\s*:?\s*/i, "")
+    .replace(/\bWe want\b/gi, "The initiative aims for")
+    .trim());
+}
+export function hasInterviewMachinery(value: string): boolean {
+  return /\b(?:Additional notes|Interview question|Interview answer|Question|Answer|question[_ -]?id|field[_ -]?name|System prompt|Prompt|Instruction|Transcript metadata)\s*:/i.test(value) ||
+    /(?:^|\n)\s*(?:What|How|Why|Who|When|Where|Which)\b[^?\n]{0,240}\?\s*:/i.test(value);
+}
 /**
  * Editorial treatment for generated benefit forecasts, not source testimony or
  * reviewed edits. A direct user observation ("the process wastes time") remains
@@ -118,7 +132,7 @@ export interface SynthesizedBriefNarrative {
 }
 const sentences = (value: string): string[] =>
   clean(value).split(/(?<=[.!?])\s+(?=[A-Z])/).filter(validNarrative);
-const prose = (items: string[]): string => clean(unique(items, 4).map(item =>
+const prose = (items: string[], max = 4): string => clean(unique(items, max).map(item =>
   /[.!?]$/.test(item) ? item : `${item}.`).join(" "));
 const impactSignal = /\b(?:wast(?:e|ed|ing)|slow(?:er|s)?|delay(?:s|ed)?|inefficien\w*|time.consuming|harder|difficult|burden|rework|depend(?:ence|ency)|bottleneck)\b/i;
 const benefitSignal = /\b(?:reduc(?:e|ed|ing|tion)|improv(?:e|ed|ing|ement)|faster|clearer|better|reliable|streamlin\w*|save|saving|avoid|enable)\b/i;
@@ -154,7 +168,7 @@ function distinctRisks(items: string[]): string[] {
       return smaller.size >= 3 && [...smaller].every(word => larger.has(word));
     })) continue;
     selected.push(item); keys.push(key);
-    if (selected.length === 4) break;
+    if (selected.length === 6) break;
   }
   return selected;
 }
@@ -179,15 +193,16 @@ export function synthesizeBriefNarrative({ draft, aiResult, evidence = [] }: Bri
   const f = draft.fields;
   const facts = aiResult?.knownFacts ?? [];
   const evidenceSentences = unique([
-    ...facts.flatMap(fact => sentences(fact.value)),
-    ...evidence.flatMap(item => sentences(item.value)),
-    ...[f.problemStatement, f.currentProcess, f.desiredOutcome].flatMap(sentences),
+    ...facts.flatMap(fact => sentences(editorialAnswer(fact.value))),
+    ...evidence.flatMap(item => sentences(editorialAnswer(item.value))),
+    ...[f.problemStatement, f.currentProcess, f.desiredOutcome].flatMap(value => sentences(editorialAnswer(value))),
   ], Number.MAX_SAFE_INTEGER).filter(s => !unresolved.test(s) && !s.endsWith("?"));
   const valueFacts = facts.filter(fact => /\b(?:value|benefit|impact)\b/i.test(fact.category))
-    .flatMap(fact => sentences(fact.value));
+    .flatMap(fact => sentences(editorialAnswer(fact.value)));
   const benefits = evidenceSentences.filter(s => benefitSignal.test(s) && !impactSignal.test(s));
   const impacts = unique([...valueFacts.filter(s => impactSignal.test(s)), ...evidenceSentences.filter(s => impactSignal.test(s))], 2);
-  const suppliedValue = validNarrative(draft.canvas.expectedValue) ? draft.canvas.expectedValue : aiResult?.draft?.expectedValue ?? "";
+  const rawValue = validNarrative(draft.canvas.expectedValue) ? draft.canvas.expectedValue : aiResult?.draft?.expectedValue ?? "";
+  const suppliedValue = hasInterviewMachinery(rawValue) ? editorialAnswer(rawValue) : rawValue;
   // Numbers alone are not qualitative value.
   const qualitativeValue = validNarrative(suppliedValue) && !/^(?:estimated )?(?:~?\d|\$)/i.test(suppliedValue)
     ? clean(validNarrative(draft.canvas.expectedValue) ? suppliedValue : qualifyDraftBenefits(suppliedValue))
@@ -195,9 +210,9 @@ export function synthesizeBriefNarrative({ draft, aiResult, evidence = [] }: Bri
       ...valueFacts.filter(s => !impactSignal.test(s)).slice(0, 2),
       ...(impacts.length ? [`The business case rests on addressing these reported impacts: ${impacts.map(s => s.replace(/[.!?]$/, "")).join("; ")}`] : benefits.slice(0, 2)),
     ]);
-  const suppliedRisks = draft.canvas.risks;
+  const suppliedRisks = editorialAnswer(draft.canvas.risks);
   const knownRisks = facts.filter(fact => /\b(?:risk|constraint|consideration)\b/i.test(fact.category))
-    .flatMap(fact => sentences(fact.value)).filter(s => !unresolved.test(s));
+    .flatMap(fact => sentences(editorialAnswer(fact.value))).filter(s => !unresolved.test(s));
   // A source problem/impact may contain the word "risk". Prefer actual risk
   // statements when present instead of reciting that problem as a risk.
   const problemSentences = new Set([
@@ -205,26 +220,76 @@ export function synthesizeBriefNarrative({ draft, aiResult, evidence = [] }: Bri
     ...facts.filter(fact => /\b(?:problem|impact|current state)\b/i.test(fact.category)).map(fact => fact.value),
   ].flatMap(sentences).map(riskKey));
   const riskCandidates = [
-    ...(validNarrative(suppliedRisks) && !/^Compliance:.*Complexity:/i.test(suppliedRisks) ? sentences(suppliedRisks) : []),
-    ...knownRisks, ...evidenceSentences.filter(s => riskSignal.test(s) && adverseSignal.test(s) && !benefitSignal.test(s)),
+    ...(validNarrative(suppliedRisks) && !hasInterviewMachinery(suppliedRisks) &&
+      !/^Compliance:.*Complexity:/i.test(suppliedRisks) ? sentences(suppliedRisks) : []),
+    ...knownRisks, ...evidenceSentences.filter(s => riskSignal.test(s) && adverseSignal.test(s) &&
+      !benefitSignal.test(s) && /\b(?:risk|exposure|credential|knowledge loss|lost when|lose knowledge)\b/i.test(s)),
   ];
   const actualRisks = riskCandidates.filter(s =>
     !problemSentences.has(riskKey(s)) ||
     // A sentence can be both a problem sentence and an explicit risk. Retain
     // that risk, but not copied impact/throughput prose or bare problem facts.
     (/\b(?:risk|exposure)\b/i.test(s) && adverseSignal.test(s) && !benefitSignal.test(s)));
-  const risks = prose(distinctRisks(actualRisks));
+  const impactKeys = new Set(impacts.map(riskKey));
+  // The completion output can put a present-day impact under "risks". Use
+  // grounded exposure statements instead; no template runs without evidence.
+  const grounded = [...facts.flatMap(fact => sentences(editorialAnswer(fact.value))),
+    ...evidence.flatMap(item => sentences(editorialAnswer(item.value)))];
+  const sourceSentences = grounded.length ? grounded : evidenceSentences;
+  const ownershipGap = /\b(?:unclear|unknown|unassigned|incomplete|fragmented|missing|limited|lack of)\b[^.!?]{0,100}\bownership\b|\bownership\b[^.!?]{0,100}\b(?:unclear|unknown|unassigned|incomplete|missing|limited)\b/i;
+  const dependencyGap = /\b(?:unclear|unknown|unassigned|incomplete|fragmented|missing|limited|lack of)\b[^.!?]{0,100}\b(?:dependenc\w*|integration\w*)\b|\b(?:dependenc\w*|integration\w*)\b[^.!?]{0,100}\b(?:unclear|unknown|unassigned|incomplete|missing|limited)\b/i;
+  const securityEvidence = sourceSentences.filter(s => /\b(?:security|compliance)\b/i.test(s));
+  const securityOwnership = securityEvidence.some(s => ownershipGap.test(s));
+  const securityDependency = securityEvidence.some(s => dependencyGap.test(s));
+  const securityTopics = securityEvidence.filter(s => ownershipGap.test(s) || dependencyGap.test(s)).join(" ");
+  // Do not accept an AI-drafted gap merely because a source mentions a topic
+  // positively (e.g. complete ownership and a separate security review).
+  const supportedExposure = (s: string) => !grounded.length ||
+    [f.problemStatement, f.currentProcess].flatMap(sentences).some(item => riskKey(item) === riskKey(s)) ||
+    ((!ownershipGap.test(s) || sourceSentences.some(item => ownershipGap.test(item))) &&
+      (!dependencyGap.test(s) || sourceSentences.some(item => dependencyGap.test(item))) &&
+      (!/\b(?:security|compliance)\b[^.!?]*\b(?:risk|exposure)\b/i.test(s) ||
+        !/\b(?:ownership|dependenc\w*|integration\w*)\b/i.test(s) ||
+        securityOwnership || securityDependency));
+  const supported = [
+    sourceSentences.some(s => /\b(?:institutional knowledge|individual knowledge|specific individuals)\b/i.test(s)) &&
+      sourceSentences.some(s => /\b(?:leave|leaves|transitions?|change roles?|knowledge loss|lose knowledge|depend(?:ence|ency))\b/i.test(s))
+      ? "Reliance on institutional knowledge may create continuity risk when responsible people leave or change roles." : "",
+    sourceSentences.some(s => ownershipGap.test(s))
+      ? "Unclear ownership may create accountability and operational risk." : "",
+    sourceSentences.some(s => dependencyGap.test(s))
+      ? "Incomplete dependency visibility could complicate troubleshooting and system changes." : "",
+    securityOwnership || securityDependency
+      ? `Gaps in ${securityOwnership && securityDependency ? "ownership and dependency" :
+        securityOwnership ? "ownership" : "dependency"} visibility may create ${
+        /\bsecurity\b/i.test(securityTopics) && /\bcompliance\b/i.test(securityTopics)
+          ? "security and compliance" : /\bsecurity\b/i.test(securityTopics) ? "security" : "compliance"} exposure.` : "",
+    sourceSentences.some(s => /\bcredential.management visibility is limited\b|\blimited visibility\b[^.!?]{0,100}\bcredential/i.test(s))
+      ? "Limited visibility into credential-management responsibility may create governance and security concerns." : "",
+  ].filter(Boolean);
+  const useSupported = (sentences(suppliedRisks).length > 0 &&
+    sentences(suppliedRisks).every(s => impactSignal.test(s)) && supported.length >= 2) || !actualRisks.length || actualRisks.every(s =>
+    impactKeys.has(riskKey(s)) || (impactSignal.test(s) && !/\b(?:risk|exposure|continuity|accountability|governance)\b/i.test(s)));
+  const alreadySynthesized = (sentences(suppliedRisks).filter(s =>
+    /\b(?:may create|could complicate|may lead to|could create)\b/i.test(s)).length >= 2) &&
+    !sentences(suppliedRisks).some(s => impactKeys.has(riskKey(s)) || !supportedExposure(s));
+  const risks = alreadySynthesized ? suppliedRisks : prose(distinctRisks(useSupported && supported.length ? supported : actualRisks.filter(s =>
+    supportedExposure(s) && (!impactKeys.has(riskKey(s)) || knownRisks.some(r => riskKey(r) === riskKey(s))) &&
+    (!impactSignal.test(s) || /\b(?:risk|exposure|continuity|accountability|governance)\b/i.test(s) ||
+      knownRisks.some(r => riskKey(r) === riskKey(s))))), 6);
   const suppliedSummary = aiResult?.draft?.executiveSummary || draft.executiveSummary;
   const mechanical = /\b(?:addresses:|Desired outcome:|Classified as|Value not yet quantified|scores \d+\/100)/i;
-  const problem = sentences(f.problemStatement)[0];
-  const outcome = sentences(f.desiredOutcome)[0];
-  const summary = validNarrative(suppliedSummary) && !mechanical.test(suppliedSummary)
+  const problem = sentences(editorialAnswer(f.problemStatement))[0];
+  const outcome = sentences(editorialAnswer(f.desiredOutcome))[0];
+  const summary = validNarrative(suppliedSummary) && !mechanical.test(suppliedSummary) && !hasInterviewMachinery(suppliedSummary)
     ? clean(aiResult?.draft?.executiveSummary ? qualifyDraftBenefits(suppliedSummary) : suppliedSummary)
     : prose([problem, outcome,
       ...sentences(qualitativeValue).filter(s => s !== outcome && s !== problem).slice(0, 1)].filter(Boolean));
   const existingNext = draft.canvas.recommendedNextStep;
-  const nextSteps = validNarrative(existingNext) && !/\b(?:refine scoring|priority|score \d|fast-track)\b/i.test(existingNext)
-    ? clean(existingNext)
+  const cleanedNext = hasInterviewMachinery(existingNext) ? editorialAnswer(existingNext) : existingNext;
+  const nextSteps = validNarrative(cleanedNext) && !hasInterviewMachinery(cleanedNext) &&
+    !/\b(?:refine scoring|priority|score \d|fast-track)\b/i.test(cleanedNext)
+    ? clean(cleanedNext)
     : prose([
       !f.department || !f.businessOwner ? "Confirm the accountable business owner and department" : "Review the proposal with the business owner and affected stakeholders",
       aiResult?.unknowns?.length ? "Resolve the critical unknowns that affect the decision to advance" : "",
@@ -257,7 +322,9 @@ export function buildInitiativeBrief({
     !narrative.includes(clean(fact.value).toLowerCase()));
   const facts = (aiResult?.knownFacts ?? []).filter(fact =>
     fact !== impactFact && clean(fact.value) && !narrative.includes(clean(fact.value).toLowerCase()))
-    .slice(0, 4).map(({ category, value, source }) => ({ category, value, source }));
+    .slice(0, 4).map(({ category, value, source }) => ({
+      category, value: hasInterviewMachinery(value) ? editorialAnswer(value) : value, source,
+    }));
   // The edited canvas is the only current value. A cleared edit must not resurrect
   // stale AI language or duplicate the entire desired outcome as a "value" claim.
   const qualitative = validNarrative(draft.canvas.expectedValue)
@@ -309,7 +376,8 @@ export function buildInitiativeBrief({
     businessNeed: {
       problem: text(f.problemStatement, "ai-draft"),
       currentState: text(f.currentProcess, "ai-draft"),
-      ...(impactFact ? { businessImpact: text(impactFact.value, impactFact.source) } : {}),
+       ...(impactFact ? { businessImpact: text(hasInterviewMachinery(impactFact.value)
+         ? editorialAnswer(impactFact.value) : impactFact.value, impactFact.source) } : {}),
     },
     futureState: {
       outcome: text(f.desiredOutcome, "ai-draft"),

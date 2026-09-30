@@ -111,7 +111,7 @@ export async function renderInitiativeBriefDocx(b: InitiativeBrief): Promise<Buf
     // A suggestions caption stays with its first bullet; all other body rows
     // remain free to flow instead of carrying whole sections forward.
     keepNext: r.keepNext,
-    spacing: { after: 40, line: 270 },
+    spacing: { after: 20, line: 270 },
     bullet: r.bullet ? { level: 0 } : undefined,
     children: [
       ...(r.heading ? [new TextRun({ text: `${r.heading}: `, bold: true, color: blue })] : []),
@@ -153,7 +153,7 @@ export async function renderInitiativeBriefDocx(b: InitiativeBrief): Promise<Buf
         })),
         ...briefSections(b).flatMap(section => [
           new Paragraph({ text: section.title, heading: HeadingLevel.HEADING_2,
-            keepNext: section.rows.length > 0, spacing: { before: 80, after: 50 } }),
+            keepNext: section.rows.length > 0, spacing: { before: 60, after: 50 } }),
           ...section.rows.map(r => paragraph(r)),
         ]),
       ],

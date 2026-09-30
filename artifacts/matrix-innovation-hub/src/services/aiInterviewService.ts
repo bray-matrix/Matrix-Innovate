@@ -117,6 +117,7 @@ export interface InitiativeReviewMetadata {
 // agnostic to how many questions were asked or in what order.
 export type AnswerMap = Record<string, string>;
 
+import { editorialAnswer } from "@workspace/initiative-brief";
 import { withBase } from "../lib/base-path";
 import { checkedResponse } from "../lib/content-safety-error";
 
@@ -404,9 +405,13 @@ function buildFields(
   const notes = (a.notes ?? "").trim();
   const all = `${Object.values(a).join(" ")} ${contextText}`;
 
-  const desiredOutcome = notes
-    ? `${success}\n\nAdditional notes: ${notes}`
-    : success;
+  // Preserve unique future-state details from notes without carrying the
+  // interview wrapper into the field consumed by Review and every export.
+  const noteAnswer = editorialAnswer(notes);
+  const futureNote = /\b(?:would|could|should|aim|goal|future|want|intend|expect)\b/i.test(noteAnswer)
+    ? noteAnswer : "";
+  const desiredOutcome = [success, futureNote && !success.includes(futureNote) ? futureNote : ""]
+    .filter(Boolean).join("\n\n") || noteAnswer;
 
   return {
     title: toTitle(idea || problem),

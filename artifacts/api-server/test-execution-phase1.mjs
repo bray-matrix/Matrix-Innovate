@@ -96,12 +96,12 @@ check("H. Platform authentication (session exchange)", sessRes.status === 200 &&
 
 // I. app-info
 const appInfo = await (await fetch(`${BASE}/matrix/app-info`)).json();
-check("I. /matrix/app-info = Innovation Hub v1.6.6", appInfo.name === "Innovation Hub" && appInfo.version === "v1.6.6", JSON.stringify(appInfo));
+check("I. /matrix/app-info = Innovation Hub v1.6.7", appInfo.name === "Innovation Hub" && appInfo.version === "v1.6.7", JSON.stringify(appInfo));
 
 // J. health
 const healthRes = await fetch(`${BASE}/matrix/health`);
 const health = await healthRes.json();
-check("J. /matrix/health db check", healthRes.status === 200 && health.checks?.database === "ok" && health.version === "v1.6.6");
+check("J. /matrix/health db check", healthRes.status === 200 && health.checks?.database === "ok" && health.version === "v1.6.7");
 
 // A/R. initiative count snapshot
 const before = await api("GET", "/api/initiatives");

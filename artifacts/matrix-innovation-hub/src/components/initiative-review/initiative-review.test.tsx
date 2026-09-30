@@ -79,6 +79,111 @@ test("editorial cleanup removes duplicate sentences and punctuation without chan
     "Savings are 12.5 hours. Owner is unknown!");
 });
 
+test("baseline notes remain evidence, not question text in document fields; reviewed prose stays authoritative", () => {
+  const { draft } = fixture();
+  const baseline = buildDraft({
+    idea: "Improve request handling",
+    problem: "Requests are scattered across mailboxes.",
+    success: "A shared queue would clarify responsibility.",
+    notes: "What would improve if this Initiative succeeds?: Teams could find the responsible owner.",
+  }, "", { category: "Operations", label: "Operations", suggestedInitiativeCategory: "Operations" });
+  assert.match(baseline.fields.desiredOutcome, /A shared queue would clarify responsibility/);
+  assert.match(baseline.fields.desiredOutcome, /Teams could find the responsible owner/);
+  assert.doesNotMatch(baseline.fields.desiredOutcome, /What would improve if this Initiative succeeds/);
+  const completed = finalizeInterviewDraft(baseline, null, { knownFacts: [], inferredSuggestions: [], unknowns: [] }, [
+    { value: "Teams could find the responsible owner.", source: "user" },
+  ]);
+  assert.doesNotMatch(JSON.stringify(completed.canvas), /What would improve if this Initiative succeeds|Additional notes:/);
+  const final = {
+    knownFacts: [], inferredSuggestions: [], unknowns: [],
+    draft: { problemStatement: "", currentProcess: "",
+      desiredOutcome: "The shared queue would clarify responsibility.", expectedValue: "",
+      successMetric: "", risks: "", executiveSummary: "" },
+  };
+  const withFinal = finalizeInterviewDraft(baseline, final, final, [
+    { value: "Teams could find the responsible owner.", source: "user" },
+  ]);
+  const brief = buildReviewBrief({ draft: withFinal, fields: withFinal.fields, scoring: withFinal.scoring,
+    narrative: initialNarrative(withFinal, final), ai: final, score: 45, priority: "Low" });
+  assert.match(brief.futureState.outcome.text, /Teams could find the responsible owner/);
+  const edited = mergeReviewIntoDraft(draft, draft.fields, draft.scoring, {
+    executiveSummary: "Question: this is an intentional reviewer quotation.",
+    expectedValue: "", risks: "", nextSteps: "",
+  });
+  assert.equal(initialNarrative(edited).executiveSummary, "Question: this is an intentional reviewer quotation.");
+});
+
+test("completed labeled outcome keeps unique answer alongside sourced scope", () => {
+  const { draft } = fixture();
+  const completed = {
+    knownFacts: [{ category: "scope", value: "Teams would validate the shared queue.",
+      source: "user" as const, evidence: "Teams would validate the shared queue." }],
+    inferredSuggestions: [], unknowns: [],
+    draft: {
+      problemStatement: "", currentProcess: "",
+      desiredOutcome: "Additional notes: What would improve if this Initiative succeeds?: The queue would expose who handles escalations.",
+      expectedValue: "", successMetric: "", risks: "", executiveSummary: "",
+    },
+  };
+  const merged = finalizeInterviewDraft(draft, completed, completed, [
+    { value: "The queue would expose who handles escalations.", source: "user" },
+  ]);
+  const brief = buildReviewBrief({ draft: merged, fields: merged.fields, scoring: merged.scoring,
+    narrative: initialNarrative(merged, completed), ai: completed, score: 45, priority: "Low" });
+  assert.match(brief.futureState.outcome.text, /queue would expose who handles escalations/);
+  assert.match(brief.futureState.outcome.text, /Teams would validate the shared queue/);
+  assert.doesNotMatch(brief.futureState.outcome.text, /Additional notes|What would improve if this Initiative succeeds/);
+});
+
+test("complete ownership and security evidence does not imply gaps or exposure", () => {
+  const { draft } = fixture();
+  draft.fields.problemStatement = "The team plans a record refresh.";
+  draft.fields.currentProcess = "Ownership is complete and verified.";
+  draft.fields.desiredOutcome = "Maintain clear ownership.";
+  draft.canvas.risks = "Risks not yet known.";
+  const n = synthesizeBriefNarrative({ draft, evidence: [
+    { value: "Every application has complete, verified ownership and documented dependencies.", source: "user" },
+    { value: "Security and compliance teams review the complete records.", source: "user" },
+  ] });
+  assert.equal(n.risks, "");
+  assert.doesNotMatch(n.risks, /gap|exposure|accountability/i);
+  draft.canvas.risks = "Unclear ownership may create security exposure. Missing dependencies may create compliance exposure.";
+  const unsupported = synthesizeBriefNarrative({ draft, evidence: [
+    { value: "Ownership and dependencies are complete and verified.", source: "user" },
+    { value: "Security and compliance teams review the records.", source: "user" },
+  ] });
+  assert.equal(unsupported.risks, "");
+  draft.canvas.risks = "Teams waste time searching for owners.";
+  const onlyOwnership = synthesizeBriefNarrative({ draft, evidence: [
+    { value: "Unclear ownership creates security exposure.", source: "user" },
+    { value: "Dependencies are complete and verified.", source: "user" },
+  ] });
+  assert.match(onlyOwnership.risks, /ownership visibility may create security exposure/);
+  assert.doesNotMatch(onlyOwnership.risks, /dependency visibility may create security and compliance|compliance exposure/);
+});
+
+test("generated value, impact and next step wrappers are cleaned without losing answers", () => {
+  const { draft } = fixture();
+  draft.fields.problemStatement = "Requests are scattered.";
+  draft.fields.currentProcess = "Owners search different mailboxes.";
+  draft.fields.desiredOutcome = "A shared queue would clarify responsibility.";
+  draft.canvas.expectedValue = "Prompt: summarize the interview. Answer: Teams could locate owners faster.";
+  draft.canvas.recommendedNextStep = "Instruction: print transcript. Answer: Review the shared queue with stakeholders.";
+  const ai: ReviewAIResult = {
+    knownFacts: [{ category: "impact", source: "user", evidence: "Answer: Teams lose time locating owners.",
+      value: "Answer: Teams lose time locating owners." }],
+    inferredSuggestions: [], unknowns: [],
+  };
+  const n = synthesizeBriefNarrative({ draft, aiResult: ai });
+  const brief = buildReviewBrief({ draft, fields: draft.fields, scoring: draft.scoring, narrative: n,
+    ai, score: 45, priority: "Low" });
+  assert.match(brief.expectedValue.qualitative.text, /Teams could locate owners faster/);
+  assert.match(brief.businessNeed.businessImpact?.text ?? "", /Teams lose time locating owners/);
+  assert.match(brief.nextSteps.text, /Review the shared queue with stakeholders/);
+  for (const section of [brief.expectedValue.qualitative.text, brief.businessNeed.businessImpact?.text ?? "",
+    brief.nextSteps.text]) assert.doesNotMatch(section, /Prompt:|Instruction:|Answer:/);
+});
+
 test("generated future benefits are qualified while source facts and reviewed edits retain their wording", () => {
   assert.equal(qualifyDraftBenefits("This will reduce time and will improve operational continuity."),
     "This is expected to reduce time and is expected to improve operational continuity.");
@@ -126,11 +231,99 @@ test("captured synthetic final completion is replayed through baseline and revie
   assert.doesNotMatch(brief.expectedValue.qualitative.text, /\bwill (?:reduce|improve|accelerate)\b/i);
   assert.match(brief.expectedValue.qualitative.text, /is expected to improve operational continuity/);
   assert.equal(brief.businessNeed.problem.text, completed.fields.problemStatement);
-  assert.ok(brief.futureState.outcome.text.includes(capture.baseline.fields.desiredOutcome),
-    "fallback retains the unmodified source-backed outcome alongside sourced scope");
+  assert.ok(brief.futureState.outcome.text.includes("A reliable system of record for applications") &&
+    brief.futureState.outcome.text.includes("Phase 1 should start with application ownership"),
+    "fallback retains the source-backed outcome meaning alongside sourced scope");
   assert.ok(brief.supportingContext.facts.length > 0);
   if (process.env["WRITE_REPRESENTATIVE_BRIEF_SAMPLE"] === "1")
     await writeFile("/tmp/innovation-representative-part-a-brief.json", JSON.stringify(brief));
+});
+
+test("raw interview and impact-only completion pass the actual baseline, merge and review quality gate", async () => {
+  const capture = JSON.parse(await readFile(CAPTURE_PATH, "utf8"));
+  const turns = capture.input.turns as { question: string; answer: string }[];
+  const answers = {
+    idea: "Centralized Application Inventory", problem: turns[0].answer,
+    loss: turns[1].answer, success: turns[2].answer,
+    notes: `What would improve if this Initiative succeeds?: ${turns[2].answer} ${turns[3].answer}`,
+  };
+  const baseline = buildDraft(answers, "", {
+    category: "Operations", label: "Operations", suggestedInitiativeCategory: "Internal Productivity",
+  });
+  baseline.fields.title = "Centralized Application Inventory";
+  // The richer raw answers produce 10/10 rather than the prior reconstruction's
+  // 8/7 alignment/confidence. Replay the original representative input components,
+  // not an overwritten score; Review always recalculates from these components.
+  assert.equal(capture.baseline.scoring.strategicAlignment, 8);
+  assert.equal(capture.baseline.scoring.prototypeConfidence, 7);
+  baseline.scoring = { ...capture.baseline.scoring };
+  baseline.score = computeScore(baseline.scoring);
+  baseline.priority = derivePriority(baseline.score);
+  assert.equal(baseline.score, 45);
+  const readiness = {
+    ...capture.final.readiness, score: 83,
+    dimensions: capture.final.readiness.dimensions.map((dimension: {
+      key: string; points: number; status: string;
+    }) => dimension.key === "constraints" ? { ...dimension, status: "partial", points: 5 } : dimension),
+  };
+  assert.equal(readiness.dimensions.reduce((sum: number, dimension: { points: number }) => sum + dimension.points, 0), 83);
+  const readinessText = `${readiness.score}% — ${readiness.label}`;
+  const final = structuredClone(capture.final);
+  final.suggestedTitle = "Centralized Application Inventory";
+  final.draft.desiredOutcome = "";
+  final.draft.executiveSummary = `Additional notes: What would improve if this Initiative succeeds?: ${turns[2].answer}`;
+  final.draft.risks = "IT and business teams waste time during troubleshooting, onboarding, renewals and changes, and this creates security and compliance risk when ownership or dependencies are unclear.";
+  const evidence = turns.map(t => ({ value: t.answer, source: "user" as const }));
+  const completed = finalizeInterviewDraft(baseline, final, final, evidence);
+  const narrative = initialNarrative(completed, final);
+  const liveScore = computeScore(completed.scoring);
+  const livePriority = derivePriority(liveScore);
+  assert.equal(liveScore, 45);
+  const brief = buildReviewBrief({
+    draft: completed, fields: completed.fields, scoring: completed.scoring, narrative, ai: final,
+    score: liveScore, priority: livePriority, readiness: readinessText,
+    generatedAt: "2026-01-15T12:00:00.000Z",
+  });
+  (globalThis as { React?: typeof React }).React = React;
+  const { InitiativeReview } = await import("./initiative-review");
+  const html = renderToStaticMarkup(React.createElement(InitiativeReview, {
+    draft: completed, aiResult: final, jira: null, submitterName: "Reviewer",
+    departments: ["IT"], categories: ["Internal Productivity"], levels: ["Low", "Medium", "High"],
+    saving: false, readiness: readinessText,
+    onBack: () => {}, onDraftChange: () => {}, onSave: () => {},
+  }));
+  assert.match(html, /data-testid="text-live-score">45<\/span>/);
+  assert.match(html, /data-testid="text-brief-readiness">83% — Strong Business Context<\/dd>/);
+  for (const section of [brief.executiveSummary.text, brief.futureState.outcome.text, brief.risks.text]) {
+    assert.doesNotMatch(section, /Additional notes:|What would improve if this Initiative succeeds\?|Question:|Answer:/i);
+  }
+  assert.match(brief.futureState.outcome.text, /ownership|business purpose/i);
+  assert.doesNotMatch(brief.businessNeed.problem.text, /waste time rediscovering|operational continuity risk/i);
+  assert.doesNotMatch(brief.businessNeed.currentState.text, /must rediscover information for each/i);
+  assert.match(brief.businessNeed.businessImpact?.text ?? "", /waste time rediscovering/);
+  assert.match(brief.risks.text, /continuity risk/);
+  for (const signal of [/institutional knowledge/i, /accountability/i, /dependency visibility/i,
+    /security and compliance/i, /credential-management/i]) assert.match(brief.risks.text, signal);
+  assert.doesNotMatch(brief.risks.text, /waste time during troubleshooting/i);
+  assert.notEqual(brief.risks.text, turns[1].answer);
+  assert.equal(brief.metadata.title, "Centralized Application Inventory");
+  assert.equal(brief.assessment.score, 45);
+  assert.equal(brief.assessment.readiness, readinessText);
+  assert.ok(brief.expectedValue.quantified.every(q => q.status === "unknown"));
+  if (process.env["WRITE_V167_REPLAY"] === "1")
+    await writeFile("/tmp/innovation-v167-corrected-state.json", JSON.stringify({
+      reconstructed: true, liveAiCalls: 0, title: brief.metadata.title,
+      declaredScore: liveScore, declaredReadiness: readinessText,
+      rawSource: { turns, answers }, baseline, final, narrative, brief,
+      state: {
+        phase: "review", jira: null, answers: {}, plan: [{
+          id: "idea", prompt: "What business problem should this idea address?", hint: "", placeholder: "",
+        }], currentIndex: 0, input: "", messages: [], fallback: false,
+        aiResult: { ...final, readiness, readyToDraft: true, nextQuestion: "",
+          nextQuestionValue: "low", missingCriticalContext: final.unknowns },
+        readyToReview: true, draft: completed, finalResult: final,
+      },
+    }, null, 2));
 });
 
 test("unquantified amounts in the same answer do not erase established qualitative impacts", () => {
@@ -169,6 +362,7 @@ test("risk containment deduplication retains supplied prose and leaves room for 
   draft.canvas.risks = "Unclear application ownership and dependencies create security and compliance exposure. Dependence on institutional knowledge creates a risk of knowledge loss when people leave.";
   const n = synthesizeBriefNarrative({ draft, evidence: [
     "Ownership and dependencies are unclear.",
+    "Unclear application ownership and dependencies create security and compliance exposure.",
     "We depend on institutional knowledge and lose knowledge when people leave.",
     "Later it could extend to integrations, dependencies, licensing, cost and credential-management visibility.",
     "Credential-management visibility is limited.",

@@ -2,7 +2,7 @@
 // No network, no scoring changes. Safe to unit test in node.
 import {
   buildInitiativeBrief,
-  classifyBriefUnknowns, synthesizeBriefNarrative, cleanBriefProse, potentialSuccessMeasures, qualifyDraftBenefits,
+  classifyBriefUnknowns, synthesizeBriefNarrative, cleanBriefProse, editorialAnswer, hasInterviewMachinery, potentialSuccessMeasures, qualifyDraftBenefits,
   type InitiativeBrief,
 } from "@workspace/initiative-brief";
 import type {
@@ -94,6 +94,26 @@ export function candidateMeasures(draft: InterviewDraft, ai: ReviewAIResult | nu
   }).slice(0, 4);
 }
 
+/** Completion-only section separation. Remove a generated impact/risk clause
+ * from Problem/Current State only when source facts carry that same meaning in
+ * their own section. Reviewed fields are never passed through this helper. */
+function separateGeneratedSections(value: string, facts: ReviewAIResult["knownFacts"]): string {
+  const terms = (s: string) => new Set((s.toLowerCase().match(/[a-z]{5,}/g) ?? [])
+    .filter(w => !/^(?:about|after|their|there|these|those|which|where|would|could|should|application|applications|information|creates|create|business|teams|people)$/.test(w)));
+  const overlaps = (s: string, fact: string) => {
+    const a = terms(s), b = terms(fact);
+    return [...a].filter(w => b.has(w)).length >= 2;
+  };
+  const kept = value.split(/(?<=[.!?])\s+(?=[A-Z])/).filter(sentence => {
+    const impact = /\b(?:wast\w* time|slower|delay\w*|rediscover\w*|rework|time.consuming)\b/i.test(sentence) &&
+      facts.some(f => /^(?:business )?impact$/i.test(f.category) && overlaps(sentence, f.value));
+    const risk = /\b(?:risk|exposure)\b/i.test(sentence) &&
+      facts.some(f => /^(?:risk|consideration)$/i.test(f.category) && overlaps(sentence, f.value));
+    return !impact && !risk;
+  });
+  return cleanBriefProse(kept.length ? kept.join(" ") : value);
+}
+
 /** One completion merge used by the interview and offline replay. Never call
  * on resumed/edited review drafts; those are already authoritative. */
 export function finalizeInterviewDraft(
@@ -111,11 +131,21 @@ export function finalizeInterviewDraft(
     result.fields.title = completed.suggestedTitle?.trim() || result.fields.title;
     result.fields.problemStatement = business.problemStatement.trim() || result.fields.problemStatement;
     result.fields.currentProcess = business.currentProcess.trim() || result.fields.currentProcess;
+    // The model sometimes repeats its impact and risk paragraphs in the problem
+    // and present process. Keep them in the dedicated, source-backed sections.
+    result.fields.problemStatement = separateGeneratedSections(result.fields.problemStatement, completed.knownFacts);
+    result.fields.currentProcess = separateGeneratedSections(result.fields.currentProcess, completed.knownFacts);
     const sourceOutcome = completed.knownFacts.filter(fact => /^(?:desiredOutcome|outcome|scope|governance)$/i.test(fact.category))
       .map(fact => fact.value).join(" ");
-    result.fields.desiredOutcome = business.desiredOutcome.trim()
-      ? qualifyDraftBenefits(business.desiredOutcome.trim())
-      : sourceOutcome || result.fields.desiredOutcome;
+    const proposedOutcome = editorialAnswer(business.desiredOutcome.trim());
+    const uniqueNotes = baseline.fields.desiredOutcome.split(/\n\n+/).slice(1)
+      .flatMap(note => editorialAnswer(note).split(/(?<=[.!?])\s+(?=[A-Z])/))
+      .filter(sentence => sentence && !/\b(?:not yet known|unknown|not established)\b/i.test(sentence) &&
+        !proposedOutcome.includes(sentence) && !sourceOutcome.includes(sentence));
+    result.fields.desiredOutcome = proposedOutcome && !hasInterviewMachinery(proposedOutcome)
+      ? qualifyDraftBenefits(editorialAnswer(hasInterviewMachinery(business.desiredOutcome)
+        ? `${proposedOutcome} ${sourceOutcome} ${uniqueNotes.join(" ")}` : `${proposedOutcome} ${uniqueNotes.join(" ")}`))
+      : editorialAnswer(sourceOutcome ? `${sourceOutcome} ${uniqueNotes.join(" ")}` : result.fields.desiredOutcome);
     // A baseline aspiration is not a grounded, user-established measure.
     result.fields.successMetric = qualifyDraftBenefits(business.successMetric.trim());
     result.canvas.expectedValue = qualifyDraftBenefits(business.expectedValue.trim()) || "Value not yet quantified";
@@ -126,7 +156,7 @@ export function finalizeInterviewDraft(
   }
   const narrative = synthesizeBriefNarrative({ draft: result, aiResult: reviewResult, evidence });
   for (const key of ["problemStatement", "currentProcess", "desiredOutcome", "successMetric", "aiConcept", "prototypeGoal"] as const)
-    result.fields[key] = cleanBriefProse(result.fields[key]);
+    result.fields[key] = editorialAnswer(result.fields[key]);
   Object.assign(result.canvas, {
     problem: result.fields.problemStatement, currentProcess: result.fields.currentProcess,
     desiredOutcome: result.fields.desiredOutcome, successMetric: result.fields.successMetric,
