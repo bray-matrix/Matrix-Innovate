@@ -51,7 +51,7 @@ router.post("/session", async (req, res) => {
     const identity = await verifyLaunchToken(token);
     const session = await mintSessionToken(identity);
     res.cookie(SESSION_COOKIE, session, sessionCookieOptions());
-    res.json({ user: { sub: identity.sub, name: identity.name, email: identity.email } });
+    res.json({ user: { sub: identity.sub, name: identity.name, email: identity.email, roles: identity.roles } });
   } catch (err) {
     if (err instanceof LaunchTokenError) {
       req.log.warn({ reason: err.message }, "Matrix launch token rejected");
@@ -69,7 +69,7 @@ router.get("/session", async (req, res) => {
     res.status(401).json({ error: "Matrix Platform session required" });
     return;
   }
-  res.json({ user: { sub: identity.sub, name: identity.name, email: identity.email } });
+  res.json({ user: { sub: identity.sub, name: identity.name, email: identity.email, roles: identity.roles } });
 });
 
 router.post("/logout", async (req, res) => {

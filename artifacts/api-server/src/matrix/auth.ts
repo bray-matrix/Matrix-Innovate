@@ -14,6 +14,7 @@ export interface MatrixIdentity {
   sub: string;
   name: string | null;
   email: string | null;
+  roles: string[];
 }
 
 export interface MatrixAuthConfig {
@@ -232,6 +233,9 @@ export async function verifyLaunchToken(token: string): Promise<MatrixIdentity> 
     sub,
     name: typeof payload["name"] === "string" ? payload["name"] : null,
     email: typeof payload["email"] === "string" ? payload["email"] : null,
+    roles: [
+      ...(Array.isArray(payload["roles"]) ? payload["roles"].filter((r): r is string => typeof r === "string") : []),
+    ],
   };
 }
 
@@ -243,7 +247,7 @@ export const SESSION_COOKIE = "matrix_session";
 
 export async function mintSessionToken(identity: MatrixIdentity): Promise<string> {
   const { sessionTtlSeconds, audience } = getMatrixAuthConfig();
-  return new SignJWT({ name: identity.name, email: identity.email })
+  return new SignJWT({ name: identity.name, email: identity.email, roles: identity.roles })
     .setProtectedHeader({ alg: "HS256" })
     .setSubject(identity.sub)
     .setIssuer("matrix-innovation-hub-session")
@@ -266,6 +270,7 @@ export async function verifySessionToken(token: string): Promise<MatrixIdentity 
       sub: payload.sub,
       name: typeof payload["name"] === "string" ? payload["name"] : null,
       email: typeof payload["email"] === "string" ? payload["email"] : null,
+      roles: Array.isArray(payload["roles"]) ? payload["roles"].filter((r): r is string => typeof r === "string") : [],
     };
   } catch {
     return null;

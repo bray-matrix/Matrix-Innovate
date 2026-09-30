@@ -525,6 +525,62 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Settings"
+  /settings/departments:
+    post:
+      operationId: createDepartment
+      tags: [settings]
+      summary: Add a department (Admin or Super Admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DepartmentInput"
+      responses:
+        "201":
+          description: Department created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Department"
+  /settings/departments/initialize:
+    post:
+      operationId: initializeDepartments
+      tags: [settings]
+      summary: Explicitly seed default departments without duplicating existing names (Admin or Super Admin)
+      responses:
+        "200":
+          description: All configured departments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Department"
+  /settings/departments/{id}:
+    patch:
+      operationId: updateDepartment
+      tags: [settings]
+      summary: Rename or change department active status (Admin or Super Admin)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DepartmentUpdate"
+      responses:
+        "200":
+          description: Department updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Department"
   /settings/ai-provider/test:
     post:
       operationId: testAiProvider
@@ -2778,6 +2834,7 @@ components:
       type: object
       required:
         - departments
+        - departmentMaster
         - categories
         - statuses
         - scoringWeights
@@ -2787,6 +2844,10 @@ components:
           type: array
           items:
             type: string
+        departmentMaster:
+          type: array
+          items:
+            $ref: "#/components/schemas/Department"
         categories:
           type: array
           items:
@@ -2803,6 +2864,33 @@ components:
           type: string
         aiProvider:
           $ref: "#/components/schemas/AIProviderConfig"
+    Department:
+      type: object
+      required: [id, name, active]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        active:
+          type: boolean
+    DepartmentInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+    DepartmentUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        active:
+          type: boolean
     AIProviderConfig:
       type: object
       required:

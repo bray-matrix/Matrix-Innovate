@@ -11,6 +11,7 @@ export interface MatrixUser {
   sub: string;
   name: string | null;
   email: string | null;
+  roles: string[];
 }
 
 let pendingLaunchToken: string | null = null;

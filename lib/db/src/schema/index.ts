@@ -26,3 +26,4 @@ export * from "./environment";
 export * from "./execution";
 export * from "./jira";
 export * from "./interview-drafts";
+export * from "./departments";

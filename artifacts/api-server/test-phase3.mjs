@@ -55,9 +55,9 @@ const counts = async () => ({
 
 check("W. Platform authentication", sessRes.status === 200 && !!cookie);
 const appInfo = await (await fetch(`${BASE}/matrix/app-info`)).json();
-check("A/X. app-info Innovation Hub v1.6.10", appInfo.name === "Innovation Hub" && appInfo.version === "v1.6.10", JSON.stringify(appInfo));
+check("A/X. app-info Innovation Hub v1.6.11", appInfo.name === "Innovation Hub" && appInfo.version === "v1.6.11", JSON.stringify(appInfo));
 const health = await (await fetch(`${BASE}/matrix/health`)).json();
-check("Y. /matrix/health passes", health.checks?.database === "ok" && health.version === "v1.6.10");
+check("Y. /matrix/health passes", health.checks?.database === "ok" && health.version === "v1.6.11");
 
 const before = await counts();
 const noAuth = await fetch(`${BASE}/api/resources`, { method: "POST", headers: { "content-type": "application/json" }, body: "{}" });
@@ -65,7 +65,7 @@ const noAuthPdf = await fetch(`${BASE}/api/reports/executive-portfolio/pdf`);
 check("SEC. Resource mutations + reports require auth", noAuth.status === 401 && noAuthPdf.status === 401);
 
 // D. resource CRUD
-const r1 = await api("POST", "/api/resources", { name: "P3 Alice", department: "Development", roleTitle: "Engineer", weeklyCapacityHours: 40 });
+const r1 = await api("POST", "/api/resources", { name: "P3 Alice", department: "Information Technology", roleTitle: "Engineer", weeklyCapacityHours: 40 });
 const r2 = await api("POST", "/api/resources", { name: "P3 Bob", department: "Operations" });
 const rUpd = await api("PATCH", `/api/resources/${r2.json.id}`, { roleTitle: "Ops Lead" });
 const rList = await api("GET", "/api/resources");
@@ -108,7 +108,7 @@ const program = await api("POST", "/api/programs", { name: "P3 Program" });
 await api("PATCH", `/api/projects/${pid}`, { clientId: client.json.id, programId: program.json.id });
 
 const get = (rep, key) => rep.sections.find((s) => s.key === key);
-const meta = (rep) => rep.appName === "Innovation Hub" && rep.appVersion === "v1.6.10" && !!rep.generatedAt;
+const meta = (rep) => rep.appName === "Innovation Hub" && rep.appVersion === "v1.6.11" && !!rep.generatedAt;
 
 // L. executive portfolio
 const ex = (await api("GET", "/api/reports/executive-portfolio")).json;

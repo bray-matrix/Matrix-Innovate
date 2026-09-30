@@ -2,6 +2,9 @@ import {
   useGetSettings,
   getGetSettingsQueryKey,
   useTestAiProvider,
+  useCreateDepartment,
+  useUpdateDepartment,
+  useInitializeDepartments,
   useListAiProviderTests,
   getListAiProviderTestsQueryKey,
 } from "@workspace/api-client-react";
@@ -12,6 +15,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { useMatrixAuth } from "@/components/matrix-gate";
+import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import {
   CheckCircle2,
@@ -282,7 +288,39 @@ function ProviderTestHistory() {
 
 export default function Admin() {
   const { data: settings, isLoading } = useGetSettings();
+  const { user } = useMatrixAuth();
+  const canManage = user.roles?.some(role => ["admin", "superadmin", "super_admin", "super admin"].includes(role.toLowerCase())) ?? false;
+  const { toast } = useToast();
+  const [departmentName, setDepartmentName] = useState("");
+  const [editingId, setEditingId] = useState<number | null>(null);
   const queryClient = useQueryClient();
+  const refreshDepartments = () => queryClient.invalidateQueries({ queryKey: getGetSettingsQueryKey() });
+  const departmentError = (error: unknown) => toast({
+    title: "Department change failed",
+    description: error instanceof Error ? error.message : "Please try again.",
+    variant: "destructive",
+  });
+  const createDepartment = useCreateDepartment({ mutation: {
+    onSuccess: () => { setDepartmentName(""); refreshDepartments(); toast({ title: "Department added" }); },
+    onError: departmentError,
+  } });
+  const initializeDepartments = useInitializeDepartments({ mutation: {
+    onSuccess: () => { refreshDepartments(); toast({ title: "Default departments added" }); },
+    onError: departmentError,
+  } });
+  const withDefaultDepartment = async (name: string, action: (id: number) => void) => {
+    try {
+      const rows = await initializeDepartments.mutateAsync();
+      const row = rows.find(dept => dept.name === name);
+      if (row) action(row.id);
+    } catch {
+      // Mutation error is surfaced by onError; keep fallback values visible.
+    }
+  };
+  const updateDepartment = useUpdateDepartment({ mutation: {
+    onSuccess: () => { setEditingId(null); setDepartmentName(""); refreshDepartments(); toast({ title: "Department updated" }); },
+    onError: departmentError,
+  } });
   const [latestResult, setLatestResult] = useState<ProviderTestEvent | null>(null);
   const { data: testHistory } = useListAiProviderTests({
     query: { queryKey: getListAiProviderTestsQueryKey() },
@@ -329,13 +367,38 @@ export default function Admin() {
         <Card>
           <CardHeader>
             <CardTitle>Departments</CardTitle>
-            <CardDescription>Configured business units</CardDescription>
+            <CardDescription>Active departments are available for new selections. Inactive departments remain on historical records.</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-wrap gap-2">
-              {settings.departments.map(dept => (
-                <Badge key={dept} variant="secondary">{dept}</Badge>
+            <div className="space-y-3">
+              {settings.departmentMaster.length === 0 && settings.departments.map(name => (
+                <div key={name} className="flex items-center gap-2">
+                  <Badge variant="secondary">{name}</Badge>
+                  {canManage && <>
+                    <Button size="sm" variant="ghost" disabled={initializeDepartments.isPending} onClick={() => void withDefaultDepartment(name, id => { setEditingId(id); setDepartmentName(name); })}>Rename</Button>
+                    <Button size="sm" variant="ghost" disabled={initializeDepartments.isPending} onClick={() => void withDefaultDepartment(name, id => updateDepartment.mutate({ id, data: { active: false } }))}>Deactivate</Button>
+                  </>}
+                </div>
               ))}
+              {settings.departmentMaster.map(dept => (
+                <div key={dept.id} className="flex items-center gap-2 flex-wrap">
+                  <Badge variant={dept.active ? "secondary" : "outline"}>{dept.name}{!dept.active && " (Inactive)"}</Badge>
+                  {canManage && <>
+                    <Button size="sm" variant="ghost" disabled={updateDepartment.isPending} onClick={() => { setEditingId(dept.id); setDepartmentName(dept.name); }}>Rename</Button>
+                    <Button size="sm" variant="ghost" disabled={updateDepartment.isPending} onClick={() => updateDepartment.mutate({ id: dept.id, data: { active: !dept.active } })}>{dept.active ? "Deactivate" : "Reactivate"}</Button>
+                  </>}
+                </div>
+              ))}
+              {canManage && <div className="flex gap-2">
+                <Input aria-label="Department name" value={departmentName} maxLength={120} onChange={e => setDepartmentName(e.target.value)} placeholder="Department name" />
+                <Button disabled={!departmentName.trim() || createDepartment.isPending || updateDepartment.isPending}
+                  onClick={() => editingId === null
+                    ? createDepartment.mutate({ data: { name: departmentName } })
+                    : updateDepartment.mutate({ id: editingId, data: { name: departmentName } })}>
+                  {editingId === null ? "Add" : "Save"}
+                </Button>
+                {editingId !== null && <Button variant="outline" onClick={() => { setEditingId(null); setDepartmentName(""); }}>Cancel</Button>}
+              </div>}
             </div>
           </CardContent>
         </Card>

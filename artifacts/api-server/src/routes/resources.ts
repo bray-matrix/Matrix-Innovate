@@ -15,6 +15,7 @@ import {
   UpdateProjectResourceAssignmentBody,
 } from "@workspace/api-zod";
 import { computeResourceCapacity } from "../lib/capacity";
+import { validDepartmentSelection } from "../lib/departments";
 
 const router: IRouter = Router();
 
@@ -90,6 +91,9 @@ router.post("/resources", async (req, res, next) => {
       res.status(400).json({ error: parsed.error.message });
       return;
     }
+    if (!(await validDepartmentSelection(parsed.data.department))) {
+      res.status(400).json({ error: "Select an active department" }); return;
+    }
     const [created] = await db
       .insert(resourcesTable)
       .values(parsed.data)
@@ -154,6 +158,12 @@ router.patch("/resources/:id", async (req, res, next) => {
     if (!parsed.success) {
       res.status(400).json({ error: parsed.error.message });
       return;
+    }
+    if (parsed.data.department !== undefined) {
+      const [current] = await db.select({ department: resourcesTable.department }).from(resourcesTable).where(eq(resourcesTable.id, id));
+      if (!(await validDepartmentSelection(parsed.data.department, current?.department))) {
+        res.status(400).json({ error: "Select an active department" }); return;
+      }
     }
     const [updated] = await db
       .update(resourcesTable)
@@ -294,6 +304,9 @@ router.post("/projects/:id/resources", async (req, res, next) => {
         .json({ error: "Provide a resourceId or a department (or both)" });
       return;
     }
+    if (department && !(await validDepartmentSelection(department))) {
+      res.status(400).json({ error: "Select an active department" }); return;
+    }
     // For named assignments, default the department to the resource's own
     // department so that if the resource is later deleted (FK sets resourceId
     // NULL) the row remains meaningful department demand.
@@ -311,6 +324,9 @@ router.post("/projects/:id/resources", async (req, res, next) => {
         return;
       }
       if (!effectiveDepartment) effectiveDepartment = r.department;
+    }
+    if (effectiveDepartment && !(await validDepartmentSelection(effectiveDepartment))) {
+      res.status(400).json({ error: "Select an active department" }); return;
     }
     const [created] = await db
       .insert(projectResourceAssignmentsTable)
@@ -368,6 +384,9 @@ router.patch(
         rest.resourceId !== undefined ? rest.resourceId : existing.resourceId;
       const nextDepartment =
         rest.department !== undefined ? rest.department : existing.department;
+      if (rest.department && !(await validDepartmentSelection(rest.department, existing.department))) {
+        res.status(400).json({ error: "Select an active department" }); return;
+      }
       if (!nextResourceId && !nextDepartment) {
         res.status(400).json({
           error: "Assignment must keep a resourceId or a department",
@@ -380,12 +399,15 @@ router.patch(
         rest.resourceId !== existing.resourceId
       ) {
         const [r] = await db
-          .select({ id: resourcesTable.id })
+          .select({ id: resourcesTable.id, department: resourcesTable.department })
           .from(resourcesTable)
           .where(eq(resourcesTable.id, rest.resourceId));
         if (!r) {
           res.status(400).json({ error: "Unknown resourceId" });
           return;
+        }
+        if (!(await validDepartmentSelection(r.department))) {
+          res.status(400).json({ error: "Select an active department" }); return;
         }
       }
       const patch: Record<string, unknown> = { ...rest, updatedAt: new Date() };

@@ -5,6 +5,7 @@ import {
   useUpdateResource, 
   useDeleteResource,
   useGetResource,
+  useGetSettings,
   getListResourcesQueryKey
 } from "@workspace/api-client-react";
 import type { ResourceWithCapacity, ResourceCreate, ResourceUpdate } from "@workspace/api-client-react";
@@ -24,17 +25,6 @@ import { Progress } from "@/components/ui/progress";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 
-const DEPARTMENTS = [
-  "Project Management",
-  "Development",
-  "Operations",
-  "Technology",
-  "Executive",
-  "Sales",
-  "Finance",
-  "Other"
-];
-
 function CapacityBadge({ flag }: { flag: string }) {
   if (flag === "Overallocated") {
     return <Badge className="bg-red-100 text-red-700 hover:bg-red-100 border-red-200">Overallocated</Badge>;
@@ -49,6 +39,7 @@ export default function ResourcesPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { data: resources, isLoading } = useListResources();
+  const { data: settings } = useGetSettings();
 
   const [search, setSearch] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("all");
@@ -98,11 +89,10 @@ export default function ResourcesPage() {
   });
 
   const departmentsList = useMemo(() => {
-    if (!resources) return DEPARTMENTS;
-    const existing = new Set(resources.map(r => r.department));
-    DEPARTMENTS.forEach(d => existing.add(d));
+    const existing = new Set(resources?.map(r => r.department) ?? []);
+    settings?.departments.forEach(d => existing.add(d));
     return Array.from(existing).sort();
-  }, [resources]);
+  }, [resources, settings]);
 
   const filteredResources = useMemo(() => {
     if (!resources) return [];
@@ -388,15 +378,13 @@ export default function ResourcesPage() {
               </div>
               <div className="grid gap-2">
                 <Label>Department</Label>
-                <Input 
-                  value={formData.department} 
-                  onChange={(e) => setFormData(f => ({ ...f, department: e.target.value }))} 
-                  placeholder="e.g. Engineering"
-                  list="departments"
-                />
-                <datalist id="departments">
-                  {departmentsList.map(d => <option key={d} value={d} />)}
-                </datalist>
+                <Select value={formData.department} onValueChange={value => setFormData(f => ({ ...f, department: value }))}>
+                  <SelectTrigger><SelectValue placeholder="Select department" /></SelectTrigger>
+                  <SelectContent>
+                    {formData.department && !settings?.departments.includes(formData.department) && <SelectItem value={formData.department}>{formData.department} (Inactive)</SelectItem>}
+                    {settings?.departments.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 

@@ -960,7 +960,7 @@ export default function AIInnovationInterview() {
             <div className="flex items-center gap-2">
                {!isLastQuestion ? (
                 <>
-                {allowEarlyDraft && <Button data-testid="button-early-draft" variant="outline" onClick={handleFinish} disabled={isTyping || finishing}>{finishing ? "Drafting..." : "Draft My Initiative"}</Button>}
+                {allowEarlyDraft && <Button data-testid="button-early-draft" variant="outline" onClick={handleFinish} disabled={isTyping || finishing || savingDraft}>{finishing ? "Drafting..." : savingDraft ? "Saving draft..." : "Draft My Initiative"}</Button>}
                 <Button onClick={handleNext} disabled={!canSubmitAnswer || isTyping || finishing}>
                    {input.trim() ? "Next" : "Skip / Not known yet"} <ArrowRight className="ml-1 h-4 w-4" />
                 </Button>
@@ -971,8 +971,8 @@ export default function AIInnovationInterview() {
                   {!readyToReview && <Button variant="outline" onClick={handleNext} disabled={isTyping || finishing || !input.trim()}>
                     <Send className="mr-1 h-4 w-4" /> Send
                   </Button>}
-                   <Button onClick={handleFinish} disabled={isTyping || finishing}>
-                     {finishing ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-1 h-4 w-4" />} {finishing ? "Drafting..." : "Draft My Initiative"}
+                   <Button data-testid="button-final-draft" onClick={handleFinish} disabled={isTyping || finishing || savingDraft}>
+                     {finishing || savingDraft ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-1 h-4 w-4" />} {finishing ? "Drafting..." : savingDraft ? "Saving draft..." : "Draft My Initiative"}
                   </Button>
                 </>
               )}

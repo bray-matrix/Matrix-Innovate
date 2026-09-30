@@ -377,6 +377,12 @@ export interface Document {
   status: string;
 }
 
+export interface Department {
+  id: number;
+  name: string;
+  active: boolean;
+}
+
 export interface ScoringWeight {
   name: string;
   weight: number;
@@ -429,11 +435,29 @@ export interface AIProviderConfig {
 
 export interface Settings {
   departments: string[];
+  departmentMaster: Department[];
   categories: string[];
   statuses: string[];
   scoringWeights: ScoringWeight[];
   applicationVersion: string;
   aiProvider?: AIProviderConfig;
+}
+
+export interface DepartmentInput {
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  name: string;
+}
+
+export interface DepartmentUpdate {
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  name?: string;
+  active?: boolean;
 }
 
 export interface ProviderTestCapabilityResult {

@@ -5,6 +5,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and the
 project adheres to semantic versioning (patch = fixes/edits, minor = new
 features, major = breaking or milestone changes).
 
+## [1.6.11] - Unreleased
+
+### Admin and first-click cleanup
+- Document existing Admin department master CRUD.
+- Evidence-based first-click cleanup remains pending verification.
+
 ## [1.6.10] - Unreleased
 
 ### Pilot-readiness cleanup

@@ -30,6 +30,9 @@ import type {
   ClientUpdate,
   DashboardAttention,
   DashboardSummary,
+  Department,
+  DepartmentInput,
+  DepartmentUpdate,
   Document,
   EnvironmentEvent,
   EnvironmentInitializeRequest,
@@ -2162,6 +2165,217 @@ export function useGetSettings<TData = Awaited<ReturnType<typeof getSettings>>, 
 
 
 
+
+export const getCreateDepartmentUrl = () => {
+
+
+
+
+  return `/api/settings/departments`
+}
+
+/**
+ * @summary Add a department (Admin or Super Admin)
+ */
+export const createDepartment = async (departmentInput: DepartmentInput, options?: RequestInit): Promise<Department> => {
+
+  return customFetch<Department>(getCreateDepartmentUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(departmentInput)
+  }
+);}
+
+
+
+
+export const getCreateDepartmentMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createDepartment>>, TError,{data: BodyType<DepartmentInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createDepartment>>, TError,{data: BodyType<DepartmentInput>}, TContext> => {
+
+const mutationKey = ['createDepartment'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createDepartment>>, {data: BodyType<DepartmentInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createDepartment(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateDepartmentMutationResult = NonNullable<Awaited<ReturnType<typeof createDepartment>>>
+    export type CreateDepartmentMutationBody = BodyType<DepartmentInput>
+    export type CreateDepartmentMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Add a department (Admin or Super Admin)
+ */
+export const useCreateDepartment = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createDepartment>>, TError,{data: BodyType<DepartmentInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createDepartment>>,
+        TError,
+        {data: BodyType<DepartmentInput>},
+        TContext
+      > => {
+      return useMutation(getCreateDepartmentMutationOptions(options));
+    }
+
+export const getInitializeDepartmentsUrl = () => {
+
+
+
+
+  return `/api/settings/departments/initialize`
+}
+
+/**
+ * @summary Explicitly seed default departments without duplicating existing names (Admin or Super Admin)
+ */
+export const initializeDepartments = async ( options?: RequestInit): Promise<Department[]> => {
+
+  return customFetch<Department[]>(getInitializeDepartmentsUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getInitializeDepartmentsMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof initializeDepartments>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof initializeDepartments>>, TError,void, TContext> => {
+
+const mutationKey = ['initializeDepartments'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof initializeDepartments>>, void> = () => {
+
+
+          return  initializeDepartments(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type InitializeDepartmentsMutationResult = NonNullable<Awaited<ReturnType<typeof initializeDepartments>>>
+
+    export type InitializeDepartmentsMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Explicitly seed default departments without duplicating existing names (Admin or Super Admin)
+ */
+export const useInitializeDepartments = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof initializeDepartments>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof initializeDepartments>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getInitializeDepartmentsMutationOptions(options));
+    }
+
+export const getUpdateDepartmentUrl = (id: number,) => {
+
+
+
+
+  return `/api/settings/departments/${id}`
+}
+
+/**
+ * @summary Rename or change department active status (Admin or Super Admin)
+ */
+export const updateDepartment = async (id: number,
+    departmentUpdate: DepartmentUpdate, options?: RequestInit): Promise<Department> => {
+
+  return customFetch<Department>(getUpdateDepartmentUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(departmentUpdate)
+  }
+);}
+
+
+
+
+export const getUpdateDepartmentMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateDepartment>>, TError,{id: number;data: BodyType<DepartmentUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateDepartment>>, TError,{id: number;data: BodyType<DepartmentUpdate>}, TContext> => {
+
+const mutationKey = ['updateDepartment'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateDepartment>>, {id: number;data: BodyType<DepartmentUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateDepartment(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateDepartmentMutationResult = NonNullable<Awaited<ReturnType<typeof updateDepartment>>>
+    export type UpdateDepartmentMutationBody = BodyType<DepartmentUpdate>
+    export type UpdateDepartmentMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Rename or change department active status (Admin or Super Admin)
+ */
+export const useUpdateDepartment = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateDepartment>>, TError,{id: number;data: BodyType<DepartmentUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateDepartment>>,
+        TError,
+        {id: number;data: BodyType<DepartmentUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateDepartmentMutationOptions(options));
+    }
 
 export const getTestAiProviderUrl = () => {
 

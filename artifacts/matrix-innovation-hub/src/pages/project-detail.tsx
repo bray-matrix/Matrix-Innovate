@@ -31,6 +31,7 @@ import {
   useUpdateProjectResourceAssignment,
   useDeleteProjectResourceAssignment,
   useListResources,
+  useGetSettings,
   getGetProjectQueryKey,
   getGetInitiativeQueryKey,
   getGetInitiativeRecommendationsQueryKey,
@@ -155,6 +156,7 @@ export default function ProjectDetailPage() {
 
   const { data: resourcesData } = useListProjectResourceAssignments(id, { query: { enabled: !!id, queryKey: getListProjectResourceAssignmentsQueryKey(id) } });
   const { data: allResources } = useListResources();
+  const { data: settings } = useGetSettings();
 
   const { data: assessments } = useListReadinessAssessments(id, {
     query: { enabled: !!id, queryKey: getListReadinessAssessmentsQueryKey(id) }
@@ -1241,7 +1243,13 @@ export default function ProjectDetailPage() {
             ) : (
               <div className="grid gap-2 mt-2">
                 <Label>Department</Label>
-                <Input value={assignmentForm.department} onChange={(e) => setAssignmentForm(f => ({...f, department: e.target.value}))} placeholder="e.g. Engineering" />
+                <Select value={assignmentForm.department} onValueChange={value => setAssignmentForm(f => ({ ...f, department: value }))}>
+                  <SelectTrigger><SelectValue placeholder="Select department" /></SelectTrigger>
+                  <SelectContent>
+                    {assignmentForm.department && !settings?.departments.includes(assignmentForm.department) && <SelectItem value={assignmentForm.department}>{assignmentForm.department} (Inactive)</SelectItem>}
+                    {settings?.departments.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
             )}
 

@@ -27,6 +27,7 @@ import {
 import { bumpVersion, determineBumpKind, DEFAULT_VERSION } from "../lib/versioning";
 import { getAIProvider } from "../lib/ai";
 import { JiraClient, JiraError } from "../lib/jira-client";
+import { validDepartmentSelection } from "../lib/departments";
 
 const router: IRouter = Router();
 
@@ -213,6 +214,9 @@ router.post("/initiatives", async (req, res, next) => {
     }
   }
   const data = parsed.data;
+  if (!(await validDepartmentSelection(data.department))) {
+    res.status(400).json({ error: "Select an active department" }); return;
+  }
   let reviewedBrief: InitiativeBrief | null = null;
   if (data.reviewedBrief !== undefined && data.reviewedBrief !== null) {
     try {
@@ -714,6 +718,9 @@ router.patch("/initiatives/:id", async (req, res) => {
   }
 
   const data = parsed.data;
+  if (data.department !== undefined && !(await validDepartmentSelection(data.department, existing.department))) {
+    res.status(400).json({ error: "Select an active department" }); return;
+  }
   let reviewedBrief: InitiativeBrief | null | undefined;
   if (data.reviewedBrief !== undefined) {
     try {

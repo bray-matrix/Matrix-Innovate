@@ -6,10 +6,12 @@
  * OpenAPI spec version: 1.5.0
  */
 import type { AIProviderConfig } from './aIProviderConfig';
+import type { Department } from './department';
 import type { ScoringWeight } from './scoringWeight';
 
 export interface Settings {
   departments: string[];
+  departmentMaster: Department[];
   categories: string[];
   statuses: string[];
   scoringWeights: ScoringWeight[];

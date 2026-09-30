@@ -1038,6 +1038,11 @@ export const ListDocumentsResponse = zod.array(ListDocumentsResponseItem)
  */
 export const GetSettingsResponse = zod.object({
   "departments": zod.array(zod.string()),
+  "departmentMaster": zod.array(zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "active": zod.boolean()
+})),
   "categories": zod.array(zod.string()),
   "statuses": zod.array(zod.string()),
   "scoringWeights": zod.array(zod.object({
@@ -1063,6 +1068,58 @@ export const GetSettingsResponse = zod.object({
   "lastProviderTest": zod.string().nullable().describe('ISO timestamp of the last provider connectivity test, or null if never run'),
   "providerNotes": zod.string()
 }).optional()
+})
+
+
+/**
+ * @summary Add a department (Admin or Super Admin)
+ */
+export const createDepartmentBodyNameMax = 120;
+
+
+
+export const CreateDepartmentBody = zod.object({
+  "name": zod.string().min(1).max(createDepartmentBodyNameMax)
+})
+
+export const CreateDepartmentResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "active": zod.boolean()
+})
+
+
+/**
+ * @summary Explicitly seed default departments without duplicating existing names (Admin or Super Admin)
+ */
+export const InitializeDepartmentsResponseItem = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "active": zod.boolean()
+})
+export const InitializeDepartmentsResponse = zod.array(InitializeDepartmentsResponseItem)
+
+
+/**
+ * @summary Rename or change department active status (Admin or Super Admin)
+ */
+export const UpdateDepartmentParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const updateDepartmentBodyNameMax = 120;
+
+
+
+export const UpdateDepartmentBody = zod.object({
+  "name": zod.string().min(1).max(updateDepartmentBodyNameMax).optional(),
+  "active": zod.boolean().optional()
+})
+
+export const UpdateDepartmentResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "active": zod.boolean()
 })
 
 
