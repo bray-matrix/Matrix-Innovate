@@ -239,7 +239,7 @@ test("captured synthetic final completion is replayed through baseline and revie
     await writeFile("/tmp/innovation-representative-part-a-brief.json", JSON.stringify(brief));
 });
 
-test("raw interview and impact-only completion pass the actual baseline, merge and review quality gate", async () => {
+test("raw interview and orphaned impact-fragment completion pass baseline, private draft and Review", async () => {
   const capture = JSON.parse(await readFile(CAPTURE_PATH, "utf8"));
   const turns = capture.input.turns as { question: string; answer: string }[];
   const answers = {
@@ -272,10 +272,15 @@ test("raw interview and impact-only completion pass the actual baseline, merge a
   final.suggestedTitle = "Centralized Application Inventory";
   final.draft.desiredOutcome = "";
   final.draft.executiveSummary = `Additional notes: What would improve if this Initiative succeeds?: ${turns[2].answer}`;
-  final.draft.risks = "IT and business teams waste time during troubleshooting, onboarding, renewals and changes, and this creates security and compliance risk when ownership or dependencies are unclear.";
+  // The production failure was this exact predicate, not the full impact
+  // sentence used in previous fixtures. Keep the source evidence uncorrected.
+  final.draft.risks = "creates security and compliance risk when ownership or dependencies are unclear.";
   const evidence = turns.map(t => ({ value: t.answer, source: "user" as const }));
   const completed = finalizeInterviewDraft(baseline, final, final, evidence);
   const narrative = initialNarrative(completed, final);
+  assert.equal(completed.canvas.risks, narrative.risks, "private draft retains the finalized semantic risk");
+  assert.match(completed.canvas.risks, /^Reliance on institutional knowledge may create continuity risk/);
+  assert.doesNotMatch(completed.canvas.risks, /^creates security and compliance risk/i);
   const liveScore = computeScore(completed.scoring);
   const livePriority = derivePriority(liveScore);
   assert.equal(liveScore, 45);
@@ -294,6 +299,8 @@ test("raw interview and impact-only completion pass the actual baseline, merge a
   }));
   assert.match(html, /data-testid="text-live-score">45<\/span>/);
   assert.match(html, /data-testid="text-brief-readiness">83% — Strong Business Context<\/dd>/);
+  assert.match(html, /data-testid="input-risks"[^>]*>Reliance on institutional knowledge may create continuity risk/);
+  assert.equal(brief.risks.text, narrative.risks, "Review brief is the shared DOCX/PDF semantic input");
   for (const section of [brief.executiveSummary.text, brief.futureState.outcome.text, brief.risks.text]) {
     assert.doesNotMatch(section, /Additional notes:|What would improve if this Initiative succeeds\?|Question:|Answer:/i);
   }
@@ -305,6 +312,7 @@ test("raw interview and impact-only completion pass the actual baseline, merge a
   for (const signal of [/institutional knowledge/i, /accountability/i, /dependency visibility/i,
     /security and compliance/i, /credential-management/i]) assert.match(brief.risks.text, signal);
   assert.doesNotMatch(brief.risks.text, /waste time during troubleshooting/i);
+  assert.doesNotMatch(brief.risks.text, /creates security and compliance risk when ownership or dependencies are unclear/i);
   assert.notEqual(brief.risks.text, turns[1].answer);
   assert.equal(brief.metadata.title, "Centralized Application Inventory");
   assert.equal(brief.assessment.score, 45);

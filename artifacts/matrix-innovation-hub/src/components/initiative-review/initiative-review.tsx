@@ -100,6 +100,8 @@ export function InitiativeReview({
   const [errors, setErrors] = useState<Errors>({});
   const [assessmentOpen, setAssessmentOpen] = useState(false);
   const [exporting, setExporting] = useState<"docx" | "pdf" | null>(null);
+  const [exportError, setExportError] = useState("");
+  const exportInFlightRef = useRef(false);
   const [confirmedZero, setConfirmedZero] = useState<ZeroField[]>(draft.review?.confirmedZeroFields ?? []);
   const [generatedAt] = useState(() => generatedAtProp ?? new Date().toISOString());
 
@@ -185,6 +187,9 @@ export function InitiativeReview({
   };
 
   const exportBrief = async (format: "docx" | "pdf") => {
+    if (exportInFlightRef.current) return;
+    exportInFlightRef.current = true;
+    setExportError("");
     setExporting(format);
     try {
       const response = await fetch(withBase(`/api/initiative-brief/export/${format}`), {
@@ -201,8 +206,11 @@ export function InitiativeReview({
       document.body.appendChild(a); a.click(); a.remove();
       window.setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch (error) {
-      toast({ title: "Export unavailable", description: safeErrorMessage(error, "Please retry."), variant: "destructive" });
+      const message = safeErrorMessage(error, "Please retry.");
+      setExportError(message);
+      toast({ title: "Export unavailable", description: message, variant: "destructive" });
     } finally {
+      exportInFlightRef.current = false;
       setExporting(null);
     }
   };
@@ -269,10 +277,10 @@ export function InitiativeReview({
           <ArrowLeft className="mr-1.5 h-4 w-4" /> Back to Interview
         </Button>
         <div className="brief-toolbar-actions">
-          <Button variant="outline" size="sm" onClick={() => void exportBrief("docx")} disabled={!!exporting} data-testid="button-export-word">
+          <Button type="button" variant="outline" size="sm" onClick={() => void exportBrief("docx")} disabled={!!exporting} data-testid="button-export-word">
             {exporting === "docx" ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <FileText className="mr-1.5 h-4 w-4" />} Export Word
           </Button>
-          <Button variant="outline" size="sm" onClick={() => void exportBrief("pdf")} disabled={!!exporting} data-testid="button-export-pdf">
+          <Button type="button" variant="outline" size="sm" onClick={() => void exportBrief("pdf")} disabled={!!exporting} data-testid="button-export-pdf">
             {exporting === "pdf" ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <FileDown className="mr-1.5 h-4 w-4" />} Export PDF
           </Button>
           {toolbarExtra}
@@ -282,6 +290,7 @@ export function InitiativeReview({
           </Button>
         </div>
       </div>
+      {exportError && <p role="alert" className="brief-error" data-testid="error-export" data-print-hide>Export unavailable. {exportError}</p>}
 
       <article className="brief-doc" aria-label="Initiative Brief">
         <div className="brief-masthead">

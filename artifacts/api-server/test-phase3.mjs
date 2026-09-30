@@ -55,9 +55,9 @@ const counts = async () => ({
 
 check("W. Platform authentication", sessRes.status === 200 && !!cookie);
 const appInfo = await (await fetch(`${BASE}/matrix/app-info`)).json();
-check("A/X. app-info Innovation Hub v1.6.7", appInfo.name === "Innovation Hub" && appInfo.version === "v1.6.7", JSON.stringify(appInfo));
+check("A/X. app-info Innovation Hub v1.6.8", appInfo.name === "Innovation Hub" && appInfo.version === "v1.6.8", JSON.stringify(appInfo));
 const health = await (await fetch(`${BASE}/matrix/health`)).json();
-check("Y. /matrix/health passes", health.checks?.database === "ok" && health.version === "v1.6.7");
+check("Y. /matrix/health passes", health.checks?.database === "ok" && health.version === "v1.6.8");
 
 const before = await counts();
 const noAuth = await fetch(`${BASE}/api/resources`, { method: "POST", headers: { "content-type": "application/json" }, body: "{}" });
@@ -108,7 +108,7 @@ const program = await api("POST", "/api/programs", { name: "P3 Program" });
 await api("PATCH", `/api/projects/${pid}`, { clientId: client.json.id, programId: program.json.id });
 
 const get = (rep, key) => rep.sections.find((s) => s.key === key);
-const meta = (rep) => rep.appName === "Innovation Hub" && rep.appVersion === "v1.6.7" && !!rep.generatedAt;
+const meta = (rep) => rep.appName === "Innovation Hub" && rep.appVersion === "v1.6.8" && !!rep.generatedAt;
 
 // L. executive portfolio
 const ex = (await api("GET", "/api/reports/executive-portfolio")).json;

@@ -267,8 +267,13 @@ export function synthesizeBriefNarrative({ draft, aiResult, evidence = [] }: Bri
     sourceSentences.some(s => /\bcredential.management visibility is limited\b|\blimited visibility\b[^.!?]{0,100}\bcredential/i.test(s))
       ? "Limited visibility into credential-management responsibility may create governance and security concerns." : "",
   ].filter(Boolean);
+  // A completion can return only the trailing predicate of an Impact sentence
+  // ("creates ... risk") as its entire risk field. It is not a standalone
+  // consideration even when it contains the word "risk".
+  const orphanedImpactFragment = /^(?:creates?|causes?|result(?:s)? in|leads? to)\b/i;
   const useSupported = (sentences(suppliedRisks).length > 0 &&
-    sentences(suppliedRisks).every(s => impactSignal.test(s)) && supported.length >= 2) || !actualRisks.length || actualRisks.every(s =>
+    sentences(suppliedRisks).every(s => impactSignal.test(s) || orphanedImpactFragment.test(s)) &&
+    supported.length >= 2) || !actualRisks.length || actualRisks.every(s =>
     impactKeys.has(riskKey(s)) || (impactSignal.test(s) && !/\b(?:risk|exposure|continuity|accountability|governance)\b/i.test(s)));
   const alreadySynthesized = (sentences(suppliedRisks).filter(s =>
     /\b(?:may create|could complicate|may lead to|could create)\b/i.test(s)).length >= 2) &&

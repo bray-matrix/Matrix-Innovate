@@ -19,3 +19,9 @@ Distinguish reconstructed fixtures and LibreOffice pagination from the original 
 **Why:** A reported four-page Word export could only be reconstructed as a three-page LibreOffice document with the available source facts. Prior captures also had different readiness values. Those are useful regression samples, not proof of exact historical reproduction.
 
 **How to apply:** Preserve the actual browser download and semantic baseline before edits, compare like-for-like content, name the rendering engine, and disclose fixture-assigned scores/readiness rather than claiming they were recalculated.
+
+Do not use an auto-waiting locator click to prove that a disabled export button suppresses a pending-window duplicate.
+
+**Why:** The browser test waited until the first request completed, then clicked the newly enabled button. The second legitimate request could be mistaken for a duplicate-lock failure.
+
+**How to apply:** Gate the response, inspect disabled state, and use immediate pointer coordinates or a controlled event test while the first request is pending. Record request timing and counts. If a browser context is lost, do not infer a pass from the interrupted probe.
