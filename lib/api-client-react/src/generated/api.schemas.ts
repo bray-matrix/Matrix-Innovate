@@ -5,6 +5,43 @@
  * API specification
  * OpenAPI spec version: 1.5.0
  */
+export type InitiativeBriefExportInputMetadata = { [key: string]: unknown };
+
+export type InitiativeBriefExportInputExecutiveSummary = { [key: string]: unknown };
+
+export type InitiativeBriefExportInputBusinessNeed = { [key: string]: unknown };
+
+export type InitiativeBriefExportInputFutureState = { [key: string]: unknown };
+
+export type InitiativeBriefExportInputExpectedValue = { [key: string]: unknown };
+
+export type InitiativeBriefExportInputSuccessMeasures = { [key: string]: unknown };
+
+export type InitiativeBriefExportInputRisks = { [key: string]: unknown };
+
+export type InitiativeBriefExportInputUnknownsItem = { [key: string]: unknown };
+
+export type InitiativeBriefExportInputNextSteps = { [key: string]: unknown };
+
+export type InitiativeBriefExportInputAssessment = { [key: string]: unknown };
+
+export type InitiativeBriefExportInputSupportingContext = { [key: string]: unknown };
+
+export interface InitiativeBriefExportInput {
+  metadata: InitiativeBriefExportInputMetadata;
+  executiveSummary: InitiativeBriefExportInputExecutiveSummary;
+  businessNeed: InitiativeBriefExportInputBusinessNeed;
+  futureState: InitiativeBriefExportInputFutureState;
+  expectedValue: InitiativeBriefExportInputExpectedValue;
+  successMeasures: InitiativeBriefExportInputSuccessMeasures;
+  risks: InitiativeBriefExportInputRisks;
+  /** @maxItems 12 */
+  unknowns: InitiativeBriefExportInputUnknownsItem[];
+  nextSteps: InitiativeBriefExportInputNextSteps;
+  assessment: InitiativeBriefExportInputAssessment;
+  supportingContext: InitiativeBriefExportInputSupportingContext;
+}
+
 export interface JiraConnection {
   configured: boolean;
   baseUrl: string | null;

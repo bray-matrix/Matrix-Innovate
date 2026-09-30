@@ -1,6 +1,6 @@
 {
   "name": "@workspace/api-server",
-  "version": "1.6.3",
+  "version": "1.6.4",
   "private": true,
   "type": "module",
   "scripts": {
@@ -14,10 +14,12 @@
     "@workspace/matrix-sdk": "file:../../vendor/workspace-matrix-sdk-1.2.1.tgz",
     "zod": "^3.25.76",
     "@workspace/api-zod": "workspace:*",
+    "@workspace/initiative-brief": "workspace:*",
     "@workspace/db": "workspace:*",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "drizzle-orm": "catalog:",
+    "docx": "^9.8.1",
     "express": "^5.2.1",
     "jose": "^6.2.3",
     "pdfmake": "^0.3.11",

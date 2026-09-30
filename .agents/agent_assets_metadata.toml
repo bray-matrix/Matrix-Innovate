@@ -1,0 +1,30 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "YMBE5YgSskrRBiVrws4Nr"
+uri = "file://attached_assets/generated/application-inventory-brief.docx"
+type = "word_document"
+title = "Sample Initiative Brief — Word"
+description = "Editable Word sample generated from the shared Initiative Brief model. OOXML validated; not visually opened in Word."
+logical_id = "bd62d9c4-8cbc-424f-9c41-c7ca3d70f40f"
+content_hash = "sha256:b6b05fda9237abb1705729aa6e7d0e732741e0e87ff3b2f85272b17d2e2e2440"
+size = 18115
+mtime_ms = 1790732399179
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:40451992-c03c-4e01-8515-2c896d8b22c5/bd62d9c4-8cbc-424f-9c41-c7ca3d70f40f/365ab7d0-4fdc-42dc-b9b1-5294b46adac2"
+storage_version_token = "1790732516277895"
+content_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+
+[[outputs]]
+id = "q6psKqegmsnIcLxzuGw6Y"
+uri = "file://attached_assets/generated/application-inventory-brief.pdf"
+type = "pdf"
+title = "Sample Initiative Brief — PDF"
+description = "Selectable-text PDF sample with Matrix branding; pages visually checked."
+logical_id = "f8fc53c1-72dd-4738-8362-e23160907d79"
+content_hash = "sha256:c21fd9e3e10cf8270feda6bd47688d475adfa29060632e4b3ecdc8cfe627c15f"
+size = 14570
+mtime_ms = 1790732399183
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:40451992-c03c-4e01-8515-2c896d8b22c5/f8fc53c1-72dd-4738-8362-e23160907d79/579374af-ff40-42b4-9e62-28f28337ef5e"
+storage_version_token = "1790732516951577"
+content_type = "application/pdf"

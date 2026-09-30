@@ -31,6 +31,34 @@ tags:
   - name: reports
     description: Deterministic reporting engine and PDF export
 paths:
+  /initiative-brief/export/{format}:
+    post:
+      operationId: exportInitiativeBrief
+      tags: [initiatives]
+      summary: Generate a transient editable Word document or text-selectable PDF from a reviewed semantic Initiative Brief
+      parameters:
+        - in: path
+          name: format
+          required: true
+          schema:
+            type: string
+            enum: [docx, pdf]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InitiativeBriefExportInput"
+      responses:
+        "200":
+          description: Document attachment
+          content:
+            application/vnd.openxmlformats-officedocument.wordprocessingml.document:
+              schema: { type: string, format: binary }
+            application/pdf:
+              schema: { type: string, format: binary }
+        "400":
+          description: Invalid or oversized model
   /jira/connection:
     get:
       operationId: getJiraConnection
@@ -2153,6 +2181,46 @@ paths:
                 $ref: "#/components/schemas/ExecutionSummary"
 components:
   schemas:
+    InitiativeBriefExportInput:
+      type: object
+      required: [metadata, executiveSummary, businessNeed, futureState, expectedValue, successMeasures, risks, unknowns, nextSteps, assessment, supportingContext]
+      properties:
+        metadata:
+          type: object
+          additionalProperties: true
+        executiveSummary:
+          type: object
+          additionalProperties: true
+        businessNeed:
+          type: object
+          additionalProperties: true
+        futureState:
+          type: object
+          additionalProperties: true
+        expectedValue:
+          type: object
+          additionalProperties: true
+        successMeasures:
+          type: object
+          additionalProperties: true
+        risks:
+          type: object
+          additionalProperties: true
+        unknowns:
+          type: array
+          maxItems: 12
+          items:
+            type: object
+            additionalProperties: true
+        nextSteps:
+          type: object
+          additionalProperties: true
+        assessment:
+          type: object
+          additionalProperties: true
+        supportingContext:
+          type: object
+          additionalProperties: true
     JiraConnection:
       type: object
       required: [configured, baseUrl, accountEmailMasked, lastTestAt, lastTestStatus, lastTestMessage]

@@ -101,6 +101,16 @@ export interface InterviewDraft {
   // Populated by the interview engine's classifier (display-only; not persisted).
   detectedCategory: string;
   detectedCategoryLabel: string;
+  // v1.6.4 document review metadata (optional; older private drafts omit it).
+  review?: InitiativeReviewMetadata;
+}
+
+export interface InitiativeReviewMetadata {
+  /** AI suggestions only; never established targets. */
+  candidateSuccessMeasures?: string[];
+  /** Estimate fields the user explicitly entered as 0 (blank means unknown). Display only; scoring unchanged. */
+  confirmedZeroFields?: ("estimatedHoursSavedMonthly" | "estimatedRevenueOpportunity" | "estimatedCostSavings")[];
+  editedAt?: string;
 }
 
 // Answers are keyed by question id (see interviewEngine.ts), so the service is

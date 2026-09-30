@@ -9,20 +9,14 @@ import {
   getGetDashboardSummaryQueryKey,
 } from "@workspace/api-client-react";
 import {
-  computeScore,
-  derivePriority,
-  validateInitiativeDraft,
   answersForReview,
   countTranscriptAnswers,
   privateInterview,
   trackInterviewSave,
   waitForInterviewSave,
   type PrivateInterviewDraft,
-  REQUIRED_INITIATIVE_FIELDS,
   type InterviewDraft,
   type InterviewQuestion,
-  type ScoringComponents,
-  type InitiativeDraftFields,
 } from "@/services/aiInterviewService";
 import {
   interviewEngine,
@@ -36,23 +30,14 @@ import {
   type InterviewReadiness,
   type CategoryDetection,
 } from "@/services/interviewEngine";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { RULE_ENGINE_SOURCE_LABEL } from "@/lib/aiSource";
 import { fetchSessionUser } from "@/lib/matrix-platform";
 import { withBase } from "@/lib/base-path";
+import { InitiativeReview } from "@/components/initiative-review/initiative-review";
 import { InterviewJiraPicker, type JiraIntakeContext } from "@/components/interview-jira-picker";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -725,9 +710,8 @@ export default function AIInnovationInterview() {
   if (phase === "review" && draft) {
     return (
       <>
-      <div className="max-w-5xl mx-auto flex justify-end mb-3">{startOverControl}</div>
-      {persistenceError && <p role="alert" className="max-w-5xl mx-auto text-destructive mb-3">Autosave failed: {persistenceError}</p>}
-      <ReviewDraft
+      {persistenceError && <p role="alert" data-print-hide className="max-w-[52rem] mx-auto text-destructive mb-3 text-sm">Autosave failed: {persistenceError}</p>}
+      <InitiativeReview
         draft={draft}
         aiResult={finalResult}
         jira={jira}
@@ -736,12 +720,14 @@ export default function AIInnovationInterview() {
         categories={settings?.categories ?? []}
         levels={[...LEVELS]}
         saving={createInitiative.isPending || updateInitiative.isPending}
+        readiness={`${readiness.score}% \u2014 ${readiness.label}`}
+        toolbarExtra={startOverControl}
         onBack={resumeInterview}
         onDraftChange={(updated) => {
           setDraft(updated);
           void queueSave({ ...stateRef.current!, draft: updated }).catch(() => {});
         }}
-        onSave={async (fields, scoring) => {
+        onSave={async (fields, scoring, extras) => {
           const owned = savedRef.current;
           const ownerGeneration = sessionGeneration.current;
           if (!owned || !ownerRef.current) {
@@ -752,13 +738,13 @@ export default function AIInnovationInterview() {
             await saveQueue.current;
             if (ownerGeneration !== sessionGeneration.current || savedRef.current?.id !== owned.id) return;
             await queueSave({ ...stateRef.current!, phase: "review",
-              draft: { ...draft, fields, scoring } });
+              draft: extras.reviewDraft });
             if (ownerGeneration !== sessionGeneration.current || savedRef.current?.id !== owned.id) return;
           } catch {
             toast({ title: "Interview not saved", description: "Please retry before saving your initiative.", variant: "destructive" });
             return;
           }
-          const initiativeInput = { ...fields, interviewDraftId: owned.id,
+          const initiativeInput = { ...fields, executiveSummary: extras.executiveSummary, interviewDraftId: owned.id,
             ...(jira ? { jiraIssueId: jira.jiraIssueId } : {}) };
           createInitiative.mutate(
             { data: initiativeInput },
@@ -1022,613 +1008,6 @@ function TypingIndicator() {
         <span className="h-2 w-2 rounded-full bg-muted-foreground/50 animate-bounce [animation-delay:-0.3s]" />
         <span className="h-2 w-2 rounded-full bg-muted-foreground/50 animate-bounce [animation-delay:-0.15s]" />
         <span className="h-2 w-2 rounded-full bg-muted-foreground/50 animate-bounce" />
-      </div>
-    </div>
-  );
-}
-
-// ------------------------------------------------------------------
-// Review & edit screen
-// ------------------------------------------------------------------
-interface ReviewProps {
-  draft: InterviewDraft;
-  aiResult: FinalDraftResult | null;
-  jira: JiraIntakeContext | null;
-  submitterName: string;
-  departments: string[];
-  categories: string[];
-  levels: string[];
-  saving: boolean;
-  onBack: () => void;
-  onDraftChange: (draft: InterviewDraft) => void;
-  onSave: (fields: InitiativeDraftFields, scoring: ScoringComponents) => void;
-}
-
-function ReviewDraft({
-  draft,
-  aiResult,
-  jira,
-  submitterName,
-  departments,
-  categories,
-  levels,
-  saving,
-  onBack,
-  onDraftChange,
-  onSave,
-}: ReviewProps) {
-  const [fields, setFields] = useState<InitiativeDraftFields>({ ...draft.fields, submitterName: submitterName || draft.fields.submitterName });
-  const [expectedValue, setExpectedValue] = useState(draft.canvas.expectedValue);
-  const [considerations, setConsiderations] = useState(draft.canvas.risks);
-  const [scoring, setScoring] = useState<ScoringComponents>(draft.scoring);
-  const [errors, setErrors] = useState<Partial<Record<keyof InitiativeDraftFields, string>>>({});
-  const changeRef = useRef(onDraftChange);
-  changeRef.current = onDraftChange;
-  const draftBaseRef = useRef(draft);
-  draftBaseRef.current = draft;
-  const editsRef = useRef({ fields, scoring, expectedValue, considerations });
-  editsRef.current = { fields, scoring, expectedValue, considerations };
-  useEffect(() => () => {
-    const latest = editsRef.current;
-    const base = draftBaseRef.current;
-    changeRef.current({ ...base, fields: latest.fields, scoring: latest.scoring,
-      canvas: { ...base.canvas, expectedValue: latest.expectedValue, risks: latest.considerations } });
-  }, []);
-  useEffect(() => {
-    const timer = window.setTimeout(() => changeRef.current({
-      ...draft, fields, scoring,
-      canvas: { ...draft.canvas, expectedValue, risks: considerations },
-    }), 700);
-    return () => window.clearTimeout(timer);
-    // The draft prop is refreshed by this save; only edits trigger another save.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fields, scoring, expectedValue, considerations]);
-  useEffect(() => {
-    if (submitterName) setFields(prev => prev.submitterName ? prev : { ...prev, submitterName });
-  }, [submitterName]);
-
-  const setField = <K extends keyof InitiativeDraftFields>(
-    key: K,
-    value: InitiativeDraftFields[K],
-  ) => {
-    editsRef.current = { ...editsRef.current, fields: { ...editsRef.current.fields, [key]: value } };
-    setFields((prev) => ({ ...prev, [key]: value }));
-    setErrors(prev => ({ ...prev, [key]: undefined }));
-  };
-
-  const setScore = (key: keyof ScoringComponents, value: string) => {
-    const num = parseInt(value, 10);
-    editsRef.current = { ...editsRef.current, scoring: {
-      ...editsRef.current.scoring, [key]: Number.isNaN(num) ? 0 : num,
-    } };
-    setScoring((prev) => ({ ...prev, [key]: Number.isNaN(num) ? 0 : num }));
-  };
-
-  const liveScore = computeScore(scoring);
-  const livePriority = derivePriority(liveScore);
-  const executiveSummary = draft.executiveSummary;
-  const canvas = draft.canvas;
-
-  const handleSave = () => {
-    const missing = validateInitiativeDraft(fields, departments, categories);
-    setErrors(missing);
-    if (Object.keys(missing).length) {
-      const first = REQUIRED_INITIATIVE_FIELDS.find(key => missing[key]);
-      if (first) requestAnimationFrame(() => {
-        const element = document.getElementById(`review-${first}`);
-        element?.scrollIntoView({ behavior: "smooth", block: "center" });
-        element?.focus();
-      });
-      return;
-    }
-    onSave({
-      ...fields,
-      desiredOutcome: [
-        fields.desiredOutcome,
-        expectedValue.trim() ? `Expected business value (estimate for review): ${expectedValue.trim()}` : "",
-        considerations.trim() ? `Risks / considerations (to validate): ${considerations.trim()}` : "",
-      ].filter(Boolean).join("\n\n"),
-    }, scoring);
-  };
-
-  const positiveFields: {
-    key: keyof ScoringComponents;
-    label: string;
-    max: number;
-  }[] = [
-    { key: "businessValue", label: "Business Value", max: 25 },
-    { key: "revenuePotential", label: "Revenue Potential", max: 15 },
-    { key: "costSavingsScore", label: "Cost Savings", max: 15 },
-    { key: "customerImpactScore", label: "Customer Impact", max: 15 },
-    { key: "strategicAlignment", label: "Strategic Alignment", max: 10 },
-    { key: "aiReadinessScore", label: "Readiness (scoring model)", max: 10 },
-    { key: "prototypeConfidence", label: "Delivery Confidence (scoring model)", max: 10 },
-  ];
-
-  return (
-    <div className="max-w-5xl mx-auto space-y-6 pb-12">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-            <CheckCircle2 className="h-6 w-6 text-secondary" />
-            Review your initiative
-          </h2>
-          <p className="text-muted-foreground text-sm">
-            Known facts appear separately below. The Executive Summary, Canvas and editable prose are
-            AI-drafted suggestions (or rule-engine fallback), not verified facts. Edit anything before saving.
-          </p>
-        </div>
-        <Button variant="outline" onClick={onBack} disabled={saving}>
-          <ArrowLeft className="mr-2 h-4 w-4" /> Back to Interview
-        </Button>
-      </div>
-
-      <DetectedTypeBadge label={draft.detectedCategoryLabel} />
-      {jira && <div className="rounded-md border bg-muted/30 p-3 text-sm">Starting Jira request: <strong>{jira.jiraIssueKey}</strong> — {jira.summary}. This read-only link will be saved with the initiative.</div>}
-
-      <Card className="bg-primary text-primary-foreground border-primary">
-        <CardHeader className="pb-2">
-          <div className="flex items-center justify-between gap-2">
-            <CardTitle className="text-sm uppercase tracking-wider opacity-90">
-              Executive Summary
-            </CardTitle>
-            <span className="text-xs opacity-75">
-               AI-drafted language for review · scoring: {RULE_ENGINE_SOURCE_LABEL}
-            </span>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <p className="text-base leading-relaxed">{executiveSummary}</p>
-        </CardContent>
-      </Card>
-
-      <div className="space-y-3">
-        <div className="flex items-center gap-2">
-          <Sparkles className="h-5 w-5 text-secondary" />
-          <h3 className="text-lg font-bold">Innovation Canvas</h3>
-          <span className="text-xs text-muted-foreground">
-            Suggested language, not established facts. Review and refine the initiative fields below before saving.
-          </span>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {(
-            [
-              ["Problem", canvas.problem],
-              ["Current Process", canvas.currentProcess],
-              ["Desired Outcome", canvas.desiredOutcome],
-              ...(fields.aiConcept ? [["AI Opportunity", canvas.aiOpportunity]] : []),
-              ["Expected Value", canvas.expectedValue],
-              ...(fields.prototypeGoal ? [["Prototype Goal", canvas.prototypeGoal]] : []),
-              ["Success Metric", canvas.successMetric],
-              ["Risks & Complexity", canvas.risks],
-              ["Recommended Next Step", canvas.recommendedNextStep],
-            ] as const
-          ).map(([label, value]) => (
-            <Card key={label}>
-              <CardHeader className="pb-1">
-                <CardTitle className="text-xs uppercase tracking-wider text-muted-foreground">
-                  {label}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm whitespace-pre-wrap">{value || "—"}</p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
-
-      {aiResult && (
-        <Card>
-          <CardHeader><CardTitle className="text-lg">What we heard</CardTitle></CardHeader>
-          <CardContent className="grid gap-4 md:grid-cols-2 text-sm">
-            <div>
-              <h4 className="font-semibold">Supplied by you or Jira</h4>
-              <ul className="list-disc pl-5 space-y-1 mt-2">
-                {aiResult.knownFacts.map((fact, i) => (
-                  <li key={i}>{fact.value} <span className="text-muted-foreground">({fact.source === "jira" ? "Jira" : "your answers"})</span></li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold">Ideas to consider, not established facts</h4>
-              <ul className="list-disc pl-5 space-y-1 mt-2">
-                {aiResult.inferredSuggestions.map((item, i) => <li key={i}>{item}</li>)}
-              </ul>
-              {!!aiResult.unknowns.length && <p className="mt-3 text-muted-foreground">Not yet known: {aiResult.unknowns.join("; ")}</p>}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {aiResult && (
-        <Card>
-          <CardHeader><CardTitle className="text-lg">Expected value and considerations</CardTitle></CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-sm text-muted-foreground">These draft notes are not established facts. Edit or remove them before saving; they will be included with the desired outcome.</p>
-            <div className="space-y-2">
-              <Label htmlFor="review-expectedValue">Expected business value</Label>
-              <Textarea id="review-expectedValue" value={expectedValue} onChange={e => {
-                editsRef.current = { ...editsRef.current, expectedValue: e.target.value };
-                setExpectedValue(e.target.value);
-              }} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="review-considerations">Risks / considerations</Label>
-              <Textarea id="review-considerations" value={considerations} onChange={e => {
-                editsRef.current = { ...editsRef.current, considerations: e.target.value };
-                setConsiderations(e.target.value);
-              }} />
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Basic Information</CardTitle>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2 md:col-span-2">
-                 <Label htmlFor="review-title">Initiative Title <span className="text-destructive">*</span></Label>
-                <Input
-                   id="review-title" aria-invalid={!!errors.title} aria-describedby={errors.title ? "error-title" : undefined}
-                  value={fields.title}
-                  onChange={(e) => setField("title", e.target.value)}
-                />
-                 {errors.title && <p id="error-title" role="alert" className="text-xs text-destructive">{errors.title}</p>}
-              </div>
-              <div className="space-y-2">
-                 <Label htmlFor="review-department">Department <span className="text-destructive">*</span></Label>
-                <Select
-                  value={departments.includes(fields.department) ? fields.department : ""}
-                  onValueChange={(v) => setField("department", v)}
-                >
-                   <SelectTrigger id="review-department" aria-invalid={!!errors.department} aria-describedby={errors.department ? "error-department" : undefined}>
-                    <SelectValue placeholder="Select department" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {departments.map((d) => (
-                      <SelectItem key={d} value={d}>
-                        {d}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                 {errors.department && <p id="error-department" role="alert" className="text-xs text-destructive">{errors.department}</p>}
-              </div>
-              <div className="space-y-2">
-                 <Label htmlFor="review-category">Category <span className="text-destructive">*</span></Label>
-                <Select
-                  value={categories.includes(fields.category) ? fields.category : ""}
-                  onValueChange={(v) => setField("category", v)}
-                >
-                   <SelectTrigger id="review-category" aria-invalid={!!errors.category} aria-describedby={errors.category ? "error-category" : undefined}>
-                    <SelectValue placeholder="Select category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((c) => (
-                      <SelectItem key={c} value={c}>
-                        {c}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                 {errors.category && <p id="error-category" role="alert" className="text-xs text-destructive">{errors.category}</p>}
-              </div>
-              <div className="space-y-2">
-                 <Label htmlFor="review-submitterName">Submitter Name <span className="text-destructive">*</span></Label>
-                <Input
-                   id="review-submitterName" aria-invalid={!!errors.submitterName} aria-describedby={errors.submitterName ? "error-submitterName" : undefined}
-                  value={fields.submitterName}
-                  onChange={(e) => setField("submitterName", e.target.value)}
-                />
-                 {errors.submitterName && <p id="error-submitterName" role="alert" className="text-xs text-destructive">{errors.submitterName}</p>}
-              </div>
-              <div className="space-y-2">
-                <Label>Business Owner (optional)</Label>
-                <Input
-                  value={fields.businessOwner}
-                  onChange={(e) => setField("businessOwner", e.target.value)}
-                />
-              </div>
-              <div className="space-y-2 md:col-span-2">
-                <Label>Executive Sponsor (optional)</Label>
-                <Input
-                  value={fields.executiveSponsor}
-                  onChange={(e) => setField("executiveSponsor", e.target.value)}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Business Problem & Future State</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                 <Label htmlFor="review-problemStatement">Problem Statement <span className="text-destructive">*</span></Label>
-                <Textarea
-                   id="review-problemStatement" aria-invalid={!!errors.problemStatement} aria-describedby={errors.problemStatement ? "error-problemStatement" : undefined}
-                  className="min-h-[100px]"
-                  value={fields.problemStatement}
-                  onChange={(e) => setField("problemStatement", e.target.value)}
-                />
-                 {errors.problemStatement && <p id="error-problemStatement" role="alert" className="text-xs text-destructive">{errors.problemStatement}</p>}
-              </div>
-              <div className="space-y-2">
-                <Label>Current Process</Label>
-                <Textarea
-                  className="min-h-[90px]"
-                  value={fields.currentProcess}
-                  onChange={(e) => setField("currentProcess", e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Desired Future State</Label>
-                <Textarea
-                  className="min-h-[90px]"
-                  value={fields.desiredOutcome}
-                  onChange={(e) => setField("desiredOutcome", e.target.value)}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-               <CardTitle className="text-lg">Approach & Success</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                 <Label>AI Concept (only if relevant)</Label>
-                <Textarea
-                  className="min-h-[90px]"
-                  value={fields.aiConcept}
-                  onChange={(e) => setField("aiConcept", e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                 <Label>Prototype Goal (only if appropriate)</Label>
-                <Textarea
-                  className="min-h-[80px]"
-                  value={fields.prototypeGoal}
-                  onChange={(e) => setField("prototypeGoal", e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Success Metric</Label>
-                <Input
-                  value={fields.successMetric}
-                  onChange={(e) => setField("successMetric", e.target.value)}
-                />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="space-y-6">
-          <Card className="sticky top-4">
-            <CardHeader>
-              <CardTitle className="text-lg">Innovation Score</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="text-center">
-                <div className="text-5xl font-mono font-bold">{liveScore}</div>
-                <div
-                  className={`mt-2 inline-block px-3 py-1 rounded-full text-xs font-semibold ${
-                    livePriority === "Critical"
-                      ? "bg-destructive text-destructive-foreground"
-                      : livePriority === "High"
-                        ? "bg-secondary text-secondary-foreground"
-                        : livePriority === "Medium"
-                          ? "bg-accent text-accent-foreground"
-                          : "bg-muted text-muted-foreground"
-                  }`}
-                >
-                  {livePriority} priority
-                </div>
-              </div>
-
-              <div className="space-y-3 pt-2">
-                {positiveFields.map((f) => (
-                  <div key={f.key} className="space-y-1">
-                    <div className="flex items-center justify-between text-xs">
-                      <Label className="text-xs">{f.label}</Label>
-                      <span className="text-muted-foreground">
-                        max {f.max}
-                      </span>
-                    </div>
-                    <Input
-                      type="number"
-                      min={0}
-                      max={f.max}
-                      value={scoring[f.key]}
-                      onChange={(e) => setScore(f.key, e.target.value)}
-                      className="h-8"
-                    />
-                  </div>
-                ))}
-                <div className="space-y-1">
-                  <Label className="text-xs">
-                    Technical Complexity Penalty
-                  </Label>
-                  <Input
-                    type="number"
-                    min={-10}
-                    max={0}
-                    value={scoring.technicalComplexityPenalty}
-                    onChange={(e) =>
-                      setScore("technicalComplexityPenalty", e.target.value)
-                    }
-                    className="h-8"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Risk Penalty</Label>
-                  <Input
-                    type="number"
-                    min={-10}
-                    max={0}
-                    value={scoring.riskPenalty}
-                    onChange={(e) => setScore("riskPenalty", e.target.value)}
-                    className="h-8"
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Impact & Readiness</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-xs text-muted-foreground">Numbers extracted from your answers are unverified user estimates, not authoritative financial results. Verify or remove them. Leave unknown estimates blank; unquantified value is not zero value.</p>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label className="text-xs">Hours Saved / mo</Label>
-                  <Input
-                    type="number"
-                    min={0}
-                     value={fields.estimatedHoursSavedMonthly || ""}
-                     placeholder="Not yet quantified"
-                    onChange={(e) =>
-                      setField(
-                        "estimatedHoursSavedMonthly",
-                        Number(e.target.value) || 0,
-                      )
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs">Revenue Opp. ($)</Label>
-                  <Input
-                    type="number"
-                    min={0}
-                     value={fields.estimatedRevenueOpportunity || ""}
-                     placeholder="Not yet quantified"
-                    onChange={(e) =>
-                      setField(
-                        "estimatedRevenueOpportunity",
-                        Number(e.target.value) || 0,
-                      )
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs">Cost Savings ($)</Label>
-                  <Input
-                    type="number"
-                    min={0}
-                     value={fields.estimatedCostSavings || ""}
-                     placeholder="Not yet quantified"
-                    onChange={(e) =>
-                      setField(
-                        "estimatedCostSavings",
-                        Number(e.target.value) || 0,
-                      )
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs">Customer Impact</Label>
-                  <Select
-                    value={fields.customerImpact}
-                    onValueChange={(v) => setField("customerImpact", v)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {levels.map((l) => (
-                        <SelectItem key={l} value={l}>
-                          {l}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs">Compliance Risk</Label>
-                  <Select
-                    value={fields.complianceRisk}
-                    onValueChange={(v) => setField("complianceRisk", v)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {levels.map((l) => (
-                        <SelectItem key={l} value={l}>
-                          {l}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs">Technical Complexity</Label>
-                  <Select
-                    value={fields.technicalComplexity}
-                    onValueChange={(v) => setField("technicalComplexity", v)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {levels.map((l) => (
-                        <SelectItem key={l} value={l}>
-                          {l}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                   <Label className="text-xs">AI Readiness (if relevant)</Label>
-                  <Select
-                    value={fields.aiReadiness}
-                    onValueChange={(v) => setField("aiReadiness", v)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {levels.map((l) => (
-                        <SelectItem key={l} value={l}>
-                          {l}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-
-      {Object.keys(errors).length > 0 && <p role="alert" className="text-sm text-destructive font-medium">Please complete all marked fields before saving.</p>}
-
-      <div className="flex items-center justify-end gap-3">
-        <Button variant="outline" onClick={onBack} disabled={saving}>
-          Cancel
-        </Button>
-        <Button onClick={handleSave} disabled={saving}>
-          {saving ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...
-            </>
-          ) : (
-            <>
-              <Save className="mr-2 h-4 w-4" /> Save Initiative
-            </>
-          )}
-        </Button>
       </div>
     </div>
   );

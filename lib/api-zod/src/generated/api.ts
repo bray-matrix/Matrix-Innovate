@@ -8,6 +8,34 @@
 import * as zod from 'zod';
 
 
+/**
+ * @summary Generate a transient editable Word document or text-selectable PDF from a reviewed semantic Initiative Brief
+ */
+export const ExportInitiativeBriefParams = zod.object({
+  "format": zod.enum(['docx', 'pdf'])
+})
+
+export const exportInitiativeBriefBodyUnknownsMax = 12;
+
+
+
+export const ExportInitiativeBriefBody = zod.object({
+  "metadata": zod.record(zod.string(), zod.unknown()),
+  "executiveSummary": zod.record(zod.string(), zod.unknown()),
+  "businessNeed": zod.record(zod.string(), zod.unknown()),
+  "futureState": zod.record(zod.string(), zod.unknown()),
+  "expectedValue": zod.record(zod.string(), zod.unknown()),
+  "successMeasures": zod.record(zod.string(), zod.unknown()),
+  "risks": zod.record(zod.string(), zod.unknown()),
+  "unknowns": zod.array(zod.record(zod.string(), zod.unknown())).max(exportInitiativeBriefBodyUnknownsMax),
+  "nextSteps": zod.record(zod.string(), zod.unknown()),
+  "assessment": zod.record(zod.string(), zod.unknown()),
+  "supportingContext": zod.record(zod.string(), zod.unknown())
+})
+
+export const ExportInitiativeBriefResponse = zod.unknown()
+
+
 export const GetJiraConnectionResponse = zod.object({
   "configured": zod.boolean(),
   "baseUrl": zod.string().nullable(),

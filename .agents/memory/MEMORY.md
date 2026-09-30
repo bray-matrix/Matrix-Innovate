@@ -11,3 +11,4 @@
 - [Platform server SDK](platform-server-sdk.md) — outbound directory access must use the managed server SDK, not a separately implemented Bridge client.
 - [Dashboard product direction](dashboard-product-direction.md) — approved first-use introduction stays; lifecycle metrics must reflect actual data, not renamed prototype calculations.
 - [Authenticated UI verification](browser-verification.md) — browser-only fixtures permit gated UI tests; use exact contracts and wait for drawer animations.
+- [Initiative Brief boundaries](initiative-brief-review.md) — document parity, unchanged scoring policy, and unflattened private drafts for safe save retries.

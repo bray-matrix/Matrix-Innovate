@@ -40,6 +40,7 @@ import type {
   GetReportPdfParams,
   HealthStatus,
   Initiative,
+  InitiativeBriefExportInput,
   InitiativeInput,
   InitiativeRecommendations,
   InitiativeUpdate,
@@ -135,6 +136,77 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getExportInitiativeBriefUrl = (format: 'docx' | 'pdf',) => {
+
+
+
+
+  return `/api/initiative-brief/export/${format}`
+}
+
+/**
+ * @summary Generate a transient editable Word document or text-selectable PDF from a reviewed semantic Initiative Brief
+ */
+export const exportInitiativeBrief = async (format: 'docx' | 'pdf',
+    initiativeBriefExportInput: InitiativeBriefExportInput, options?: RequestInit): Promise<Blob> => {
+
+  return customFetch<Blob>(getExportInitiativeBriefUrl(format),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(initiativeBriefExportInput)
+  }
+);}
+
+
+
+
+export const getExportInitiativeBriefMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof exportInitiativeBrief>>, TError,{format: 'docx' | 'pdf';data: BodyType<InitiativeBriefExportInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof exportInitiativeBrief>>, TError,{format: 'docx' | 'pdf';data: BodyType<InitiativeBriefExportInput>}, TContext> => {
+
+const mutationKey = ['exportInitiativeBrief'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof exportInitiativeBrief>>, {format: 'docx' | 'pdf';data: BodyType<InitiativeBriefExportInput>}> = (props) => {
+          const {format,data} = props ?? {};
+
+          return  exportInitiativeBrief(format,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ExportInitiativeBriefMutationResult = NonNullable<Awaited<ReturnType<typeof exportInitiativeBrief>>>
+    export type ExportInitiativeBriefMutationBody = BodyType<InitiativeBriefExportInput>
+    export type ExportInitiativeBriefMutationError = ErrorType<void>
+
+    /**
+ * @summary Generate a transient editable Word document or text-selectable PDF from a reviewed semantic Initiative Brief
+ */
+export const useExportInitiativeBrief = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof exportInitiativeBrief>>, TError,{format: 'docx' | 'pdf';data: BodyType<InitiativeBriefExportInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof exportInitiativeBrief>>,
+        TError,
+        {format: 'docx' | 'pdf';data: BodyType<InitiativeBriefExportInput>},
+        TContext
+      > => {
+      return useMutation(getExportInitiativeBriefMutationOptions(options));
+    }
 
 export const getGetJiraConnectionUrl = () => {
 
