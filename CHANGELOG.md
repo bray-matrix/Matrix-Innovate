@@ -5,6 +5,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and the
 project adheres to semantic versioning (patch = fixes/edits, minor = new
 features, major = breaking or milestone changes).
 
+## [1.6.10] - Unreleased
+
+### Pilot-readiness cleanup
+- Increase interview answer space and guard important submissions against repeat clicks.
+- Widen Project creation, make owner validation explicit, and preserve genuinely optional delivery dates.
+- Keep deterministic planning suggestions tied to source evidence without creating execution records.
+- Clarify Jira result selection and replace unrestricted manual refresh with bounded server-managed freshness.
+- No historical record migration, scoring-policy change, new AI workflow, or Jira write-back.
+
 ## [1.6.3] - Unreleased
 
 ### Confidence-driven Guided Idea Interview (in progress)

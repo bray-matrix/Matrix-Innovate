@@ -54,8 +54,8 @@ export const jiraFieldMappingsTable = pgTable("jira_field_mappings", {
   ...dates(),
 });
 
-// Jira is authoritative for issue details. Only stable identity and optional
-// relationship metadata are persisted; live details are resolved on read.
+// Jira is authoritative. Persist a bounded, last-known metadata snapshot only
+// so opening Linked Work does not require a live Jira request every time.
 export const projectJiraLinksTable = pgTable("project_jira_links", {
   id: serial("id").primaryKey(),
   projectId: integer("project_id").notNull().references(() => projectsTable.id, { onDelete: "cascade" }),
@@ -67,6 +67,13 @@ export const projectJiraLinksTable = pgTable("project_jira_links", {
   displayOrder: integer("display_order"),
   notes: text("notes"),
   createdBy: text("created_by"),
+  cachedDetails: jsonb("cached_details").$type<{
+    jiraIssueId: string; jiraIssueKey: string; jiraIssueType: string; summary: string;
+    status: string; assignee: string | null; priority: string | null; updated: string | null;
+    jiraProjectId: string; jiraProjectKey: string; jiraProjectName: string; url: string;
+  } | null>(),
+  jiraCheckedAt: timestamp("jira_checked_at"),
+  jiraAttemptedAt: timestamp("jira_attempted_at"),
   ...dates(),
 }, (t) => [
   uniqueIndex("project_jira_links_project_issue_unique").on(t.projectId, t.jiraIssueId),

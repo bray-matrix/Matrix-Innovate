@@ -103,6 +103,10 @@ export function InitiativeReview({
   const [exporting, setExporting] = useState<"docx" | "pdf" | null>(null);
   const [exportError, setExportError] = useState("");
   const exportInFlightRef = useRef(false);
+  const saveInFlightRef = useRef(false);
+  useEffect(() => {
+    if (!saving) saveInFlightRef.current = false;
+  }, [saving]);
   const [confirmedZero, setConfirmedZero] = useState<ZeroField[]>(draft.review?.confirmedZeroFields ?? []);
   const [generatedAt] = useState(() => generatedAtProp ?? new Date().toISOString());
 
@@ -163,6 +167,7 @@ export function InitiativeReview({
   };
 
   const handleSave = () => {
+    if (saving || saveInFlightRef.current) return;
     const missing = validateInitiativeDraft(fields, departments, categories);
     setErrors(missing);
     if (Object.keys(missing).length) {
@@ -179,6 +184,7 @@ export function InitiativeReview({
       candidates: candidates.map(c => c.text),
       facts: facts.map(f => `${f.value} (${f.source === "jira" ? "Jira" : "interview"})`),
     });
+    saveInFlightRef.current = true;
     onSave(out.fields, scoring, {
       executiveSummary: out.executiveSummary,
       reviewedBrief: brief,

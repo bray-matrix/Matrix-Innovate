@@ -183,15 +183,10 @@ export class JiraClient {
     const key = /^([A-Z][A-Z0-9_]*)-(\d{1,9})$/i.exec(q);
     const projectPrefix = /^([A-Z][A-Z0-9_]*)-$/i.exec(q);
     if (key) {
-      // Jira has no issuekey ~ operator. Numeric prefix ranges are index-backed,
-      // bounded, and include the exact key without downloading project issues.
+      // A complete issue key is an exact lookup, not a relevance/prefix query.
       const prefix = key[1].toUpperCase();
       const number = key[2];
-      const alternatives = [`key = ${jiraLiteral(`${prefix}-${number}`)}`];
-      for (let digits = 1; digits <= 9 - number.length; digits++) {
-        alternatives.push(`(key >= ${jiraLiteral(`${prefix}-${number}${"0".repeat(digits)}`)} AND key <= ${jiraLiteral(`${prefix}-${number}${"9".repeat(digits)}`)})`);
-      }
-      clauses.push(`(project = ${jiraLiteral(prefix)} AND (${alternatives.join(" OR ")}))`);
+      clauses.push(`key = ${jiraLiteral(`${prefix}-${number}`)}`);
     } else if (projectPrefix) {
       clauses.push(`project = ${jiraLiteral(projectPrefix[1].toUpperCase())}`);
     } else if (q) {

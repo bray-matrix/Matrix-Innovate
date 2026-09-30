@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useGetJiraConnection, useListJiraProjects, useSearchJiraIssues, useListProjectJiraLinks,
@@ -6,7 +6,7 @@ import {
   getListJiraProjectsQueryKey, getSearchJiraIssuesQueryKey,
   type JiraWorkItem, type ProjectJiraLink,
 } from "@workspace/api-client-react";
-import { AlertCircle, ArrowUpRight, Link2, PlusCircle, RefreshCw, Unlink } from "lucide-react";
+import { AlertCircle, ArrowUpRight, Link2, PlusCircle, Unlink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,7 +34,7 @@ function updatedAt(value: string | null | undefined) {
 export function ProjectLinkedWork({ projectId }: { projectId: number }) {
   const queryClient = useQueryClient();
   const links = useListProjectJiraLinks(projectId, {
-    query: { enabled: projectId > 0, queryKey: getListProjectJiraLinksQueryKey(projectId), retry: false },
+    query: { enabled: projectId > 0, queryKey: getListProjectJiraLinksQueryKey(projectId), retry: false, staleTime: 60_000, refetchOnWindowFocus: false },
   });
   const connection = useGetJiraConnection();
   const [linkOpen, setLinkOpen] = useState(false);
@@ -42,6 +42,8 @@ export function ProjectLinkedWork({ projectId }: { projectId: number }) {
   const [projectKey, setProjectKey] = useState("");
   const [searchCriteria, setSearchCriteria] = useState<{ q?: string; projectKey?: string; limit: number } | null>(null);
   const [selected, setSelected] = useState<JiraWorkItem | null>(null);
+  const confirming = useRef(false);
+  const [confirmPending, setConfirmPending] = useState(false);
   const [unlinking, setUnlinking] = useState<ProjectJiraLink | null>(null);
   const projects = useListJiraProjects({ query: { enabled: linkOpen, queryKey: getListJiraProjectsQueryKey() } });
   const search = useSearchJiraIssues(searchCriteria ?? { limit: 25 }, {
@@ -51,12 +53,18 @@ export function ProjectLinkedWork({ projectId }: { projectId: number }) {
   const create = useCreateProjectJiraLink({
     mutation: {
       onSuccess: () => {
+        confirming.current = false;
+        setConfirmPending(false);
         refreshLinks();
         setLinkOpen(false);
         setSelected(null);
         toast({ title: "Jira work item linked" });
       },
-      onError: () => toast({ title: "Could not link Jira work item", description: "The item may already be linked, or Jira may be unavailable. Please try again.", variant: "destructive" }),
+      onError: () => {
+        confirming.current = false;
+        setConfirmPending(false);
+        toast({ title: "Could not link Jira work item", description: "The item may already be linked, or Jira may be unavailable. Please try again.", variant: "destructive" });
+      },
     },
   });
   const remove = useDeleteProjectJiraLink({
@@ -91,24 +99,28 @@ export function ProjectLinkedWork({ projectId }: { projectId: number }) {
     }
   }
 
+  function confirmLink() {
+    if (!selected || confirming.current) return;
+    confirming.current = true; // synchronous guard, before React's next render
+    setConfirmPending(true);
+    create.mutate({ projectId, data: { jiraIssueId: selected.jiraIssueId } });
+  }
+
   return (
     <>
       <Card>
         <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3">
           <div>
             <CardTitle>Linked Work</CardTitle>
-            <CardDescription className="mt-1">Selected execution work stays in Jira. Linking and refreshing only read Jira; they do not change the issue.</CardDescription>
+            <CardDescription className="mt-1">Selected execution work stays in Jira. Linked issue details update automatically when needed; Jira issues are never changed here.</CardDescription>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" data-testid="button-refresh-jira" onClick={() => void links.refetch()} disabled={links.isFetching}>
-              <RefreshCw className={`h-4 w-4 mr-2 ${links.isFetching ? "animate-spin" : ""}`} />Refresh Jira
-            </Button>
             <Button size="sm" data-testid="button-link-jira" onClick={openLinkDialog}><PlusCircle className="h-4 w-4 mr-2" />Link Jira Work Item</Button>
           </div>
         </CardHeader>
         <CardContent>
           {links.isLoading && <p role="status" className="text-sm text-muted-foreground">Loading linked work…</p>}
-          {links.isError && <p role="alert" className="mb-3 text-sm text-destructive">Could not load saved Jira links. The rest of this project is still available. Try Refresh Jira.</p>}
+          {links.isError && <p role="alert" className="mb-3 text-sm text-destructive">Could not load saved Jira links. The rest of this project is still available. Reopen Linked Work to try again.</p>}
           {!links.isLoading && !links.isError && !links.data?.length && (
             <div className="rounded-md border border-dashed px-4 py-8 text-center text-sm text-muted-foreground">No external work items linked yet. Choose Jira work items to connect execution to this project.</div>
           )}
@@ -156,7 +168,7 @@ export function ProjectLinkedWork({ projectId }: { projectId: number }) {
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Link Jira Work Item</DialogTitle>
-            <DialogDescription>Search Jira live by issue key or text. Select an item, then confirm the link to this project.</DialogDescription>
+            <DialogDescription>Search Jira by exact issue key or text. Text matches are Jira search results, not ranked recommendations. Select one result to enable Confirm Link.</DialogDescription>
           </DialogHeader>
           <form onSubmit={submitSearch} className="space-y-3">
             <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
@@ -174,11 +186,11 @@ export function ProjectLinkedWork({ projectId }: { projectId: number }) {
           {search.isError && <p role="alert" className="text-sm text-destructive">Jira search is unavailable. Check your connection and try again.</p>}
           {search.isFetching && <p role="status" className="text-sm text-muted-foreground">Searching Jira…</p>}
           {searchCriteria && !search.isFetching && !search.isError && !search.data?.length && <p className="text-sm text-muted-foreground">No Jira work items found. Try a different key, text, or project.</p>}
-          {searchCriteria && !search.isError && !!search.data?.length && <div role="radiogroup" aria-label="Jira search results" className="space-y-2 max-h-64 overflow-y-auto">
+          {searchCriteria && !search.isError && !!search.data?.length && <div role="radiogroup" aria-label="Jira search results — select one to link" className="space-y-2 max-h-64 overflow-y-auto">
             {search.data.map(item => {
               const alreadyLinked = links.data?.some(link => link.jiraIssueId === item.jiraIssueId);
-              return <button key={item.jiraIssueId} type="button" role="radio" aria-checked={selected?.jiraIssueId === item.jiraIssueId} disabled={alreadyLinked} data-testid={`button-select-jira-${item.jiraIssueKey}`} onClick={() => setSelected(item)} className={`w-full rounded-md border p-3 text-left text-sm transition-colors ${selected?.jiraIssueId === item.jiraIssueId ? "border-primary bg-primary/5" : "hover:bg-muted/50"} disabled:opacity-50`}>
-                <span className="flex flex-wrap items-center gap-2"><span className="font-mono font-semibold">{item.jiraIssueKey}</span><Badge variant="outline">{item.jiraIssueType}</Badge><Badge variant="secondary">{item.status}</Badge>{alreadyLinked && <span className="text-xs">Already linked</span>}</span>
+              return <button key={item.jiraIssueId} type="button" role="radio" aria-checked={selected?.jiraIssueId === item.jiraIssueId} disabled={alreadyLinked || confirmPending} data-testid={`button-select-jira-${item.jiraIssueKey}`} onClick={() => setSelected(item)} className={`w-full rounded-md border-2 p-3 text-left text-sm transition-colors ${selected?.jiraIssueId === item.jiraIssueId ? "border-primary bg-primary/10 ring-1 ring-primary" : "border-border hover:bg-muted/50"} disabled:opacity-50`}>
+                <span className="flex flex-wrap items-center gap-2"><span aria-hidden="true" className={`inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 ${selected?.jiraIssueId === item.jiraIssueId ? "border-primary" : "border-muted-foreground"}`}>{selected?.jiraIssueId === item.jiraIssueId && <span className="h-2 w-2 rounded-full bg-primary" />}</span><span className="font-mono font-semibold">{item.jiraIssueKey}</span><Badge variant="outline">{item.jiraIssueType}</Badge><Badge variant="secondary">{item.status}</Badge>{alreadyLinked && <span className="text-xs">Already linked</span>}{selected?.jiraIssueId === item.jiraIssueId && <span className="ml-auto font-semibold text-primary">Selected</span>}</span>
                 <span className="block font-medium mt-1">{item.summary}</span>
                 <span className="block text-xs text-muted-foreground mt-1">{item.jiraProjectName} ({item.jiraProjectKey}) · {item.assignee || "Unassigned"} · {item.priority || "No priority"}</span>
               </button>;
@@ -186,8 +198,8 @@ export function ProjectLinkedWork({ projectId }: { projectId: number }) {
           </div>}
           {selected && <p role="status" className="rounded-md bg-muted p-3 text-sm"><Link2 className="inline h-4 w-4 mr-1" />Link <strong>{selected.jiraIssueKey}</strong> — {selected.summary} to this project?</p>}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setLinkOpen(false)} disabled={create.isPending} data-testid="button-cancel-jira-link">Cancel</Button>
-            <Button disabled={!selected || create.isPending} onClick={() => selected && create.mutate({ projectId, data: { jiraIssueId: selected.jiraIssueId } })} data-testid="button-confirm-jira-link">{create.isPending ? "Linking…" : "Confirm Link"}</Button>
+            <Button variant="outline" onClick={() => setLinkOpen(false)} disabled={confirmPending} data-testid="button-cancel-jira-link">Cancel</Button>
+            <Button disabled={!selected || confirmPending} onClick={confirmLink} data-testid="button-confirm-jira-link">{confirmPending ? "Linking…" : selected ? "Confirm Link" : "Select a result to link"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -118,6 +118,7 @@ test("J2 Jira client: live bounded, read-only issue search and resolution", asyn
     assert.equal((await client.searchIssues("KEY-101", undefined, 2)).length, 2);
     const exact = requests.at(-1)!.url;
     assert.match(exact.searchParams.get("jql")!, /key = "KEY-101"/);
+    assert.doesNotMatch(exact.searchParams.get("jql")!, /key >=|key <=|text ~/);
     assert.equal(exact.searchParams.get("maxResults"), "2");
     await client.searchIssues("KEY-10", "KEY");
     assert.match(requests.at(-1)!.url.searchParams.get("jql")!, /project = "KEY"/);
@@ -168,6 +169,7 @@ test("J1 routes and PostgreSQL persistence in isolated TEMP tables", async t => 
       jira_project_id integer REFERENCES jira_projects(id) ON DELETE SET NULL,
       jira_issue_id text NOT NULL, jira_issue_key text NOT NULL, jira_issue_type text NOT NULL,
       relationship_type text, display_order integer, notes text, created_by text,
+      cached_details jsonb, jira_checked_at timestamp, jira_attempted_at timestamp,
       created_at timestamp NOT NULL DEFAULT now(), updated_at timestamp NOT NULL DEFAULT now(),
       UNIQUE (project_id, jira_issue_id)
     )`);
@@ -244,7 +246,7 @@ test("J1 routes and PostgreSQL persistence in isolated TEMP tables", async t => 
       await request("PUT", "/jira/status-mappings", { jiraProjectId: null, jiraStatusId: "10814", jiraStatusName: "Blocked", canonicalCategory: "blocked" });
       assert.equal((await request("GET", "/jira/status-mappings")).body.find((s: any) => s.jiraStatusId === "10814").canonicalCategory, "blocked");
     });
-    await t.test("J2 routes: live search, identity-only links, duplicates, multi-project, outage, refresh, unlink and cascade", async () => {
+    await t.test("J2 routes: live search, cached links, duplicates, outage, stale refresh, unlink and cascade", async () => {
       const routes = async (method: string, path: string, body = {}, params = {}, query = {}) => {
         const result = await call(jiraLinksRouter, method, path, body, params, query);
         noSecret(result);
@@ -266,6 +268,7 @@ test("J1 routes and PostgreSQL persistence in isolated TEMP tables", async t => 
       assert.equal(found.status, 200);
       assert.equal(found.body.length, 2);
       assert.match(new URL(calls.at(-1)!).searchParams.get("jql")!, /key = "KEY-101"/);
+      assert.doesNotMatch(new URL(calls.at(-1)!).searchParams.get("jql")!, /key >=|key <=/);
       await search({ q: "KEY-10", projectKey: "KEY" });
       assert.match(new URL(calls.at(-1)!).searchParams.get("jql")!, /project = "KEY"/);
       found = await search({ q: "current summary", projectKey: "KEY" });
@@ -283,7 +286,8 @@ test("J1 routes and PostgreSQL persistence in isolated TEMP tables", async t => 
       assert.equal(first.body.details.status, "Blocked");
       assert.equal(first.body.createdBy, "fixture-user");
       assert.equal((await create(9000001, "101")).status, 409);
-      assert.equal((await create(9000001, "102")).status, 201);
+      const concurrent = await Promise.all([create(9000001, "102"), create(9000001, "102")]);
+      assert.deepEqual(concurrent.map(r => r.status).sort(), [201, 409], "concurrent confirms create one link");
       const other = await create(9000002, "101");
       assert.equal(other.status, 201);
       const stored = (await client.query("SELECT * FROM project_jira_links ORDER BY id")).rows;
@@ -292,16 +296,34 @@ test("J1 routes and PostgreSQL persistence in isolated TEMP tables", async t => 
       for (const field of ["summary", "status", "assignee", "priority", "description", "token", "authorization"]) {
         assert.equal(stored.some(row => field in row), false, `${field} must not persist`);
       }
+      assert.equal(stored[0].cached_details.summary, "Current Jira summary", "whitelisted details persist");
+      noSecret(stored);
       const list = () => routes("GET", "/projects/:projectId/jira-links", {}, routeParams(9000001));
+      const beforeFresh = calls.length;
       assert.equal((await list()).body[0].details.summary, "Current Jira summary");
+      await list();
+      assert.equal(calls.length, beforeFresh, "fresh repeated reads never contact Jira");
+      await client.query("UPDATE project_jira_links SET jira_checked_at = now() - interval '6 minutes', jira_attempted_at = now() - interval '6 minutes' WHERE project_id = 9000001");
+      const beforeStale = calls.length;
+      await Promise.all([list(), list()]);
+      assert.equal(calls.length, beforeStale + 2, "two concurrent readers share one refresh per link");
+      assert.equal((await client.query("SELECT count(*)::int AS n FROM project_jira_links WHERE project_id = 9000001 AND jira_checked_at > now() - interval '1 minute'")).rows[0].n, 2);
+      await client.query("UPDATE project_jira_links SET jira_checked_at = now() - interval '6 minutes', jira_attempted_at = now() - interval '6 minutes' WHERE project_id = 9000001");
       globalThis.fetch = async () => json({ message: env.JIRA_API_TOKEN }, 503);
       const unavailable = await list();
       assert.equal(unavailable.status, 200);
       assert.equal(unavailable.body.length, 2);
       assert.equal(unavailable.body[0].jiraIssueKey, "KEY-101");
-      assert.equal(unavailable.body[0].unavailable, true);
-      globalThis.fetch = async url => json(String(url).includes("/issue/102") ? issue("102", "KEY-102") : issue("101", "KEY-101", "Updated live summary"));
-      assert.equal((await list()).body[0].details.summary, "Updated live summary", "refresh is a new GET, not a sync");
+      assert.equal(unavailable.body[0].details.summary, "Current Jira summary", "outage retains last known details");
+      let attempts = 0;
+      globalThis.fetch = async url => { attempts++; return json(String(url).includes("/issue/102") ? issue("102", "KEY-102") : issue("101", "KEY-101", "Updated live summary")); };
+      assert.equal((await list()).body[0].details.summary, "Current Jira summary");
+      assert.equal(attempts, 0, "failed attempts suppress retries during outage window");
+      await client.query("UPDATE project_jira_links SET jira_attempted_at = now() - interval '2 minutes' WHERE project_id = 9000001");
+      assert.equal((await list()).body[0].details.summary, "Updated live summary");
+      assert.equal(attempts, 2);
+      await list();
+      assert.equal(attempts, 2, "fresh cache survives subsequent navigation");
       assert.equal((await client.query("SELECT count(*)::int AS count FROM project_jira_links")).rows[0].count, 3);
       const beforeUnlinkCalls = calls.length;
       assert.equal((await routes("DELETE", "/projects/:projectId/jira-links/:linkId", {}, routeParams(9000001, first.body.id))).status, 204);
@@ -399,9 +421,13 @@ test("J1 routes and PostgreSQL persistence in isolated TEMP tables", async t => 
       const promote = (initiativeId: number, extra = {}) =>
         call(executionRouter, "POST", "/initiatives/:id/promote", { projectType: "Innovation", primaryOwner: "Test User", ...extra }, { id: String(initiativeId) });
       const beforePromotion = requests.length;
-      const promoted = await promote(linked.body.id);
+      assert.equal((await promote(linked.body.id, { primaryOwner: "  " })).status, 400, "blank owner cannot bypass required validation");
+      const promoted = await promote(linked.body.id, { targetDate: null });
       assert.equal(promoted.status, 201);
-      assert.equal(promoted.body.targetDate, null, "no today's-date default");
+      assert.equal(promoted.body.targetDate, null, "explicit blank date persists as null");
+      const reloaded = await client.query("SELECT target_date, initiative_id FROM projects WHERE id = $1", [promoted.body.id]);
+      assert.equal(reloaded.rows[0].target_date, null, "the project target date remains null after reloading from storage");
+      assert.equal(reloaded.rows[0].initiative_id, linked.body.id);
       assert.match(promoted.body.description, /Cycle time/);
       assert.equal(requests.length, beforePromotion, "promotion must not contact Jira");
       assert.deepEqual((await client.query("SELECT jira_issue_id, jira_issue_key FROM project_jira_links WHERE project_id = $1", [promoted.body.id])).rows,
@@ -409,8 +435,16 @@ test("J1 routes and PostgreSQL persistence in isolated TEMP tables", async t => 
       assert.equal((await promote(linked.body.id)).status, 409, "duplicate promotion blocked");
       const additional = await promote(linked.body.id, { allowDuplicate: true });
       assert.equal(additional.status, 201);
+      assert.equal(additional.body.targetDate, null, "omitted target date is also null");
       assert.equal((await client.query("SELECT count(*)::int AS n FROM project_jira_links WHERE project_id = $1", [additional.body.id])).rows[0].n, 1);
-      assert.equal((await promote(noJira.body.id)).status, 201);
+      const entered = await promote(noJira.body.id, { targetDate: "2027-04-20T00:00:00.000Z" });
+      assert.equal(entered.status, 201);
+      assert.equal(entered.body.targetDate, "2027-04-20T00:00:00.000Z", "an explicitly entered date is retained");
+      const concurrencyGuard = readFileSync("src/routes/execution.ts", "utf8").split('router.post("/initiatives/:id/promote"')[1];
+      assert.match(concurrencyGuard, /\.transaction\(async \(tx\) => \{/);
+      assert.match(concurrencyGuard, /\.for\("update"\)/, "row lock serializes concurrent promotions before duplicate check");
+      assert.ok(concurrencyGuard.indexOf('.for("update")') < concurrencyGuard.indexOf("if (!parsed.data.allowDuplicate)"));
+      assert.equal((await client.query("SELECT count(*)::int AS n FROM projects WHERE initiative_id = $1", [linked.body.id])).rows[0].n, 2, "only explicit allowDuplicate creates another project");
       assert.equal(requests.length, beforePromotion);
       assert.equal((await client.query("SELECT count(*)::int AS n FROM initiative_versions")).rows[0].n, 2, "promotion leaves initiative history intact");
     });
@@ -427,14 +461,20 @@ test("J1 routes and PostgreSQL persistence in isolated TEMP tables", async t => 
       assert.match(schema, /projectJiraLinksTable/);
       assert.match(schema, /onDelete: "cascade"/);
       assert.equal(/(?:summary|status|assignee|priority|description): (?:text|jsonb)\(/.test(schema.slice(schema.indexOf("export const projectJiraLinksTable"))), false);
+      const ui = readFileSync("../matrix-innovation-hub/src/components/project-linked-work.tsx", "utf8");
+      assert.doesNotMatch(ui, /button-refresh-jira|Refresh Jira|links\.refetch\(/);
+      assert.match(ui, /confirming\.current = true/);
+      assert.match(ui, /Select a result to link/);
+      assert.match(ui, /not ranked recommendations/);
+      assert.match(schema, /cachedDetails: jsonb\("cached_details"\)/);
     });
     await t.test("Matrix app-info and health version surfaces", async () => {
       const info = await call(matrixRouter, "GET", "/app-info");
-      assert.equal(info.body.version, "v1.6.9");
+      assert.equal(info.body.version, "v1.6.10");
       assert.equal(info.body.name, "Innovation Hub");
       noSecret(info);
       const health = await call(matrixRouter, "GET", "/health");
-      assert.equal(health.body.version, "v1.6.9"); noSecret(health);
+      assert.equal(health.body.version, "v1.6.10"); noSecret(health);
     });
     await t.test("unchanged Matrix session mint/verify", async () => {
       process.env.SESSION_SECRET = "J1-automated-test-session-secret-not-real";

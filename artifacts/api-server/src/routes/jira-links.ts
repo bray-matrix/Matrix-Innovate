@@ -1,7 +1,7 @@
 import { ContentBlockedError, blockedResponse } from "../lib/content-safety";
 import { Router, type IRouter, type Request, type Response } from "express";
 import { db, projectsTable, jiraProjectsTable, projectJiraLinksTable as links } from "@workspace/db";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import { CreateProjectJiraLinkBody, SearchJiraIssuesQueryParams } from "@workspace/api-zod";
 import { JiraClient, JiraError, type JiraWorkItem } from "../lib/jira-client";
 import type { AuthenticatedRequest } from "../matrix/auth";
@@ -31,6 +31,47 @@ async function requireProject(req: Request): Promise<number> {
   return projectId;
 }
 type Link = typeof links.$inferSelect;
+// Successful snapshots live in PostgreSQL. Failed attempts are also persisted
+// so a Jira outage cannot be amplified by repeated page opens or server restarts.
+const FRESH_MS = 5 * 60_000;
+const FAILURE_RETRY_MS = 60_000;
+const inFlight = new Map<number, Promise<JiraWorkItem | null>>();
+function shouldRefresh(link: Link, now = Date.now()) {
+  if (link.jiraCheckedAt && now - link.jiraCheckedAt.getTime() < FRESH_MS) return false;
+  if (link.jiraAttemptedAt && (!link.jiraCheckedAt || link.jiraAttemptedAt > link.jiraCheckedAt)
+    && now - link.jiraAttemptedAt.getTime() < FAILURE_RETRY_MS) return false;
+  return true;
+}
+async function resolveLink(link: Link, client: JiraClient, signal: AbortSignal): Promise<JiraWorkItem | null> {
+  const existing = inFlight.get(link.id);
+  if (existing) return existing;
+  const attempt = (async () => {
+    const attemptedAt = new Date();
+    // Claim before the request so failures are suppressed, including across
+    // processes. An existing fresh claim wins over a concurrent stale reader.
+    const [claimed] = await db.update(links).set({ jiraAttemptedAt: attemptedAt })
+      .where(and(eq(links.id, link.id), eq(links.jiraIssueId, link.jiraIssueId),
+        // A fresh snapshot or another worker's recent attempt must not be overwritten.
+        sql`(${links.jiraCheckedAt} IS NULL OR ${links.jiraCheckedAt} < ${new Date(attemptedAt.getTime() - FRESH_MS)})`,
+        sql`(${links.jiraAttemptedAt} IS NULL OR ${links.jiraAttemptedAt} <= ${links.jiraCheckedAt} OR ${links.jiraAttemptedAt} < ${new Date(attemptedAt.getTime() - FAILURE_RETRY_MS)})`))
+      .returning({ id: links.id });
+    if (!claimed) {
+      const [current] = await db.select().from(links).where(eq(links.id, link.id)).limit(1);
+      return current?.cachedDetails ?? link.cachedDetails ?? null;
+    }
+    let detail: JiraWorkItem;
+    try { detail = await client.issue(link.jiraIssueId, signal); }
+    catch {
+      // Keep last known details, but do not retry each navigation during an outage.
+      return link.cachedDetails ?? null;
+    }
+    await db.update(links).set({ cachedDetails: detail, jiraCheckedAt: new Date() })
+      .where(and(eq(links.id, link.id), eq(links.jiraIssueId, link.jiraIssueId)));
+    return detail;
+  })();
+  inFlight.set(link.id, attempt);
+  try { return await attempt; } finally { if (inFlight.get(link.id) === attempt) inFlight.delete(link.id); }
+}
 function dto(link: Link, details: JiraWorkItem | null) {
   return {
     id: link.id, projectId: link.projectId, jiraProjectId: link.jiraProjectId,
@@ -55,7 +96,7 @@ router.get("/jira/issues/:issueId/intake-context", handle(async (req, res) => {
 router.get("/projects/:projectId/jira-links", handle(async (req, res) => {
   const projectId = await requireProject(req);
   const saved = await db.select().from(links).where(eq(links.projectId, projectId)).orderBy(asc(links.displayOrder), asc(links.id));
-  const result = saved.map(link => dto(link, null));
+  const result = saved.map(link => dto(link, link.cachedDetails));
   if (!saved.length) { res.json(result); return; }
   // A whole resolution has an 8-second budget, not N sequential timeouts.
   // Four workers maximum; unattempted/unavailable records retain their identities.
@@ -64,18 +105,22 @@ router.get("/projects/:projectId/jira-links", handle(async (req, res) => {
   const disconnected = () => controller.abort();
   res.on("close", disconnected);
   try {
-    const client = new JiraClient();
+    let client: JiraClient;
+    try { client = new JiraClient(); }
+    catch (error) {
+      if (!(error instanceof JiraError)) throw error;
+      res.json(result); return; // invalid Jira config does not hide saved references
+    }
     let next = 0;
     await Promise.all(Array.from({ length: Math.min(4, saved.length) }, async () => {
       while (!controller.signal.aborted) {
         const index = next++;
         if (index >= saved.length) return;
-        try { result[index] = dto(saved[index], await client.issue(saved[index].jiraIssueId, controller.signal)); }
-        catch { /* saved identity remains available; Jira failures never fail Project Detail */ }
+        if (!shouldRefresh(saved[index])) continue;
+        result[index] = dto(saved[index], await resolveLink(saved[index], client, controller.signal));
       }
     }));
-  } catch { /* invalid/missing Jira configuration also degrades to saved references */ }
-  finally { clearTimeout(timer); res.off("close", disconnected); }
+  } finally { clearTimeout(timer); res.off("close", disconnected); }
   res.json(result);
 }));
 
@@ -92,7 +137,7 @@ router.post("/projects/:projectId/jira-links", handle(async (req, res) => {
   const [link] = await db.insert(links).values({
     projectId, jiraProjectId: discoveredProject?.id ?? null, jiraIssueId: issue.jiraIssueId,
     jiraIssueKey: issue.jiraIssueKey, jiraIssueType: issue.jiraIssueType,
-    createdBy: identity?.sub ?? null,
+    createdBy: identity?.sub ?? null, cachedDetails: issue, jiraCheckedAt: new Date(), jiraAttemptedAt: new Date(),
   }).onConflictDoNothing({ target: [links.projectId, links.jiraIssueId] }).returning();
   if (!link) throw new JiraError("This Jira work item is already linked to this project.", 409);
   res.status(201).json(dto(link, issue));

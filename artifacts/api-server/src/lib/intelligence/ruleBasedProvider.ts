@@ -209,26 +209,20 @@ export class RuleBasedRecommendationProvider implements RecommendationProvider {
     return Math.max(3, Math.min(PROTOTYPE_SPRINT_DAYS, days));
   }
 
-  private suggestTeamRoles(
-    initiative: InitiativeRecord,
-    complexity: ComplexityLevel,
-  ): string[] {
-    const roles = ["Business Analyst"];
-    roles.push(`${initiative.department} SME`);
-    if (involvesAI(initiative)) roles.push("AI Solutions Architect");
-    if (
-      (involvesAI(initiative) && normalizeLevel(initiative.aiReadiness) === 0) ||
-      containsAny(textBlob(initiative), ["data", "report", "document", "record"])
-    ) {
-      roles.push("Data Engineer");
-    }
-    if (normalizeLevel(initiative.complianceRisk) === 2) {
-      roles.push("Compliance & Risk Officer");
-    }
-    if (complexity === "High") {
-      roles.push("Integration Engineer");
-    }
-    return Array.from(new Set(roles));
+  private suggestTeamRoles(initiative: InitiativeForRecommendations): string[] {
+    // A department, complexity score or incidental mention of "data" does not
+    // establish a staffing need. Only surface roles explicitly named in the
+    // brief's stakeholder evidence; these are still not assignments.
+    const stakeholderFacts = initiative.reviewedBrief?.supportingContext.facts
+      .filter(fact => fact.category.toLowerCase() === "stakeholders") ?? [];
+    const namedRoles = [
+      "Business Analyst", "Project Manager", "Product Owner", "Data Engineer",
+      "Integration Engineer", "AI Solutions Architect", "Security Officer",
+      "Compliance Officer",
+    ];
+    return namedRoles.filter(role =>
+      stakeholderFacts.some(fact => new RegExp(`\\b${role}\\b`, "i").test(fact.value)),
+    );
   }
 
   private identifyRisks(initiative: InitiativeForRecommendations): string[] {
@@ -239,21 +233,19 @@ export class RuleBasedRecommendationProvider implements RecommendationProvider {
     if (involvesAI(initiative) && normalizeLevel(initiative.aiReadiness) === 0) {
       risks.push("Data quality and availability should be confirmed");
     }
-    const compliance = normalizeLevel(initiative.complianceRisk);
-    if (compliance >= 1) {
-      risks.push(
-        compliance === 2
-          ? "High self-reported compliance risk — discuss applicable requirements with the compliance team"
-          : "Moderate compliance risk — early compliance review recommended",
-      );
-    }
-    if (!initiative.executiveSponsor?.trim()) {
-      risks.push("No executive sponsor secured");
+    if (normalizeLevel(initiative.complianceRisk) === 2) {
+      risks.push("Self-reported High compliance risk — clarify whether any specific requirements apply");
     }
     if (normalizeLevel(initiative.technicalComplexity) === 2) {
       risks.push("High technical complexity may affect delivery planning");
     }
-    risks.push(`Confirm ${initiative.department} participation during planning`);
+    if (/\b(?:disconnected|multiple)\s+(?:departments|systems)\b/i.test(
+      `${initiative.problemStatement} ${initiative.currentProcess}`,
+    ) && /\b(?:handoffs?|dependencies|blockers?)\b/i.test(
+      `${initiative.problemStatement} ${initiative.currentProcess}`,
+    )) {
+      risks.push("Current process describes disconnected departments or systems and handoffs/dependencies — assess how blockers and ownership will be visible");
+    }
     return risks;
   }
 
@@ -312,7 +304,6 @@ export class RuleBasedRecommendationProvider implements RecommendationProvider {
       const critical = initiative.reviewedBrief?.unknowns.find(item => item.priority === "critical" && item.text.trim());
       if (critical) return `Consider resolving this decision-critical question to inform the next review: ${critical.text.trim()}`;
       if (!initiative.businessOwner?.trim()) return "Confirm the accountable business owner to inform the next review";
-      if (!initiative.executiveSponsor?.trim()) return "Confirm executive sponsorship to inform the next review";
       const readiness = initiative.reviewedBrief?.assessment.readiness?.trim();
       // Persisted intake strings are "<score>% — <label>". Match only the
       // existing qualitative labels; do not introduce another score threshold.
@@ -370,7 +361,7 @@ export class RuleBasedRecommendationProvider implements RecommendationProvider {
       estimatedPrototypeDurationDays: hasPrototype(initiative)
         ? this.estimateDurationDays(complexity, initiative)
         : 0,
-      teamRoles: this.suggestTeamRoles(initiative, complexity),
+      teamRoles: this.suggestTeamRoles(initiative),
       risks: this.identifyRisks(initiative),
       expectedBusinessValue: value.text,
       expectedAnnualValue: value.annualValue,

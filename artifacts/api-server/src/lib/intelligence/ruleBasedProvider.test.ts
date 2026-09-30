@@ -55,10 +55,75 @@ test("legacy rows fall back to evidence-backed rules without claiming mandatory 
   const item = initiative({ reviewedBrief: null });
   const result = await provider.generateRecommendations({ initiative: item, allInitiatives: [] });
   assert.match(result.expectedBusinessValue, /Value not yet quantified/);
-  assert.match(result.risks.join(" "), /discuss applicable requirements/);
+  assert.match(result.risks.join(" "), /Self-reported High compliance risk/);
   assert.doesNotMatch(result.risks.join(" "), /sign-off required/);
+  assert.deepEqual(result.teamRoles, []);
   assert.match(result.nextAction, /business owner/);
   assert.equal(result.governanceNextAction, undefined);
+});
+
+test("INI-0018 planning prompts follow stated onboarding evidence, not generic staffing or gates", async () => {
+  // Representative values from the read-only production INI-0018 inspection.
+  const item = initiative({
+    id: 18, title: "Unified Client Onboarding Visibility Platform",
+    department: "Information Technology", category: "Customer Experience",
+    problemStatement: "Client onboarding spans multiple departments, systems, and approval stages without a centralized view of progress, ownership, or blockers.",
+    currentProcess: "Onboarding is managed across disconnected departments and systems, with tasks, approvals, and handoffs tracked in multiple places.",
+    desiredOutcome: "Show progress, ownership, dependencies, blockers, and readiness.",
+    aiConcept: "", prototypeGoal: "", successMetric: "", complianceRisk: "Medium",
+    technicalComplexity: "Medium", aiReadiness: "High", score: 58, priority: "Medium",
+    reviewedBrief: {
+      ...brief,
+      risks: text("Not yet established"),
+      nextSteps: text("Confirm the accountable business owner and department."),
+      unknowns: [{ text: "Success metric not established", priority: "critical" }],
+      expectedValue: { qualitative: text("Reduce manual status gathering and identify blockers sooner."), quantified: [] },
+      supportingContext: {
+        facts: [{ category: "Stakeholders", source: "user",
+          value: "Leadership, account management, operations and technology can see onboarding status." }],
+        jiraKey: "",
+      },
+    },
+  });
+  const result = await provider.generateRecommendations({ initiative: item, allInitiatives: [item] });
+  assert.equal(result.engine, "rules-v1");
+  assert.equal(result.sourceLabel, "Rule Engine v1");
+  assert.equal(result.estimatedPrototypeDurationDays, 0);
+  assert.match(result.prototypeScope, /prototype has not been defined/);
+  assert.deepEqual(result.teamRoles, []);
+  assert.deepEqual(result.risks, [
+    "Current process describes disconnected departments or systems and handoffs/dependencies — assess how blockers and ownership will be visible",
+  ]);
+  assert.match(result.expectedBusinessValue, /Reduce manual status gathering/);
+  assert.equal(result.expectedAnnualValue, 0);
+  assert.equal(result.nextAction, "Confirm the accountable business owner and department.");
+  assert.match(result.governanceNextAction ?? "", /Success metric not established/);
+  assert.doesNotMatch(JSON.stringify({ risks: result.risks, teamRoles: result.teamRoles, governanceNextAction: result.governanceNextAction }), /mandatory|legal|security|sponsor|compliance review|sign-off/i);
+});
+
+test("no stakeholder roles or generic risk appear without specific evidence", async () => {
+  const item = initiative({
+    complianceRisk: "Medium", technicalComplexity: "Medium", businessOwner: "Owner",
+    executiveSponsor: null, currentProcess: "An existing process.", problemStatement: "A delay.",
+    reviewedBrief: { ...brief, risks: text("Not yet established"),
+      supportingContext: { facts: [], jiraKey: "" }, unknowns: [], nextSteps: text("") },
+  });
+  const result = await provider.generateRecommendations({ initiative: item, allInitiatives: [] });
+  assert.deepEqual(result.risks, []);
+  assert.deepEqual(result.teamRoles, []);
+  assert.doesNotMatch(result.nextAction, /sponsor/);
+});
+
+test("only stakeholder-named roles are possible roles, never automatic assignments", async () => {
+  const item = initiative({ reviewedBrief: {
+    ...brief,
+    supportingContext: { jiraKey: "", facts: [
+      { category: "Stakeholders", source: "user", value: "Project Manager and Business Analyst involved." },
+      { category: "Problem Statement", source: "user", value: "A Data Engineer may be useful." },
+    ] },
+  } });
+  const result = await provider.generateRecommendations({ initiative: item, allInitiatives: [] });
+  assert.deepEqual(result.teamRoles, ["Business Analyst", "Project Manager"]);
 });
 
 test("current state and decision-critical context take precedence over low score", async () => {

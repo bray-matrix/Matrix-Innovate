@@ -751,6 +751,10 @@ router.post("/initiatives/:id/promote", async (req, res, next) => {
       res.status(400).json({ error: parsed.error.message });
       return;
     }
+    if (!parsed.data.primaryOwner.trim()) {
+      res.status(400).json({ error: "Primary Owner is required" });
+      return;
+    }
     // Transaction with a row lock on the initiative serializes concurrent
     // promotions of the same initiative, making the duplicate check atomic.
     const result = await db.transaction(async (tx) => {
@@ -801,7 +805,7 @@ router.post("/initiatives/:id/promote", async (req, res, next) => {
           state: "Active",
           health: "Unknown",
           priority: initiative.priority,
-          primaryOwner: parsed.data.primaryOwner,
+          primaryOwner: parsed.data.primaryOwner.trim(),
           supportingOwners,
           targetDate: toDate(parsed.data.targetDate),
         })

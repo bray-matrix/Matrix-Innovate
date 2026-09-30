@@ -134,6 +134,10 @@ export default function AIInnovationInterview() {
   const { data: settings } = useGetSettings();
   const createInitiative = useCreateInitiative();
   const createInFlight = useRef(false);
+  const finishInFlight = useRef(false);
+  const draftSaveInFlight = useRef(false);
+  const [savingDraft, setSavingDraft] = useState(false);
+  const [finishing, setFinishing] = useState(false);
   const [savingInitiative, setSavingInitiative] = useState(false);
 
   const [phase, setPhase] = useState<Phase>("jira");
@@ -607,16 +611,19 @@ export default function AIInnovationInterview() {
   };
 
   const handleSaveDraft = async () => {
-    const nextAnswers: AnswerMap = {
-      ...answers,
-      [currentQuestion.id]: input.trim(),
-    };
+    if (draftSaveInFlight.current || finishInFlight.current) return;
+    draftSaveInFlight.current = true;
+    setSavingDraft(true);
+    const nextAnswers = answersForReview(answers, currentQuestion.id, input, readyToReview);
     try {
       await persistDraft(nextAnswers, currentIndex, plan, fallback, messages, aiResult, readyToReview, input.trim());
       setAnswers(nextAnswers);
       toast({ title: "Interview saved", description: "Only you can resume this interview." });
     } catch (error) {
       toast({ title: "Could not save", description: safeErrorMessage(error, "Please retry."), variant: "destructive" });
+    } finally {
+      draftSaveInFlight.current = false;
+      setSavingDraft(false);
     }
   };
 
@@ -683,7 +690,10 @@ export default function AIInnovationInterview() {
   };
 
   const handleFinish = async () => {
-    if (isTyping) return;
+    if (isTyping || finishInFlight.current || draftSaveInFlight.current) return;
+    finishInFlight.current = true;
+    setFinishing(true);
+    try {
     // A completed AI turn was already saved and the disabled input is empty.
     // Do not replace its answer when moving to review.
     const nextAnswers = answersForReview(answers, currentQuestion.id, input, readyToReview);
@@ -700,6 +710,10 @@ export default function AIInnovationInterview() {
     setMessages(finalMessages);
     setPlan(finalPlan);
     await runProcessing(nextAnswers, finalPlan, !fallback, interviewGeneration.current, finalMessages);
+    } finally {
+      finishInFlight.current = false;
+      setFinishing(false);
+    }
   };
 
   const resumeInterview = () => {
@@ -921,8 +935,8 @@ export default function AIInnovationInterview() {
               }
             }}
             placeholder={currentQuestion?.placeholder}
-            className="min-h-[80px] resize-none bg-background"
-             disabled={isTyping || readyToReview}
+            className="min-h-[160px] max-h-[40vh] resize-y bg-background"
+             disabled={isTyping || readyToReview || finishing}
           />
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
@@ -930,7 +944,7 @@ export default function AIInnovationInterview() {
                 variant="outline"
                 size="sm"
                 onClick={handleBack}
-                disabled={(currentIndex === 0 && !readyToReview) || isTyping}
+                disabled={(currentIndex === 0 && !readyToReview) || isTyping || finishing}
               >
                 <ArrowLeft className="mr-1 h-4 w-4" /> Back
               </Button>
@@ -938,27 +952,27 @@ export default function AIInnovationInterview() {
                 variant="ghost"
                 size="sm"
                 onClick={handleSaveDraft}
-                disabled={isTyping}
+                disabled={isTyping || finishing || savingDraft}
               >
-                <Save className="mr-1 h-4 w-4" /> Save Draft
+                <Save className="mr-1 h-4 w-4" /> {savingDraft ? "Saving..." : "Save Draft"}
               </Button>
             </div>
             <div className="flex items-center gap-2">
                {!isLastQuestion ? (
                 <>
-                {allowEarlyDraft && <Button data-testid="button-early-draft" variant="outline" onClick={handleFinish} disabled={isTyping}>Draft My Initiative</Button>}
-                <Button onClick={handleNext} disabled={!canSubmitAnswer || isTyping}>
+                {allowEarlyDraft && <Button data-testid="button-early-draft" variant="outline" onClick={handleFinish} disabled={isTyping || finishing}>{finishing ? "Drafting..." : "Draft My Initiative"}</Button>}
+                <Button onClick={handleNext} disabled={!canSubmitAnswer || isTyping || finishing}>
                    {input.trim() ? "Next" : "Skip / Not known yet"} <ArrowRight className="ml-1 h-4 w-4" />
                 </Button>
                 </>
               ) : (
                 <>
-                  {allowContinue && <Button data-testid="button-continue-interview" variant="outline" onClick={continueInterview}>Continue Interview</Button>}
-                  {!readyToReview && <Button variant="outline" onClick={handleNext} disabled={isTyping || !input.trim()}>
+                  {allowContinue && <Button data-testid="button-continue-interview" variant="outline" onClick={continueInterview} disabled={finishing}>Continue Interview</Button>}
+                  {!readyToReview && <Button variant="outline" onClick={handleNext} disabled={isTyping || finishing || !input.trim()}>
                     <Send className="mr-1 h-4 w-4" /> Send
                   </Button>}
-                   <Button onClick={handleFinish} disabled={isTyping}>
-                     <CheckCircle2 className="mr-1 h-4 w-4" /> Draft My Initiative
+                   <Button onClick={handleFinish} disabled={isTyping || finishing}>
+                     {finishing ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-1 h-4 w-4" />} {finishing ? "Drafting..." : "Draft My Initiative"}
                   </Button>
                 </>
               )}

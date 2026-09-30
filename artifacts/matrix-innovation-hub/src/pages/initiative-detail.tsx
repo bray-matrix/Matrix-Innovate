@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRoute, Link, useLocation } from "wouter";
 import {
   useGetInitiative,
@@ -340,6 +340,10 @@ function PromoteDialog({
   const { data: organizations } = useListOrganizations();
   const { data: clients } = useListClients();
   const { data: programs } = useListPrograms();
+  const promoteInFlight = useRef(false);
+  const ownerInputRef = useRef<HTMLInputElement>(null);
+  const [ownerError, setOwnerError] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const [form, setForm] = useState<{
     projectType: string;
@@ -356,6 +360,15 @@ function PromoteDialog({
     primaryOwner: initiative.businessOwner || initiative.executiveSponsor || "",
     targetDate: "",
   });
+  useEffect(() => {
+    if (open) {
+      setForm({
+        projectType: "Innovation", organizationId: null, clientId: null, programId: null,
+        primaryOwner: initiative.businessOwner || initiative.executiveSponsor || "", targetDate: "",
+      });
+      setOwnerError(false);
+    }
+  }, [open, initiative.id]);
 
   const promoteMutation = usePromoteInitiative({
     mutation: {
@@ -366,17 +379,27 @@ function PromoteDialog({
         setLocation(`/projects/${proj.id}`);
       },
       onError: (err) => {
-        toast({ title: "Promotion Failed", variant: "destructive" });
+        promoteInFlight.current = false;
+        setSubmitting(false);
+        toast({ title: "Promotion Failed", description: err instanceof Error ? err.message : "Please retry.", variant: "destructive" });
+      },
+      onSettled: () => {
+        promoteInFlight.current = false;
+        setSubmitting(false);
       }
     }
   });
 
   const submit = (allowDuplicate = false) => {
+    if (promoteInFlight.current) return;
     if (!form.primaryOwner.trim()) {
-      toast({ title: "Primary Owner is required", variant: "destructive" });
+      setOwnerError(true);
+      ownerInputRef.current?.focus();
       return;
     }
-    
+    setOwnerError(false);
+    promoteInFlight.current = true;
+    setSubmitting(true);
     promoteMutation.mutate({
       id: initiative.id,
       data: {
@@ -392,8 +415,8 @@ function PromoteDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
+    <Dialog open={open} onOpenChange={(next) => { if (!promoteInFlight.current) onOpenChange(next); }}>
+      <DialogContent className="w-[calc(100vw-2rem)] max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Promote to Execution Project</DialogTitle>
           <DialogDescription>
@@ -426,7 +449,7 @@ function PromoteDialog({
             <p className="text-xs text-muted-foreground">Recommendations are suggestions only. No milestones, risks, approvals or resource commitments are created here.</p>
             {!!initiative.jiraLinks?.length && <p className="text-xs">Jira work to carry into Linked Work: {initiative.jiraLinks.map(link => link.jiraIssueKey).join(", ")}</p>}
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="grid gap-2">
               <Label>Project Type</Label>
               <Select value={form.projectType} onValueChange={(v) => setForm(f => ({...f, projectType: v}))}>
@@ -439,12 +462,16 @@ function PromoteDialog({
               </Select>
             </div>
             <div className="grid gap-2">
-              <Label>Primary Owner</Label>
-              <Input value={form.primaryOwner} onChange={(e) => setForm(f => ({...f, primaryOwner: e.target.value}))} />
+              <Label htmlFor="promotion-owner">Primary Owner <span className="text-destructive">(Required)</span></Label>
+              <Input id="promotion-owner" ref={ownerInputRef} required aria-required="true" aria-invalid={ownerError}
+                aria-describedby={ownerError ? "promotion-owner-error" : undefined}
+                data-testid="input-promotion-owner" value={form.primaryOwner}
+                onChange={(e) => { setForm(f => ({...f, primaryOwner: e.target.value})); if (e.target.value.trim()) setOwnerError(false); }} />
+              {ownerError && <p id="promotion-owner-error" role="alert" className="text-sm text-destructive">Primary Owner is required to create a project.</p>}
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="grid gap-2">
               <Label>Organization (Optional)</Label>
               <Select value={form.organizationId ? String(form.organizationId) : "none"} onValueChange={(v) => setForm(f => ({...f, organizationId: v === "none" ? null : Number(v)}))}>
@@ -477,22 +504,25 @@ function PromoteDialog({
             </div>
             <div className="grid gap-2">
               <Label>Target Date (Optional)</Label>
-              <Input type="date" value={form.targetDate} onChange={(e) => setForm(f => ({...f, targetDate: e.target.value}))} />
+              <div className="flex gap-2">
+                <Input data-testid="input-promotion-target-date" type="date" value={form.targetDate} onChange={(e) => setForm(f => ({...f, targetDate: e.target.value}))} />
+                <Button data-testid="button-clear-promotion-target-date" variant="outline" type="button" onClick={() => setForm(f => ({...f, targetDate: ""}))} disabled={!form.targetDate || submitting}>Clear</Button>
+              </div>
               <p className="text-xs text-muted-foreground">Leave blank until a delivery date is agreed. A review date is not a project deadline.</p>
             </div>
           </div>
         </div>
 
         <DialogFooter className="flex justify-between">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>Cancel</Button>
           <div className="flex gap-2">
             {linkedProjects.length > 0 ? (
-              <Button variant="secondary" onClick={() => submit(true)} disabled={promoteMutation.isPending}>
-                Create Additional Project
+              <Button variant="secondary" data-testid="button-create-additional-project" onClick={() => submit(true)} disabled={submitting || promoteMutation.isPending}>
+                {submitting ? "Creating..." : "Create Additional Project"}
               </Button>
             ) : (
-              <Button onClick={() => submit(false)} disabled={promoteMutation.isPending}>
-                Create Project
+              <Button data-testid="button-confirm-create-project" onClick={() => submit(false)} disabled={submitting || promoteMutation.isPending}>
+                {submitting ? "Creating..." : "Create Project"}
               </Button>
             )}
           </div>
