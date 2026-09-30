@@ -2,12 +2,14 @@ import { Router, type IRouter } from "express";
 import { parseInitiativeBrief } from "@workspace/initiative-brief";
 import { ExportInitiativeBriefBody, ExportInitiativeBriefParams } from "@workspace/api-zod";
 import { renderInitiativeBriefDocx, renderInitiativeBriefPdf } from "../lib/initiative-brief-export";
+import { assertSafeContent } from "../lib/content-safety";
 
 const router: IRouter = Router();
 
 // Guarded by the global /api Matrix session middleware, like every business route.
 // No persistence, external requests, or AI; only the reviewed semantic model is rendered.
 router.post("/initiative-brief/export/:format", async (req, res): Promise<void> => {
+  assertSafeContent(req.body, "export");
   const format = ExportInitiativeBriefParams.safeParse(req.params);
   const body = ExportInitiativeBriefBody.safeParse(req.body);
   if (!format.success || !body.success) {
@@ -18,7 +20,7 @@ router.post("/initiative-brief/export/:format", async (req, res): Promise<void> 
   try {
     brief = parseInitiativeBrief(body.data);
   } catch (error) {
-    res.status(400).json({ error: error instanceof Error ? error.message : "Invalid Initiative Brief" });
+    res.status(400).json({ error: "Invalid Initiative Brief" });
     return;
   }
   // A report may contain private interview data: no caching by intermediary.

@@ -3,11 +3,13 @@ import { db, jiraConnectionStateTable as connection, jiraProjectsTable as projec
 import { eq, asc, and, isNull } from "drizzle-orm";
 import { UpdateJiraProjectBody, SaveJiraFieldMappingBody, SaveJiraStatusMappingBody } from "@workspace/api-zod";
 import { JiraClient, JiraError } from "../lib/jira-client";
+import { ContentBlockedError, blockedResponse } from "../lib/content-safety";
 
 const router: IRouter = Router();
 const handle = (fn: (req: Request, res: Response) => Promise<unknown>) => async (req: Request, res: Response) => {
   try { await fn(req, res); }
   catch (error) {
+    if (error instanceof ContentBlockedError) { res.status(422).json(blockedResponse(error)); return; }
     // Never log upstream error objects, request payloads, headers, or DB values.
     res.status(error instanceof JiraError ? error.status : 503).json({ error: error instanceof JiraError ? error.message : "Jira operation could not be completed. Check configuration and mapping references." });
   }

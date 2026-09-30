@@ -105,6 +105,22 @@ test("private interview persistence: ownership, tampering, concurrency and authe
     const [fresh, racing] = await Promise.all([create("B", { answer: "fresh" }), create("B", { answer: "racing" })]);
     assert.deepEqual([fresh.status, racing.status].sort(), [201, 409], "concurrent starts yield one active draft");
     assert.notEqual((await active("B")).body.draft.id, b.body.id);
+    // A legacy restricted draft cannot be resumed, but owner-only discard
+    // must work without retrieving the state or accepting a target owner.
+    await client.query("INSERT INTO interview_drafts (owner_sub, state) VALUES ($1, $2)", [
+      "legacy-owner", JSON.stringify({ answer: "password: syntheticLegacyValue" }),
+    ]);
+    await assert.rejects(() => active("legacy-owner"), { name: "Error", message:
+      "This entry appears to contain sensitive or inappropriate information that should not be stored in Innovation Hub. Remove the restricted content and try again." });
+    assert.equal((await drafts("DELETE", "/interview/drafts/active", null)).status, 401);
+    assert.equal((await drafts("DELETE", "/interview/drafts/active", "unrelated-owner", { ownerSub: "legacy-owner" })).status, 204);
+    assert.equal((await client.query("SELECT count(*)::int AS count FROM interview_drafts WHERE owner_sub = $1", ["legacy-owner"])).rows[0].count, 1);
+    assert.equal((await drafts("DELETE", "/interview/drafts/active", "legacy-owner")).status, 204);
+    assert.equal((await drafts("DELETE", "/interview/drafts/active", "legacy-owner")).status, 204, "idempotent");
+    assert.deepEqual((await active("legacy-owner")).body, { draft: null });
+    assert.ok((await active("B")).body.draft, "other owner's active draft survives recovery");
+    assert.equal((await client.query("SELECT status FROM interview_drafts WHERE id = $1", [a.body.id])).rows[0].status, "completed");
+    assert.equal((await client.query("SELECT count(*)::int AS count FROM initiatives")).rows[0].count, 2);
   } finally {
     (pool as any).query = originalQuery;
     (pool as any).connect = originalConnect;

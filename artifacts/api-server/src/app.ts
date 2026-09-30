@@ -11,6 +11,7 @@ import matrixRouter from "./matrix/platform";
 import { requireMatrixSession } from "./matrix/auth";
 import { logger } from "./lib/logger";
 import { AIProviderNotConfiguredError } from "./lib/ai";
+import { contentSafetyErrorHandler } from "./lib/content-safety";
 
 const app: Express = express();
 
@@ -22,7 +23,7 @@ app.use(
         return {
           id: req.id,
           method: req.method,
-          url: req.url?.split("?")[0],
+          // Do not log attacker-controlled URL segments, query values or bodies.
         };
       },
       res(res) {
@@ -49,18 +50,25 @@ app.use("/api", (req, res, next) => {
   void requireMatrixSession(req, res, next);
 });
 app.use("/api", router);
+app.use(contentSafetyErrorHandler);
 
 // Selecting a placeholder AI provider (via AI_PROVIDER) must surface as a
 // clear 503, not an opaque 500.
 app.use(
   (err: unknown, req: Request, res: Response, next: NextFunction) => {
     if (err instanceof AIProviderNotConfiguredError) {
-      req.log.warn({ err }, "AI provider not configured");
+      req.log.warn({ category: "provider_unavailable" }, "AI provider not configured");
       res.status(503).json({ error: err.message });
       return;
     }
     next(err);
   },
 );
+
+// Driver/validation errors can carry SQL parameters or rejected content.
+app.use((_err: unknown, req: Request, res: Response, _next: NextFunction) => {
+  req.log.error({ category: "request_failed" }, "Request failed");
+  res.status(500).json({ error: "The request could not be completed." });
+});
 
 export default app;

@@ -1,0 +1,37 @@
+# Innovation Hub v1.6.5 content safety
+
+## Policy and boundaries
+
+`src/lib/content-safety.ts` in the API server is the single local, deterministic policy entry point. It scans strings, object keys and labeled values, normalizes Unicode compatibility forms and removes common zero-width characters. There is no provider call in the policy. Categories: credential/secret, financial identifier, personal identifier, individual health/PHI, sexual/vulgar/harassment, hate/abuse, threats, and narrowly recognizable confidential personal financial detail.
+
+High-level business savings/revenue/cost metrics, HIPAA discussion, security/password-management discussion and professional HR case-routing descriptions remain allowed. Credit cards use Luhn validation; SSNs, government-ID labels, bank/routing/IBAN labels, key prefixes, authorization tokens, private-key markers and authenticated URLs have local checks. Workplace rules have word boundaries and limited context rather than substring banning. Health and personal financial rules require identifiable individual context.
+
+Authenticated business-router middleware checks incoming bodies and queries before route execution, persistence or AI calls. Explicit checks also cover interview turn/draft functions (before even deterministic fallback), private draft create/update and resume, initiative create/edit (including merged existing data), Jira returned work-item fields and extracted ADF text, and both server DOCX/PDF exports. Draft-owner/revision predicates and save receipts are unchanged. Frontend autosave must treat policy rejection as a hard stop; rejected originals must not enter another fallback or local persistence path.
+
+Jira blocks rather than rewriting restricted content; the upstream authoritative Jira record is never changed. Existing Jira credential-echo redaction remains defensive transport hygiene, not permission to ingest restricted narratives. Unsafe AI output is checked before validation metadata, presentation or persistence and throws a policy rejection; there is **no regeneration** for policy failures, avoiding unsafe retries and unsafe deterministic fallback. Existing bounded retries for non-policy schema errors remain.
+
+## Safe error and audit contract
+
+HTTP 422: `code: CONTENT_BLOCKED`, generic non-echoing `error`, `categories` (enum values only), and `ruleVersion: innovation-content-v1.6.5`. HR-sensitive content receives professional-description guidance and “Use the appropriate Matrix HR or management reporting process.” No specific reporting destination is invented.
+
+Async request context attaches the authenticated stable subject to metadata-only warning events: userId, timestamp, action, workflow-area route, categories, blocked=true, ruleVersion. Route labels are fixed, not request URLs. No matched values, field keys, original text, excerpts or hashes are retained. Audit uses the existing application logger, not a new table; durable retention/access control remain the deployment's logging responsibility. No audit is fabricated for unauthenticated calls; the session gate rejects them. Request logging excludes URLs/body/query; generic terminal errors omit raw exceptions/SQL parameters. AI validation logs use fixed schema-area labels instead of provider-controlled object keys.
+
+## Existing Platform inspection and future handoff
+
+Inspected the installed official `@workspace/matrix-sdk` v1.2.1 `dist/ai-contract.d.ts` and `dist/platform-client.d.ts`. The exposed AI capabilities are `generateText` and `generateStructured`; no dedicated safe moderation/classification service is exposed. No new provider, credential, external moderation request, or live AI request was added. Raw secrets are never sent to generation for confirmation.
+
+Future **Matrix Platform Shared Content Safety / DLP Service** should centrally version detection/workplace policy, audit requirements, safe categories and child-app adapters. Keep local secret detection before any network operation. A future adapter can replace/augment `inspectContent`/`assertSafeContent` without rewriting all workflows, using the same non-echoing response contract and authenticated audit metadata. This release does not build or require that service.
+
+## Limits and release validation
+
+This is bounded deterministic risk reduction, **not perfect DLP** or general semantic moderation. It does not reliably detect all languages, euphemisms, misspellings, encodings, arbitrary unlabeled identifiers or indirect/ambiguous threats/medical allegations. It is not a replacement for employee reporting systems, training, operational audit retention, centralized DLP or human review. No historical database cleanup/migration is performed. Checks block new writes and re-saving restricted merged content; private draft resume is checked. They do not claim to sanitize every historical reporting endpoint. Local/browser print cannot be cryptographically controlled by the server; authoritative downloadable DOCX/PDF exports are guarded.
+
+Run `cd artifacts/api-server && node test-content-safety.mjs`. The suite uses synthetic fixtures, injected AI/Jira responses and database-method spies (no live AI or DB needed). It covers all required allowed examples, all eight categories, nested payloads/keys, Unicode normalization, actual draft/create/edit/export route handlers, answer/draft pre-inference rejection, AI-output hard stops, Jira summary/ADF extraction, no storage calls on rejection, no render response, metadata-only audit and authenticated async propagation. Run `node test-content-safety.mjs test-interview-ai.test.ts` for existing readiness/convergence/fallback regressions. Real owner-isolation integration tests remain `node test-interview-drafts.mjs` against the configured test database; browser/build/full integration checks are tracked separately.
+
+Backend execution for this change: policy/cross-path suite **7/7 passed** (loops exercise 19 restricted fixtures across each boundary); interview regressions **18/18 passed**; database private-draft ownership/tampering/concurrency/save-linkage integration **1/1 passed**; API TypeScript check passed. The privacy test uses temporary tables and rolls back. No live AI calls or new credentials were used.
+
+Review hardening: credential-key context is inherited by nested objects/arrays and includes camelCase keys. Bare business “Routing 500000 calls daily” is allowed; bank-routing/explicit routing-number labels are required. Only explicitly supplied trusted upstream Jira numeric identifier paths bypass card checksum detection; this is not a blanket exemption for arbitrary incoming `id`/`jiraIssueId` keys, narrative values or credentials.
+
+Legacy draft recovery: authenticated `DELETE /api/interview/drafts/active`, no body required, returns **204 with no response body** whether or not an active draft exists; unauthenticated requests return **401**. The server deletes only `owner_sub = authenticated subject AND status = active`, never reads/returns its state, ignores client owner selectors, and preserves completed drafts/saved initiatives. Registering this static route before `/:id` permits recovery after an active-draft GET returns 422 without revealing a restricted draft ID.
+
+Review-hardening rerun: content policy/cross-path **9/9**, database isolation/recovery **1/1**, API typecheck passed. Recovery integration proves anonymous denial, forged owner selector isolation, idempotency, preservation of another owner's active draft, and preservation of completed drafts/initiatives.

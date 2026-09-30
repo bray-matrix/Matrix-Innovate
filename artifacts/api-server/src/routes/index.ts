@@ -17,8 +17,10 @@ import jiraLinksRouter from "./jira-links";
 import interviewAiRouter from "./interview-ai";
 import interviewDraftsRouter from "./interview-drafts";
 import initiativeBriefRouter from "./initiative-brief";
+import { contentSafetyBoundary } from "../lib/content-safety";
 
 const router: IRouter = Router();
+router.use((req, res, next) => req.path === "/healthz" ? next() : contentSafetyBoundary(req, res, next));
 
 router.use(healthRouter);
 router.use(initiativesRouter);

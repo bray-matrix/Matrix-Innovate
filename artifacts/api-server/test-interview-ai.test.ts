@@ -42,6 +42,9 @@ test("completion requests whole-evidence prose and accepts supported summary wit
     const messages = JSON.stringify(request.messages);
     assert.match(request.instruction, /QUALITATIVE business benefits/);
     assert.match(request.instruction, /not blockers to Initiative intake/);
+    assert.match(request.instruction, /Future outcomes and expected benefits are NOT guarantees/);
+    assert.match(request.instruction, /unless explicit evidence establishes certainty/);
+    assert.match(request.instruction, /Do not weaken established facts or source quotes/);
     for (const turn of input.turns) assert.ok(messages.includes(turn.answer));
     return { data: { ...draft(input), draft: { ...draft(input).draft,
       executiveSummary: summary,

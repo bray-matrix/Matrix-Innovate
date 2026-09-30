@@ -2,6 +2,10 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { inflateRawSync, inflateSync } from "node:zlib";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { execFileSync } from "node:child_process";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { mkdtemp, rm } from "node:fs/promises";
 import { buildInitiativeBrief, parseInitiativeBrief, synthesizeBriefNarrative, type BriefDraft } from "@workspace/initiative-brief";
 import { briefSections, renderInitiativeBriefDocx, renderInitiativeBriefPdf } from "./initiative-brief-export";
 
@@ -225,6 +229,49 @@ test("full application-inventory evidence fixture exports the synthesized narrat
   }
 });
 
+test("representative browser-export payload flows supporting context without a sparse final PDF page", async () => {
+  // The captured synthetic brief came through baseline + final AI merge +
+  // review initialization, not a handcrafted short export fixture.
+  const capture = JSON.parse(await readFile("attached_assets/generated/application-inventory-neutral-validation-fresh.json", "utf8"));
+  const actual = parseInitiativeBrief(capture.brief);
+  const directory = await mkdtemp(path.join(tmpdir(), "innovation-brief-"));
+  try {
+    const pdf = await renderInitiativeBriefPdf(actual);
+    const docx = await renderInitiativeBriefDocx(actual);
+    const pdfPath = path.join(directory, "brief.pdf");
+    const docxPath = path.join(directory, "brief.docx");
+    await writeFile(pdfPath, pdf);
+    await writeFile(docxPath, docx);
+    if (process.env["WRITE_REPRESENTATIVE_BRIEF_SAMPLE"] === "1") {
+      await writeFile("/tmp/innovation-representative-part-a.pdf", pdf);
+      await writeFile("/tmp/innovation-representative-part-a.docx", docx);
+    }
+    const info = execFileSync("pdfinfo", [pdfPath], { encoding: "utf8" });
+    const pages = Number(info.match(/^Pages:\s+(\d+)/m)?.[1]);
+    assert.equal(pages, 2, "representative Supporting Context must not be stranded on page three");
+    const text = execFileSync("pdftotext", ["-layout", pdfPath, "-"], { encoding: "utf8" })
+      .replace(/-\s*\n\s*/g, "-").replace(/\s+/g, " ");
+    const normalized = (value: string) => value.replace(/\s+/g, " ");
+    for (const section of briefSections(actual)) {
+      assert.ok(text.includes(section.title), `PDF missing ${section.title}`);
+      for (const row of section.rows)
+        assert.ok(text.includes(normalized(row.body)), `PDF missing ${section.title}: ${row.heading}`);
+    }
+    assert.equal(docx.subarray(0, 2).toString(), "PK");
+    const part = docx.toString("latin1").indexOf("word/document.xml");
+    const header = part - 30;
+    const offset = header + 30 + docx.readUInt16LE(header + 26) + docx.readUInt16LE(header + 28);
+    const xml = inflateRawSync(docx.subarray(offset, offset + docx.readUInt32LE(header + 18))).toString("utf8");
+    for (const section of briefSections(actual)) {
+      assert.ok(xml.includes(section.title.replace(/&/g, "&amp;")), `Word missing ${section.title}`);
+      for (const row of section.rows)
+        assert.ok(xml.includes(row.body.replace(/&/g, "&amp;")), `Word missing ${section.title}: ${row.heading}`);
+    }
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 // The one-request live final-generation replay is recorded separately from the
 // deterministic frontend fixture. Export its corrected semantic brief verbatim.
 if (process.env["WRITE_LIVE_BRIEF_SAMPLE"] === "1") {
@@ -238,6 +285,27 @@ if (process.env["WRITE_LIVE_BRIEF_SAMPLE"] === "1") {
     const pdf = await renderInitiativeBriefPdf(actual);
     await writeFile("attached_assets/generated/application-inventory-brief-revised.docx", docx);
     await writeFile("attached_assets/generated/application-inventory-brief-revised.pdf", pdf);
+  });
+}
+
+if (process.env["WRITE_REPRESENTATIVE_BRIEF_SAMPLE"] === "1") {
+  test("export the offline completion replay through the production renderers", async () => {
+    const replay = parseInitiativeBrief(JSON.parse(
+      await readFile("/tmp/innovation-representative-part-a-brief.json", "utf8")));
+    const pdf = await renderInitiativeBriefPdf(replay);
+    const docx = await renderInitiativeBriefDocx(replay);
+    const pdfPath = "/tmp/innovation-representative-completion-part-a.pdf";
+    await writeFile(pdfPath, pdf);
+    await writeFile("/tmp/innovation-representative-completion-part-a.docx", docx);
+    assert.match(execFileSync("pdfinfo", [pdfPath], { encoding: "utf8" }), /^Pages:\s+2$/m);
+    const text = execFileSync("pdftotext", ["-layout", pdfPath, "-"], { encoding: "utf8" })
+      .replace(/-\s*\n\s*/g, "-").replace(/\s+/g, " ");
+    for (const section of briefSections(replay)) {
+      assert.ok(text.includes(section.title));
+      for (const row of section.rows)
+        assert.ok(text.includes(row.body.replace(/\s+/g, " ")), `completion PDF missing ${section.title}: ${row.heading}`);
+    }
+    assert.equal(docx.subarray(0, 2).toString(), "PK");
   });
 }
 

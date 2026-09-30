@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
+import { safeErrorMessage } from "@/lib/content-safety-error";
 
 const formSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -80,8 +81,8 @@ export default function SubmitInitiative() {
           toast({ title: "Success", description: "Initiative submitted successfully." });
           setLocation(`/initiatives/${result.id}`);
         },
-        onError: () => {
-          toast({ title: "Error", description: "Failed to submit initiative.", variant: "destructive" });
+        onError: (error) => {
+          toast({ title: "Could not submit initiative", description: safeErrorMessage(error, "Failed to submit initiative."), variant: "destructive" });
         }
       }
     );

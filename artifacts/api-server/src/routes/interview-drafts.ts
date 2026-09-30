@@ -2,6 +2,7 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import { db, interviewDraftsTable } from "@workspace/db";
 import { and, eq } from "drizzle-orm";
 import type { AuthenticatedRequest } from "../matrix/auth";
+import { assertSafeContent } from "../lib/content-safety";
 
 const router: IRouter = Router();
 const draft = interviewDraftsTable;
@@ -57,12 +58,14 @@ router.get("/interview/drafts/active", async (req, res) => {
   if (!sub) return;
   const [row] = await db.select().from(draft)
     .where(and(eq(draft.ownerSub, sub), eq(draft.status, "active"))).limit(1);
+  assertSafeContent(row?.state, "draft_resume");
   res.json({ draft: row ? response(row) : null });
 });
 
 router.post("/interview/drafts", async (req, res, next) => {
   const sub = owner(req, res);
   if (!sub) return;
+  assertSafeContent(req.body, "draft_create");
   if (!validState(req.body?.state)) {
     res.status(400).json({ error: "Invalid interview state" });
     return;
@@ -82,6 +85,7 @@ router.post("/interview/drafts", async (req, res, next) => {
 router.put("/interview/drafts/:id", async (req, res) => {
   const sub = owner(req, res);
   if (!sub) return;
+  assertSafeContent(req.body, "draft_autosave");
   const id = idFor(req, res);
   if (!id) return;
   if (!validState(req.body?.state) || !Number.isSafeInteger(req.body?.revision) || req.body.revision < 1) {
@@ -99,6 +103,15 @@ router.put("/interview/drafts/:id", async (req, res) => {
   const [existing] = await db.select({ id: draft.id }).from(draft)
     .where(and(eq(draft.id, id), eq(draft.ownerSub, sub), eq(draft.status, "active"))).limit(1);
   res.status(existing ? 409 : 404).json({ error: existing ? "Interview revision conflict" : "Draft not found" });
+});
+
+// Recovery does not read/return unsafe state and cannot address another owner.
+// Register before /:id so "active" is not treated as an invalid UUID.
+router.delete("/interview/drafts/active", async (req, res) => {
+  const sub = owner(req, res);
+  if (!sub) return;
+  await db.delete(draft).where(and(eq(draft.ownerSub, sub), eq(draft.status, "active")));
+  res.status(204).end();
 });
 
 router.delete("/interview/drafts/:id", async (req, res) => {

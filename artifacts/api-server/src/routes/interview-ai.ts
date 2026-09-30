@@ -1,3 +1,4 @@
+import { assertSafeContent, ContentBlockedError, inspectContent } from "../lib/content-safety";
 import { Router, type IRouter } from "express";
 import { z } from "zod";
 import { createPlatformClient, PlatformServiceError } from "@workspace/matrix-sdk";
@@ -66,6 +67,7 @@ const turnInstruction = `You are a business analyst conducting Initiative intake
 Return ONLY compact deltas: at most 6 NEW short source-backed facts, 3 short suggestions, 5 important unknowns, one primary business question, readiness recommendation (boolean), next question value (high/medium/low), critical gaps, short initiative type/title. Do NOT draft Initiative prose on this call. The application calculates readiness; do not invent a percentage. Each fact value AND evidence must be the SAME exact substring (max 400 characters) of a user answer or Jira summary/description, with correct source. Never call a hypothesis a fact; never invent financial values, metrics, dates or technical claims.
 Before proposing a question, check whether it materially improves understanding, prioritization or description, adds new information, stays Initiative-level and is reasonably knowable. No architecture, APIs, databases, migration or implementation sequencing unless central to the business idea. Prefer one primary ask per turn; do not stack independent questions. If value is low or ready, return an empty nextQuestion. At 12 answers, return an empty nextQuestion.`;
 const draftInstruction = `Write a concise executive Initiative Brief ONLY now, as a capable business analyst, using ALL user answers, Jira context, source-backed known facts and explicit unknowns. Evidence can establish value or risk anywhere in the conversation, regardless of the question or field under which it was captured. Do not request more interview answers.
+State established user-provided FACTS directly. Future outcomes and expected benefits are NOT guarantees: use "is expected to reduce", "is intended to improve", "could reduce", "may improve", or "is designed to support", unless explicit evidence establishes certainty. Apply this in executiveSummary, expectedValue, desiredOutcome/future state, success measures and recommended next steps. Do not weaken established facts or source quotes.
 executiveSummary: one short natural paragraph explaining the problem, its business significance, the proposed outcome and expected benefit. Do not repeat the title, concatenate labeled fields ("addresses:", "Desired outcome:"), or let absent dollar estimates erase qualitative value. Use neutral, proportionate language: do not add unsupported intensifiers such as dangerous, severe or critical. Describe expected benefits as intended outcomes, not guaranteed results.
 problemStatement: core business need. currentProcess: present way of working, not a transcript. desiredOutcome: evidence-backed future state and scope/governance, not the same summary again. expectedValue: synthesize QUALITATIVE business benefits from the entire interview into concise professional prose; explain how the proposed change addresses reported impacts. Do not say value is unknown merely because dollars or hours are unquantified. Quantified values are displayed separately by the application. Leave genuinely unsupported fields blank.
 successMetric and risks MUST remain exact phrases from a user answer or Jira context explicitly describing that measure or risk (not new interpretations). Otherwise leave blank. Collect additional distinct known risks as exact quoted knownFacts with category "risk", including nonfinancial considerations when explicitly described. Known risks are not unknowns merely because unquantified. A future-state aspiration is not automatically an accepted success metric.
@@ -82,7 +84,7 @@ function getPlatform() {
   return platform;
 }
 const safeLabel = (value: unknown) =>
-  typeof value === "string" && /^[a-zA-Z0-9._:/-]{1,120}$/.test(value) ? value : undefined;
+  typeof value === "string" && /^[a-zA-Z0-9._:/-]{1,120}$/.test(value) && !inspectContent(value).length ? value : undefined;
 export function safePlatformErrorMetadata(error: unknown) {
   if (!(error instanceof PlatformServiceError)) return { code: "unavailable" };
   return { code: error.code, requestId: safeLabel(error.requestId),
@@ -124,7 +126,7 @@ function unsupportedSpecificClaims(text: string, source: string): boolean {
 }
 const riskTerms = /\b(?:risks?|secur\w*|complian\w*|privac\w*|breach\w*|fraud\w*|expos\w*|audit\w*|regulat\w*|unsafe|disrupt\w*|downtime|lawsuits?)\b|\bdata loss\b/gi;
 function unsupportedRiskClaims(text: string, source: string): boolean {
-  const words = text.match(riskTerms) ?? [];
+  const words: string[] = text.match(riskTerms) ?? [];
   const sourceLower = source.toLowerCase();
   return words.some(word => !sourceLower.includes(word.toLowerCase()));
 }
@@ -302,13 +304,14 @@ async function inferOperation<T>(
       correction = "\nReturn the required closed JSON shape with all fields and no extra fields.";
       continue;
     }
+    assertSafeContent(result, "ai_output");
     onMetadata(result, attempt);
     const parsed = extract(result.data, shape, operation, input);
     if (parsed) return parsed;
     const issue = shape.safeParse(result.data);
     const first = !issue.success ? issue.error.issues[0] : undefined;
-    const path = first?.path.reduce<string>((s, key) => typeof key === "number" ? `${s}[${key}]`
-      : `${s}${s ? "." : ""}${key}`, "") || (operation === "turn" ? "nextQuestion" : "root");
+    // Provider-controlled object keys must not enter logs or retry instructions.
+    const path = operation === "turn" ? "turn" : "draft";
     const constraint = first?.code === "too_big" || first?.code === "too_small"
       ? `${first.code}:${first.type}:${first.code === "too_big" ? first.maximum : first.minimum}`
       : first?.code ?? "unsupported_content";
@@ -325,12 +328,14 @@ export async function advanceInterview(input: Input,
   onAttempt: (attempt: number) => void = () => {},
 ) {
   // Never spend inference on question 13. Not even an SDK error can reopen it.
+  assertSafeContent(input, "interview_answer");
   if (input.turns.length >= 12) return fallbackInterview(input);
   try {
     const output = await inferOperation(input, "turn", infer, onInvalid, maxAttempts,
       onMetadata, onAttempt, turnShape);
     return state(input, output ?? undefined);
-  } catch {
+  } catch (error) {
+    if (error instanceof ContentBlockedError) throw error;
     return fallbackInterview(input);
   }
 }
@@ -340,13 +345,15 @@ export async function generateInterviewDraft(input: Input,
   maxAttempts = 2, onMetadata: (metadata: Metadata, attempt: number) => void = () => {},
   onAttempt: (attempt: number) => void = () => {},
 ) {
+  assertSafeContent(input, "draft_generation");
   try {
     const output = await inferOperation(input, "draft", infer, onInvalid, maxAttempts,
       onMetadata, onAttempt, finalShape);
     if (!output) return fallbackDraft(input);
     return { ...output, knownFacts: [...sanitizeFacts(input.knownFacts ?? [], input, 24, false), ...output.knownFacts].slice(0, 24),
       readiness: calculateInterviewReadiness(context(input, output.knownFacts, output.unknowns)) };
-  } catch {
+  } catch (error) {
+    if (error instanceof ContentBlockedError) throw error;
     return fallbackDraft(input);
   }
 }

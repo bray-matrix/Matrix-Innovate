@@ -2,7 +2,7 @@
 // No network, no scoring changes. Safe to unit test in node.
 import {
   buildInitiativeBrief,
-  classifyBriefUnknowns, synthesizeBriefNarrative, cleanBriefProse, potentialSuccessMeasures,
+  classifyBriefUnknowns, synthesizeBriefNarrative, cleanBriefProse, potentialSuccessMeasures, qualifyDraftBenefits,
   type InitiativeBrief,
 } from "@workspace/initiative-brief";
 import type {
@@ -113,12 +113,14 @@ export function finalizeInterviewDraft(
     result.fields.currentProcess = business.currentProcess.trim() || result.fields.currentProcess;
     const sourceOutcome = completed.knownFacts.filter(fact => /^(?:desiredOutcome|outcome|scope|governance)$/i.test(fact.category))
       .map(fact => fact.value).join(" ");
-    result.fields.desiredOutcome = business.desiredOutcome.trim() || sourceOutcome || result.fields.desiredOutcome;
+    result.fields.desiredOutcome = business.desiredOutcome.trim()
+      ? qualifyDraftBenefits(business.desiredOutcome.trim())
+      : sourceOutcome || result.fields.desiredOutcome;
     // A baseline aspiration is not a grounded, user-established measure.
-    result.fields.successMetric = business.successMetric.trim();
-    result.canvas.expectedValue = business.expectedValue.trim() || "Value not yet quantified";
+    result.fields.successMetric = qualifyDraftBenefits(business.successMetric.trim());
+    result.canvas.expectedValue = qualifyDraftBenefits(business.expectedValue.trim()) || "Value not yet quantified";
     result.canvas.risks = business.risks.trim() || "Risks not yet known.";
-    result.executiveSummary = business.executiveSummary?.trim() || "";
+    result.executiveSummary = qualifyDraftBenefits(business.executiveSummary?.trim() || "");
   } else {
     result.canvas.risks = "Risks not yet known; review and add known considerations.";
   }

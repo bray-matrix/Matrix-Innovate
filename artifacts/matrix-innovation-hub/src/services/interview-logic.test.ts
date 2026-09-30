@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { BLOCKED_MESSAGE, checkedResponse, isContentBlocked, safeErrorMessage } from "../lib/content-safety-error";
 import { interviewEngine, mapConversationToFallback, nextFallbackQuestion,
   fallbackReadiness, canDraft, shouldContinueInterview, missingCriticalContext, isInterviewReadiness } from "./interviewEngine";
 import {
@@ -7,6 +8,27 @@ import {
   toTitle, validateInitiativeDraft, privateInterview, trackInterviewSave, waitForInterviewSave, parseLoss,
   type InitiativeDraftFields,
 } from "./aiInterviewService";
+
+test("blocked API errors show safe category but never echo rejected text", async () => {
+  const sensitive = "synthetic-rejected-value";
+  const body = { code: "CONTENT_BLOCKED", error: `unsafe ${sensitive}`, categories: ["CREDENTIAL_SECRET"] };
+  const response = new Response(JSON.stringify(body), { status: 422 });
+  await assert.rejects(checkedResponse(response, "Unavailable"), error => {
+    assert.equal(isContentBlocked(error), true);
+    assert.match(safeErrorMessage(error, "Unavailable"), /Possible credential or secret detected/);
+    assert.ok(safeErrorMessage(error, "Unavailable").startsWith(BLOCKED_MESSAGE));
+    assert.ok(!safeErrorMessage(error, "Unavailable").includes(sensitive));
+    return true;
+  });
+  assert.match(safeErrorMessage({ status: 422, data: body }, "Unavailable"), /Possible credential or secret detected/);
+  assert.equal(safeErrorMessage({ status: 500, data: body }, "Unavailable"), "Unavailable");
+  assert.equal(safeErrorMessage({ status: 422, data: { error: sensitive } }, "Unavailable"), "Unavailable");
+  const hrMessage = safeErrorMessage({ status: 422, data: {
+    code: "CONTENT_BLOCKED", categories: ["SEXUAL_VULGAR_HARASSMENT", sensitive],
+  } }, "Unavailable");
+  assert.match(hrMessage, /appropriate Matrix HR or management reporting process/);
+  assert.ok(!hrMessage.includes(sensitive));
+});
 
 test("titles use complete project names, not truncated answer fragments", () => {
   assert.equal(toTitle("build a centralized Matrix Platform that brings our teams together"), "Centralized Matrix Platform");
@@ -217,6 +239,48 @@ test("private draft client sends revision and source initiative to session-scope
     ]);
     assert.deepEqual(requests[2].body, { state: { answers: { idea: "Customer onboarding" } }, revision: 1 });
     assert.deepEqual(requests[3].body, { initiativeId: 73 });
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test("private draft rejects blocked content with only safe guidance", async () => {
+  const original = globalThis.fetch;
+  globalThis.fetch = (async () => new Response(JSON.stringify({
+    code: "CONTENT_BLOCKED", error: "synthetic-rejected-value",
+    categories: ["PERSONAL_IDENTIFIER"],
+  }), { status: 422, headers: { "Content-Type": "application/json" } })) as typeof fetch;
+  try {
+    await assert.rejects(privateInterview.save({
+      id: "owned-id", state: { input: "" }, revision: 1,
+    }, { input: "synthetic-rejected-value" }), error => {
+      assert.equal(isContentBlocked(error), true);
+      assert.match(safeErrorMessage(error, "Unavailable"), /Possible personal identifier detected/);
+      assert.ok(!safeErrorMessage(error, "Unavailable").includes("synthetic-rejected-value"));
+      return true;
+    });
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test("blocked legacy draft can be discarded by authenticated owner without reading raw draft", async () => {
+  const original = globalThis.fetch;
+  const calls: { url: string; method: string; credentials?: RequestCredentials; body?: BodyInit | null }[] = [];
+  globalThis.fetch = (async (url: string | URL | Request, options?: RequestInit) => {
+    calls.push({ url: String(url), method: options?.method ?? "GET",
+      credentials: options?.credentials, body: options?.body });
+    if (options?.method === "DELETE") return new Response(null, { status: 204 });
+    return new Response(JSON.stringify({ code: "CONTENT_BLOCKED",
+      error: "synthetic-private-draft-value", categories: ["PERSONAL_IDENTIFIER"] }), { status: 422 });
+  }) as typeof fetch;
+  try {
+    await assert.rejects(privateInterview.active(), isContentBlocked);
+    await privateInterview.discardActive();
+    assert.deepEqual(calls.map(call => [call.method, call.url]), [
+      ["GET", "/api/interview/drafts/active"], ["DELETE", "/api/interview/drafts/active"],
+    ]);
+    assert.equal(calls.every(call => call.credentials === "include" && call.body === undefined), true);
   } finally {
     globalThis.fetch = original;
   }

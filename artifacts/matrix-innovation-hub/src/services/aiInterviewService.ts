@@ -118,6 +118,7 @@ export interface InitiativeReviewMetadata {
 export type AnswerMap = Record<string, string>;
 
 import { withBase } from "../lib/base-path";
+import { checkedResponse } from "../lib/content-safety-error";
 
 // Unfinished interviews are server-owned and scoped to the Matrix session.
 // Never put interview answers or Jira context in origin-wide localStorage.
@@ -147,16 +148,17 @@ async function interviewRequest<T>(path: string, method = "GET", body?: unknown)
     headers: body === undefined ? undefined : { "Content-Type": "application/json" },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
-  if (!response.ok) {
-    const error = await response.json().catch(() => null) as { error?: string } | null;
-    throw new Error(error?.error || `Interview request failed (${response.status})`);
-  }
+  await checkedResponse(response, `Interview request failed (${response.status})`);
   if (response.status === 204) return undefined as T;
   return response.json() as Promise<T>;
 }
 
 export const privateInterview = {
   active: <T>() => interviewRequest<{ draft: PrivateInterviewDraft<T> | null }>("/drafts/active"),
+  // Recovery for an older active draft whose content can no longer be read under
+  // the current policy. The server identifies the row from the session, not a
+  // client-provided draft ID or returned draft body.
+  discardActive: () => interviewRequest<unknown>("/drafts/active", "DELETE"),
   create: <T>(state: T) => interviewRequest<PrivateInterviewDraft<T>>("/drafts", "POST", { state }),
   save: <T>(draft: PrivateInterviewDraft<T>, state: T) =>
     interviewRequest<PrivateInterviewDraft<T>>(`/drafts/${encodeURIComponent(draft.id)}`, "PUT", { state, revision: draft.revision }),

@@ -2,7 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { cleanBriefProse, synthesizeBriefNarrative } from "@workspace/initiative-brief";
+import { readFile, writeFile } from "node:fs/promises";
+import { cleanBriefProse, synthesizeBriefNarrative, qualifyDraftBenefits } from "@workspace/initiative-brief";
 import { buildDraft, computeScore, derivePriority } from "@/services/aiInterviewService";
 import {
   prioritizeUnknowns, candidateMeasures, serializeForSave, initialNarrative,
@@ -75,6 +76,60 @@ test("unrelated warehouse scenario uses its own evidence and retains natural Pla
 test("editorial cleanup removes duplicate sentences and punctuation without changing decimals or facts", () => {
   assert.equal(cleanBriefProse("Savings are 12.5 hours.. Savings are 12.5 hours.  Owner is unknown!!"),
     "Savings are 12.5 hours. Owner is unknown!");
+});
+
+test("generated future benefits are qualified while source facts and reviewed edits retain their wording", () => {
+  assert.equal(qualifyDraftBenefits("This will reduce time and will improve operational continuity."),
+    "This is expected to reduce time and is expected to improve operational continuity.");
+  assert.equal(qualifyDraftBenefits("Current rework costs $75,000. It will save 12.5 hours."),
+    "Current rework costs $75,000. It is expected to save 12.5 hours.");
+  const { draft } = fixture();
+  draft.fields.desiredOutcome = "The team will improve routing."; // user-supplied source text
+  draft.executiveSummary = "";
+  draft.canvas.expectedValue = "Not yet established";
+  const ai: ReviewAIResult = { knownFacts: [{ category: "Impact", source: "user",
+    value: "Current rework wastes time.", evidence: "answer" }], inferredSuggestions: [], unknowns: [],
+    draft: { executiveSummary: "The design will reduce time and will improve continuity.",
+      expectedValue: "The design will improve continuity." } };
+  const n = synthesizeBriefNarrative({ draft, aiResult: ai });
+  assert.match(n.executiveSummary, /is expected to reduce time.*is expected to improve continuity/);
+  assert.match(n.expectedValue, /is expected to improve continuity/);
+  assert.equal(draft.fields.desiredOutcome, "The team will improve routing.");
+  const reviewed = mergeReviewIntoDraft(draft, draft.fields, draft.scoring,
+    { ...n, expectedValue: "Our signed pilot will improve service." });
+  assert.equal(initialNarrative(reviewed, ai).expectedValue, "Our signed pilot will improve service.");
+  const completed = finalizeInterviewDraft(draft, { ...ai, draft: {
+    problemStatement: "Current rework wastes time.", currentProcess: "Today there is rework.",
+    desiredOutcome: "This will reduce time.", successMetric: "It will improve completion time.",
+    expectedValue: "This will improve continuity.", risks: "Ownership needs validation.",
+    executiveSummary: "The proposal will reduce time.",
+  } }, ai, []);
+  assert.match(completed.fields.desiredOutcome, /is expected to reduce time/);
+  assert.match(completed.fields.successMetric, /is expected to improve completion time/);
+  assert.match(completed.canvas.expectedValue, /is expected to improve continuity/);
+  assert.match(completed.executiveSummary, /is expected to reduce time/);
+  assert.equal(completed.fields.problemStatement, "Current rework wastes time.");
+});
+
+test("captured synthetic final completion is replayed through baseline and review before export", async () => {
+  const capture = JSON.parse(await readFile("attached_assets/generated/application-inventory-neutral-validation-fresh.json", "utf8"));
+  const evidence = capture.input.turns.map((turn: { answer: string }) => ({ value: turn.answer, source: "user" as const }));
+  const completed = finalizeInterviewDraft(capture.baseline, capture.final, capture.final, evidence);
+  const narrative = initialNarrative(completed, capture.final);
+  const brief = buildReviewBrief({
+    draft: completed, fields: completed.fields, scoring: completed.scoring,
+    narrative, ai: capture.final, score: completed.score, priority: completed.priority,
+    generatedAt: capture.brief.metadata.generatedAt,
+  });
+  assert.doesNotMatch(brief.executiveSummary.text, /\bwill (?:reduce|improve|accelerate)\b/i);
+  assert.doesNotMatch(brief.expectedValue.qualitative.text, /\bwill (?:reduce|improve|accelerate)\b/i);
+  assert.match(brief.expectedValue.qualitative.text, /is expected to improve operational continuity/);
+  assert.equal(brief.businessNeed.problem.text, completed.fields.problemStatement);
+  assert.ok(brief.futureState.outcome.text.includes(capture.baseline.fields.desiredOutcome),
+    "fallback retains the unmodified source-backed outcome alongside sourced scope");
+  assert.ok(brief.supportingContext.facts.length > 0);
+  if (process.env["WRITE_REPRESENTATIVE_BRIEF_SAMPLE"] === "1")
+    await writeFile("/tmp/innovation-representative-part-a-brief.json", JSON.stringify(brief));
 });
 
 test("unquantified amounts in the same answer do not erase established qualitative impacts", () => {
@@ -171,6 +226,10 @@ test("required Department and unfinalized success measures are visible before Sa
     submitterName="Reviewer" departments={["IT"]} categories={["Operations"]} levels={["Low", "Medium", "High"]}
     saving={false} onBack={() => {}} onSave={() => {}} onDraftChange={() => {}} />);
   assert.match(html, /Required before Save Initiative: select a Department/);
+  assert.match(html, /data-testid="required-department-notice" data-print-hide/);
+  assert.match(html, /class="brief-print-text brief-prose" aria-hidden="true"><\/div>/,
+    "empty narrative prints no edit prompt");
+  assert.doesNotMatch(html, /class="brief-print-text brief-prose" aria-hidden="true">Add an agreed success measure/);
   assert.match(html, /Success measures have not yet been finalized/);
   assert.match(html, /Potential Success Measures/);
   assert.doesNotMatch(html, /\[ai-draft\]/);

@@ -9,6 +9,7 @@ import {
   type ScoringComponents,
 } from "@/services/aiInterviewService";
 import { withBase } from "@/lib/base-path";
+import { checkedResponse, safeErrorMessage } from "@/lib/content-safety-error";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import {
@@ -83,7 +84,7 @@ function Field({ label, children, error, id }: { label: string; children: ReactN
     <div className="brief-sub">
       <h3>{label}</h3>
       {children}
-      {error && id && <p id={`error-${id}`} role="alert" className="brief-error">{error}</p>}
+      {error && id && <p id={`error-${id}`} role="alert" className="brief-error" data-print-hide>{error}</p>}
     </div>
   );
 }
@@ -191,10 +192,7 @@ export function InitiativeReview({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(brief),
       });
-      if (!response.ok) {
-        const err = await response.json().catch(() => null) as { error?: string } | null;
-        throw new Error(err?.error || `Export failed (${response.status})`);
-      }
+      await checkedResponse(response, "Export failed. Please retry.");
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -203,7 +201,7 @@ export function InitiativeReview({
       document.body.appendChild(a); a.click(); a.remove();
       window.setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch (error) {
-      toast({ title: "Export unavailable", description: error instanceof Error ? error.message : "Please retry.", variant: "destructive" });
+      toast({ title: "Export unavailable", description: safeErrorMessage(error, "Please retry."), variant: "destructive" });
     } finally {
       setExporting(null);
     }
@@ -226,7 +224,7 @@ export function InitiativeReview({
         <AutoTextarea singleLine id={`review-${key}`} data-testid={`input-${key}`} value={fields[key]}
           onValueChange={v => setField(key, v)} placeholder="Not yet assigned" className="brief-meta-input"
           aria-invalid={!!errors[key]} aria-describedby={errors[key] ? `error-${key}` : undefined} />
-        {errors[key] && <p id={`error-${key}`} role="alert" className="brief-error">{errors[key]}</p>}
+        {errors[key] && <p id={`error-${key}`} role="alert" className="brief-error" data-print-hide>{errors[key]}</p>}
       </dd>
     </div>
   );
@@ -241,8 +239,8 @@ export function InitiativeReview({
           </SelectTrigger>
           <SelectContent>{options.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent>
         </Select>
-        <span className="brief-print-text">{fields[key] || "Not selected"}</span>
-        {errors[key] && <p id={`error-${key}`} role="alert" className="brief-error">{errors[key]}</p>}
+        <span className="brief-print-text">{fields[key]}</span>
+        {errors[key] && <p id={`error-${key}`} role="alert" className="brief-error" data-print-hide>{errors[key]}</p>}
       </dd>
     </div>
   );
@@ -295,7 +293,7 @@ export function InitiativeReview({
           Draft narrative was generated from interview responses and should be reviewed before approval. Source facts and potential measures are identified separately. Click any paragraph to edit. Changes save to your private draft automatically.
         </p>
         {!departments.includes(fields.department) && (
-          <p className="brief-error" role="status" data-testid="required-department-notice">
+          <p className="brief-error" role="status" data-testid="required-department-notice" data-print-hide>
             Required before Save Initiative: select a Department. Business Owner and Executive Sponsor are optional.
           </p>
         )}
@@ -305,7 +303,7 @@ export function InitiativeReview({
           <AutoTextarea singleLine id="review-title" data-testid="input-title" value={fields.title}
             onValueChange={v => setField("title", v)} placeholder="Name this initiative" className="brief-title"
             aria-invalid={!!errors.title} aria-describedby={errors.title ? "error-title" : undefined} />
-          {errors.title && <p id="error-title" role="alert" className="brief-error">{errors.title}</p>}
+          {errors.title && <p id="error-title" role="alert" className="brief-error" data-print-hide>{errors.title}</p>}
           <dl className="brief-meta">
             {metaSelect("category", "Initiative Type", categories)}
             {metaSelect("department", "Department", departments)}

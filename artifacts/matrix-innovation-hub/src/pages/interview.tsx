@@ -38,6 +38,7 @@ import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { fetchSessionUser } from "@/lib/matrix-platform";
 import { withBase } from "@/lib/base-path";
+import { checkedResponse, isContentBlocked, safeErrorMessage } from "@/lib/content-safety-error";
 import { InitiativeReview } from "@/components/initiative-review/initiative-review";
 import { InterviewJiraPicker, type JiraIntakeContext } from "@/components/interview-jira-picker";
 import {
@@ -155,6 +156,7 @@ export default function AIInnovationInterview() {
   const [readiness, setReadiness] = useState<InterviewReadiness>(() => fallbackReadiness({}));
   const [savedInterview, setSavedInterview] = useState<PrivateInterviewDraft<InterviewState> | null>(null);
   const [resumeChoice, setResumeChoice] = useState(false);
+  const [blockedActiveDraft, setBlockedActiveDraft] = useState(false);
   const [loadingInterview, setLoadingInterview] = useState(true);
   const [persistenceError, setPersistenceError] = useState("");
 
@@ -176,6 +178,7 @@ export default function AIInnovationInterview() {
     savedRef.current = null;
     setSavedInterview(null);
     setResumeChoice(false);
+    setBlockedActiveDraft(false);
     setPhase("jira"); setJira(null); setMessages([]); setAnswers({});
     setPlan(interviewEngine.planQuestions({})); setCurrentIndex(0); setInput("");
     setIsTyping(false); setDraft(null); setDetection(null); setAiResult(null);
@@ -197,7 +200,21 @@ export default function AIInnovationInterview() {
         setLoadingInterview(true);
         await waitForInterviewSave(user.sub);
         if (!active || sessionGeneration.current !== generation) return;
-        const { draft: remote } = await privateInterview.active<InterviewState>();
+        let remote: PrivateInterviewDraft<InterviewState> | null;
+        try {
+          ({ draft: remote } = await privateInterview.active<InterviewState>());
+        } catch (error) {
+          if (!active || sessionGeneration.current !== generation) return;
+          if (!isContentBlocked(error)) throw error;
+          // Keep the authenticated owner, but never retain or present the
+          // rejected draft. Only an explicit confirmation may delete it.
+          savedRef.current = null;
+          setSavedInterview(null);
+          setResumeChoice(false);
+          setBlockedActiveDraft(true);
+          setPersistenceError(safeErrorMessage(error, "This interview cannot be resumed."));
+          return;
+        }
         if (!active || sessionGeneration.current !== generation) return;
         savedRef.current = remote;
         setSavedInterview(remote);
@@ -208,7 +225,7 @@ export default function AIInnovationInterview() {
         ownerRef.current = null;
         ++sessionGeneration.current;
         clearInterview();
-        setPersistenceError(error instanceof Error ? error.message : "Could not load your interview.");
+        setPersistenceError(safeErrorMessage(error, "Could not load your interview."));
       } finally {
         if (active) setLoadingInterview(false);
       }
@@ -281,7 +298,7 @@ export default function AIInnovationInterview() {
       setPersistenceError("");
     }).catch(error => {
       if (generation === sessionGeneration.current)
-        setPersistenceError(error instanceof Error ? error.message : "Could not save interview.");
+        setPersistenceError(safeErrorMessage(error, "Could not save interview."));
       throw error;
     });
     saveQueue.current = operation.catch(() => {});
@@ -308,16 +325,18 @@ export default function AIInnovationInterview() {
   const startOver = async () => {
     const generation = ++sessionGeneration.current;
     const ownedId = savedRef.current?.id;
+    const discardBlockedActive = blockedActiveDraft;
     const owner = ownerRef.current;
     interviewGeneration.current += 1;
     pendingRequest.current?.abort();
     try {
       await saveQueue.current;
       if (sessionGeneration.current !== generation || ownerRef.current !== owner) return;
-      if (ownedId) await privateInterview.discard(ownedId);
+      if (discardBlockedActive) await privateInterview.discardActive();
+      else if (ownedId) await privateInterview.discard(ownedId);
       if (sessionGeneration.current !== generation) return;
     } catch (error) {
-      setPersistenceError(error instanceof Error ? error.message : "Could not discard your interview.");
+      setPersistenceError(safeErrorMessage(error, "Could not discard your interview."));
       return;
     }
     clearInterview();
@@ -334,7 +353,7 @@ export default function AIInnovationInterview() {
         <AlertDialogHeader>
           <AlertDialogTitle>Discard this interview?</AlertDialogTitle>
           <AlertDialogDescription>
-            Your current unsaved interview and draft, including the selected Jira context, will be discarded.
+            Your current interview and draft, including any selected Jira context, will be discarded.
             Previously saved Initiatives will not be changed.
           </AlertDialogDescription>
         </AlertDialogHeader>
@@ -376,8 +395,8 @@ export default function AIInnovationInterview() {
       setDetection(item ? interviewEngine.classify(initialAnswers) : null);
       setMessages(initialMessages); setPhase("chat"); setPersistenceError("");
     } catch (error) {
-      setPersistenceError(error instanceof Error ? error.message : "Could not start your interview.");
-      if (error instanceof Error && /active|409/i.test(error.message)) {
+      setPersistenceError(safeErrorMessage(error, "Could not start your interview."));
+      if (!isContentBlocked(error) && error instanceof Error && /active|409/i.test(error.message)) {
         const active = await privateInterview.active<InterviewState>().catch(() => null);
         if (active?.draft && generation === sessionGeneration.current) {
           savedRef.current = active.draft; setSavedInterview(active.draft); setResumeChoice(true);
@@ -398,12 +417,19 @@ export default function AIInnovationInterview() {
     if (currentQuestion.id.startsWith("ai_") && trimmed) {
       nextAnswers.aiContext = [answers.aiContext, `${currentQuestion.prompt}: ${trimmed}`].filter(Boolean).join("\n");
     }
-    setAnswers(nextAnswers);
-
     const answeredMessages: ChatMessage[] = [
       ...messages,
       { role: "user", text: trimmed || "(nothing to add)" },
     ];
+    // Validate and persist the submitted turn before clearing the editable input,
+    // advancing the transcript, or calling AI. Rejected text stays only in the input.
+    try {
+      await persistDraft(nextAnswers, currentIndex, plan, fallback, answeredMessages, aiResult, true);
+    } catch (error) {
+      setPersistenceError(safeErrorMessage(error, "Could not save interview. Please retry."));
+      return;
+    }
+    setAnswers(nextAnswers);
     setMessages((prev) => [
       ...prev,
       { role: "user", text: trimmed || "(nothing to add)" },
@@ -447,7 +473,7 @@ export default function AIInnovationInterview() {
           signal: controller.signal,
         });
         if (interviewGeneration.current !== generation) return;
-        if (!response.ok) throw new Error("Interview service unavailable");
+        await checkedResponse(response, "Interview service unavailable");
         const result = await response.json() as AIInterviewResult;
         if (interviewGeneration.current !== generation) return;
         if (typeof result.readyToDraft !== "boolean" ||
@@ -481,8 +507,13 @@ export default function AIInnovationInterview() {
         setIsTyping(false);
         await persistDraft(nextAnswers, nextIndex, nextPlan, false, continuedMessages, result, false).catch(() => {});
         return;
-      } catch {
+      } catch (error) {
         if (interviewGeneration.current !== generation) return;
+        if (isContentBlocked(error)) {
+          setPersistenceError(safeErrorMessage(error, "Interview content could not be used."));
+          setIsTyping(false);
+          return;
+        }
         setFallback(true);
         setAiResult(null);
         answeredMessages.push({ role: "ai", text: "The guided assistant is temporarily unavailable. We'll continue with the standard interview." });
@@ -577,12 +608,12 @@ export default function AIInnovationInterview() {
       ...answers,
       [currentQuestion.id]: input.trim(),
     };
-    setAnswers(nextAnswers);
     try {
       await persistDraft(nextAnswers, currentIndex, plan, fallback, messages, aiResult, readyToReview, input.trim());
+      setAnswers(nextAnswers);
       toast({ title: "Interview saved", description: "Only you can resume this interview." });
     } catch (error) {
-      toast({ title: "Could not save", description: error instanceof Error ? error.message : "Please retry.", variant: "destructive" });
+      toast({ title: "Could not save", description: safeErrorMessage(error, "Please retry."), variant: "destructive" });
     }
   };
 
@@ -612,12 +643,19 @@ export default function AIInnovationInterview() {
             knownFacts: aiResult?.knownFacts?.slice(0, 24) ?? [] }),
           signal: controller.signal,
         });
-        if (!response.ok) throw new Error("Final drafting unavailable");
+        await checkedResponse(response, "Final drafting unavailable");
         const data = await response.json() as FinalDraftResult;
         if (!data.draft || !Array.isArray(data.unknowns) || !Array.isArray(data.knownFacts))
           throw new Error("Invalid final draft");
         completed = data;
-      } catch {
+      } catch (error) {
+        if (isContentBlocked(error)) {
+          if (interviewGeneration.current === generation) {
+            setPersistenceError(safeErrorMessage(error, "Final drafting was blocked."));
+            setPhase("chat");
+          }
+          return;
+        }
         // All supplied answers remain in the deterministic draft on AI failure.
       } finally {
         pendingRequest.current = null;
@@ -648,11 +686,16 @@ export default function AIInnovationInterview() {
     const nextAnswers = answersForReview(answers, currentQuestion.id, input, readyToReview);
     const finalMessages: ChatMessage[] = !readyToReview && input.trim()
       ? [...messages, { role: "user", text: input.trim() }] : messages;
+    const finalPlan = fallback ? interviewEngine.planQuestions(nextAnswers) : plan;
+    try {
+      await persistDraft(nextAnswers, currentIndex, finalPlan, fallback, finalMessages, aiResult, true);
+    } catch (error) {
+      setPersistenceError(safeErrorMessage(error, "Could not save interview. Please retry."));
+      return;
+    }
     setAnswers(nextAnswers);
     setMessages(finalMessages);
-    const finalPlan = fallback ? interviewEngine.planQuestions(nextAnswers) : plan;
     setPlan(finalPlan);
-    await persistDraft(nextAnswers, currentIndex, finalPlan, fallback, finalMessages, aiResult, true).catch(() => {});
     await runProcessing(nextAnswers, finalPlan, !fallback, interviewGeneration.current, finalMessages);
   };
 
@@ -673,10 +716,13 @@ export default function AIInnovationInterview() {
     void persistDraft(answers, nextIndex, nextPlan, false, nextMessages, aiResult, false).catch(() => {});
   };
 
-  if (loadingInterview || resumeChoice || (persistenceError && !savedInterview && !ownerRef.current)) {
+  if (loadingInterview || resumeChoice || blockedActiveDraft || (persistenceError && !savedInterview && !ownerRef.current)) {
     return <div className="max-w-3xl mx-auto py-16 space-y-5 text-center">
       <h2 className="text-2xl font-bold">Guided Idea Interview</h2>
-      {loadingInterview ? <p data-testid="status-loading-interview">Loading your private interview…</p> : resumeChoice ?
+      {loadingInterview ? <p data-testid="status-loading-interview">Loading your private interview…</p> : blockedActiveDraft ?
+        <><p>A previous interview cannot be resumed under the current content policy. You may discard it and start a new interview. Nothing has been deleted yet.</p>
+          <p role="alert" className="text-destructive">{persistenceError}</p>
+          <div className="flex justify-center">{startOverControl}</div></> : resumeChoice ?
         <><p>You have an unfinished interview. Choose how to proceed.</p>
           {persistenceError && <p role="alert" className="text-destructive">{persistenceError}</p>}
           <div className="flex justify-center gap-3">
@@ -740,8 +786,8 @@ export default function AIInnovationInterview() {
                     savedRef.current = null;
                     setSavedInterview(null);
                   } catch (error) {
-                    toast({ title: "Initiative saved, interview not archived",
-                      description: error instanceof Error ? error.message : "Please contact support.", variant: "destructive" });
+                     toast({ title: "Initiative saved, interview not archived",
+                       description: safeErrorMessage(error, "Please contact support."), variant: "destructive" });
                   }
                 };
                 updateInitiative.mutate(
@@ -763,8 +809,12 @@ export default function AIInnovationInterview() {
                       });
                       setLocation(`/initiatives/${created.id}`);
                     },
-                    onError: async () => {
+                     onError: async (error) => {
                       if (ownerGeneration !== sessionGeneration.current) return;
+                       if (isContentBlocked(error)) {
+                         toast({ title: "Initiative created; scoring blocked", description: safeErrorMessage(error, "Could not score initiative."), variant: "destructive" });
+                         return;
+                       }
                       queryClient.invalidateQueries({
                         queryKey: getListInitiativesQueryKey(),
                       });
@@ -781,11 +831,11 @@ export default function AIInnovationInterview() {
                   },
                 );
               },
-              onError: () => {
+               onError: (error) => {
                 if (ownerGeneration !== sessionGeneration.current) return;
                 toast({
                   title: "Error",
-                  description: "Failed to create the initiative.",
+                   description: safeErrorMessage(error, "Failed to create the initiative."),
                   variant: "destructive",
                 });
               },

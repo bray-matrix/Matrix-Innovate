@@ -12,3 +12,4 @@
 - [Dashboard product direction](dashboard-product-direction.md) — approved first-use introduction stays; lifecycle metrics must reflect actual data, not renamed prototype calculations.
 - [Authenticated UI verification](browser-verification.md) — browser-only fixtures permit gated UI tests; use exact contracts and wait for drawer animations.
 - [Initiative Brief boundaries](initiative-brief-review.md) — document parity, unchanged scoring policy, and unflattened private drafts for safe save retries.
+- [Content safety boundary](content-safety-boundary.md) — local-first blocking; SDK inspection is not proof of Platform-wide moderation absence.

@@ -73,6 +73,16 @@ export function cleanBriefProse(value: string | undefined | null): string {
     return true;
   }).join(" ");
 }
+/**
+ * Editorial treatment for generated benefit forecasts, not source testimony or
+ * reviewed edits. A direct user observation ("the process wastes time") remains
+ * an observation; a generated promise ("will reduce time") is a projection.
+ * Keep this narrow: do not rewrite quantities, facts, or quoted user language.
+ */
+export function qualifyDraftBenefits(value: string): string {
+  return value.replace(/\bwill (reduce|improve|increase|decrease|save|prevent|eliminate|streamline|accelerate|strengthen|enhance|support|provide|enable|deliver|avoid|make|help|create|allow|result in|lead to)\b/gi,
+    (match, verb: string) => `${match[0] === "W" ? "Is" : "is"} expected to ${verb.toLowerCase()}`);
+}
 const clean = cleanBriefProse;
 const notKnown = (text: string): boolean =>
   !text || /^(?:not yet (?:known|established|quantified)|unknown|tbd|n\/a|none)[.!]?$/i.test(text);
@@ -169,7 +179,7 @@ export function synthesizeBriefNarrative({ draft, aiResult, evidence = [] }: Bri
   const suppliedValue = validNarrative(draft.canvas.expectedValue) ? draft.canvas.expectedValue : aiResult?.draft?.expectedValue ?? "";
   // Numbers alone are not qualitative value.
   const qualitativeValue = validNarrative(suppliedValue) && !/^(?:estimated )?(?:~?\d|\$)/i.test(suppliedValue)
-    ? clean(suppliedValue)
+    ? clean(validNarrative(draft.canvas.expectedValue) ? suppliedValue : qualifyDraftBenefits(suppliedValue))
     : prose([
       ...valueFacts.filter(s => !impactSignal.test(s)).slice(0, 2),
       ...(impacts.length ? [`The business case rests on addressing these reported impacts: ${impacts.map(s => s.replace(/[.!?]$/, "")).join("; ")}`] : benefits.slice(0, 2)),
@@ -186,7 +196,7 @@ export function synthesizeBriefNarrative({ draft, aiResult, evidence = [] }: Bri
   const problem = sentences(f.problemStatement)[0];
   const outcome = sentences(f.desiredOutcome)[0];
   const summary = validNarrative(suppliedSummary) && !mechanical.test(suppliedSummary)
-    ? clean(suppliedSummary)
+    ? clean(aiResult?.draft?.executiveSummary ? qualifyDraftBenefits(suppliedSummary) : suppliedSummary)
     : prose([problem, outcome,
       ...sentences(qualitativeValue).filter(s => s !== outcome && s !== problem).slice(0, 1)].filter(Boolean));
   const existingNext = draft.canvas.recommendedNextStep;

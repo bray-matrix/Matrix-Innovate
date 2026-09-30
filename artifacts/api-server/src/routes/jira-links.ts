@@ -1,3 +1,4 @@
+import { ContentBlockedError, blockedResponse } from "../lib/content-safety";
 import { Router, type IRouter, type Request, type Response } from "express";
 import { db, projectsTable, jiraProjectsTable, projectJiraLinksTable as links } from "@workspace/db";
 import { and, asc, eq } from "drizzle-orm";
@@ -11,6 +12,7 @@ const router: IRouter = Router();
 const handle = (fn: (req: Request, res: Response) => Promise<unknown>) => async (req: Request, res: Response) => {
   try { await fn(req, res); }
   catch (error) {
+    if (error instanceof ContentBlockedError) { res.status(422).json(blockedResponse(error)); return; }
     // Never log provider errors, credentials, or database values.
     res.status(error instanceof JiraError ? error.status : 503).json({
       error: error instanceof JiraError ? error.message : "Linked work could not be loaded or changed. Please try again.",

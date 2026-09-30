@@ -1,3 +1,4 @@
+import { assertSafeContent } from "../lib/content-safety";
 import { Router, type IRouter } from "express";
 import {
   db,
@@ -126,6 +127,7 @@ router.get("/initiatives", async (_req, res) => {
 });
 
 router.post("/initiatives", async (req, res, next) => {
+  assertSafeContent(req.body, "initiative_save");
   const parsed = CreateInitiativeBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid initiative data" });
@@ -560,6 +562,7 @@ router.get("/initiatives/:id", async (req, res) => {
 });
 
 router.patch("/initiatives/:id", async (req, res) => {
+  assertSafeContent(req.body, "initiative_review");
   const id = Number(req.params.id);
   if (Number.isNaN(id)) {
     res.status(400).json({ error: "Invalid id" });
@@ -721,6 +724,8 @@ router.patch("/initiatives/:id", async (req, res) => {
   const bumpKind = determineBumpKind(statusChanged, newStatus);
   const newVersion = bumpVersion(existing.version, bumpKind);
   updates.version = newVersion;
+  // Validate the merged record too: an edit must not re-persist legacy restricted text.
+  assertSafeContent({ ...existing, ...updates }, "initiative_update");
 
   const summary =
     (data.changeSummary && data.changeSummary.trim()) ||

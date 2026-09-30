@@ -1,4 +1,5 @@
 // Jira Cloud foundation. No upstream bodies or credentials are logged or exposed.
+import { assertSafeContent } from "./content-safety";
 export class JiraError extends Error {
   constructor(message: string, public status = 503) { super(message); }
 }
@@ -138,6 +139,9 @@ export class JiraClient {
   }
   async test() { await this.get("myself"); }
   private workItem(raw: any): JiraWorkItem {
+    // Only these typed upstream metadata paths may bypass card checksum checks.
+    // Summary, description, unknown fields and credential-bearing keys stay checked.
+    assertSafeContent(raw?.fields, "jira_context", ["project.id", "issuetype.id", "status.id", "priority.id"]);
     if (!raw || !/^\d+$/.test(raw.id) || typeof raw.key !== "string" || !/^[A-Z][A-Z0-9_]*-\d+$/i.test(raw.key)) throw new JiraError("Jira returned invalid issue identity.");
     const f = raw.fields;
     const optional = (v: unknown) => typeof v === "string" ? this.safe(v, 500) : null;
@@ -163,7 +167,9 @@ export class JiraClient {
     const raw = await this.get(`issue/${encodeURIComponent(id)}?fields=${issueFields},description`, { workItem: true });
     const item = this.workItem(raw);
     if (item.jiraIssueId !== id) throw new JiraError("Jira returned an unexpected issue identity.");
-    return { ...item, description: plainDescription(raw.fields?.description, (text, max) => this.safe(text, max)) };
+    const context = { ...item, description: plainDescription(raw.fields?.description, (text, max) => this.safe(text, max)) };
+    assertSafeContent(context, "jira_context", ["jiraIssueId", "jiraProjectId"]);
+    return context;
   }
   async searchIssues(q = "", projectKey = "", limit = 25): Promise<JiraWorkItem[]> {
     q = q.trim();

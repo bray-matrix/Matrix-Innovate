@@ -151,9 +151,9 @@ export async function renderInitiativeBriefDocx(b: InitiativeBrief): Promise<Buf
         ...briefSections(b).flatMap(section => [
           new Paragraph({ text: section.title, heading: HeadingLevel.HEADING_2,
             keepNext: section.rows.length > 0, spacing: { before: 235, after: 95 } }),
-          ...section.rows.map((r, index) =>
-            paragraph(r, (section.title === "Supporting Context" && index < section.rows.length - 1) ||
-              (section.title === "Current Assessment" && index < 2))),
+          // Keep the heading with its first row, but let longer sections flow
+          // naturally. Chaining every supporting fact pushes the whole block.
+          ...section.rows.map(r => paragraph(r)),
         ]),
       ],
     }],
@@ -169,18 +169,20 @@ export async function renderInitiativeBriefDocx(b: InitiativeBrief): Promise<Buf
 export async function renderInitiativeBriefPdf(b: InitiativeBrief): Promise<Buffer> {
   const logo = await brandImage();
   const sections: Content[] = briefSections(b).flatMap(section => [
-    { text: section.title, style: "sectionTitle", headlineLevel: 2, margin: [0, 11, 0, 5] },
+    { text: section.title, style: "sectionTitle", headlineLevel: 2, margin: [0, 7, 0, 3] },
     ...section.rows.map(r => ({
       text: [
         ...(r.heading ? [{ text: `${r.heading}: `, bold: true, color: "#164B85" }] : []),
         { text: r.body },
       ],
-      margin: [r.bullet ? 12 : 0, 0, 0, 5] as [number, number, number, number],
+      margin: [r.bullet ? 12 : 0, 0, 0, 3] as [number, number, number, number],
     })),
   ]);
   const doc: TDocumentDefinitions = {
     pageSize: "A4",
     pageMargins: [48, 78, 48, 53],
+    // Headings can move with a row, but never force the complete following
+    // section to the next page. pdfmake flows rows across pages by default.
     pageBreakBefore: (node, queries) => node.headlineLevel === 2 &&
       queries.getFollowingNodesOnPage().length === 0 && queries.getNodesOnNextPage().length > 0,
     defaultStyle: { font: "Helvetica", fontSize: 9, color: "#25354B", lineHeight: 1.28 },

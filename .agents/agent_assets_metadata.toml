@@ -56,3 +56,31 @@ mtime_ms = 1790776441464
 storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:40451992-c03c-4e01-8515-2c896d8b22c5/845da5dc-f659-4712-a9ed-dd5b592f71d3/421c8308-c82d-4118-822e-af069069092c"
 storage_version_token = "1790776504096276"
 content_type = "application/pdf"
+
+[[outputs]]
+id = "jhSSVxTmAQDeUyq0OgJMW"
+uri = "file://attached_assets/generated/initiative-brief-v1.6.5-validated.docx"
+type = "word_document"
+title = "v1.6.5 Initiative Brief — Word"
+description = "Synthetic representative brief downloaded through the real browser Export Word path."
+logical_id = "dd1b2029-d5e5-4ea6-90b0-4db4e247b48a"
+content_hash = "sha256:3a6f2f01e5ec4d80c2cb4b24eabb7059aac946b0cd8542d034657af70774c637"
+size = 19209
+mtime_ms = 1790781373915
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:40451992-c03c-4e01-8515-2c896d8b22c5/dd1b2029-d5e5-4ea6-90b0-4db4e247b48a/70339fe4-567a-4502-aa6a-8d244d0c744d"
+storage_version_token = "1790781382336878"
+content_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+
+[[outputs]]
+id = "MKbB9zvoHNXB3g0W7WBGA"
+uri = "file://attached_assets/generated/initiative-brief-v1.6.5-validated.pdf"
+type = "pdf"
+title = "v1.6.5 Initiative Brief — PDF"
+description = "Actual browser download; two pages, with Supporting Context on page 2."
+logical_id = "d306ac2b-f25a-4e7b-b0e2-14f66537b49d"
+content_hash = "sha256:9725a57a462ea41b69b0c23f1cf43ca8606626979440086b4801cf7d3b6bd3ed"
+size = 20048
+mtime_ms = 1790781373918
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:40451992-c03c-4e01-8515-2c896d8b22c5/d306ac2b-f25a-4e7b-b0e2-14f66537b49d/06188dd9-e665-404d-aa7c-264920099733"
+storage_version_token = "1790781383043144"
+content_type = "application/pdf"

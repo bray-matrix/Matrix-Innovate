@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { withBase } from "@/lib/base-path";
+import { checkedResponse, safeErrorMessage } from "@/lib/content-safety-error";
 
 export type JiraIntakeContext = JiraWorkItem & { description?: string | null };
 
@@ -42,12 +43,12 @@ export function InterviewJiraPicker({ onConfirm, onSkip }: {
     setContextError("");
     try {
       const response = await fetch(withBase(`/api/jira/issues/${encodeURIComponent(selected.jiraIssueId)}/intake-context`), { credentials: "include" });
-      if (!response.ok) throw new Error(`Could not read Jira request (${response.status}). Please retry or continue without Jira.`);
+      await checkedResponse(response, "Could not read Jira request. Please retry or continue without Jira.");
       const context = await response.json() as JiraIntakeContext;
       if (context.jiraIssueId !== selected.jiraIssueId) throw new Error("The Jira request did not match your selection. Please retry.");
       onConfirm(context);
     } catch (error) {
-      setContextError(error instanceof Error ? error.message : "Could not read Jira context. Please retry.");
+      setContextError(safeErrorMessage(error, "Could not read Jira context. Please retry."));
     } finally {
       setLoadingContext(false);
     }
@@ -68,8 +69,8 @@ export function InterviewJiraPicker({ onConfirm, onSkip }: {
         </div>
         <Button type="submit" disabled={results.isFetching || (!query.trim() && !projectKey)}>Search Jira</Button>
       </form>
-      {projects.isError && <p role="alert" className="text-sm text-destructive">Jira projects could not be loaded. Search by key or text instead.</p>}
-      {results.isError && <p role="alert" className="text-sm text-destructive">Jira search is unavailable. Please retry or continue without Jira.</p>}
+      {projects.isError && <p role="alert" className="text-sm text-destructive">{safeErrorMessage(projects.error, "Jira projects could not be loaded. Search by key or text instead.")}</p>}
+      {results.isError && <p role="alert" className="text-sm text-destructive">{safeErrorMessage(results.error, "Jira search is unavailable. Please retry or continue without Jira.")}</p>}
       {results.isFetching && <p role="status">Searching Jira…</p>}
       {criteria && !results.isFetching && !results.isError && !results.data?.length && <p>No Jira work items found. Try another search.</p>}
       {criteria && !!results.data?.length && <div role="radiogroup" aria-label="Jira work items" className="space-y-2 max-h-64 overflow-y-auto">

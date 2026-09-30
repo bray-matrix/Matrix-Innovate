@@ -1,0 +1,16 @@
+import { build } from "esbuild";
+import { spawnSync } from "node:child_process";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+const dir = await mkdtemp(join(tmpdir(), "content-policy-tests-"));
+try {
+  const output = join(dir, "tests.cjs");
+  await build({ entryPoints: [process.argv[2] || "test-content-safety.test.ts"],
+    outfile: output, bundle: true, platform: "node", format: "cjs", external: ["pg-native"],
+    define: { "import.meta.url": JSON.stringify(new URL("./src/lib/initiative-brief-export.ts", import.meta.url).href) },
+    logLevel: "silent" });
+  const result = spawnSync(process.execPath, ["--test", output], { stdio: "inherit",
+    env: { ...process.env, DATABASE_URL: "postgres://synthetic:synthetic@localhost:1/not_used" } });
+  process.exitCode = result.status ?? 1;
+} finally { await rm(dir, { recursive: true, force: true }); }

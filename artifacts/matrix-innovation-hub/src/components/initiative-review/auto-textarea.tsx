@@ -36,7 +36,7 @@ export function AutoTextarea({ value, onValueChange, singleLine, className, onKe
         }}
         {...rest}
       />
-      <div className={cn("brief-print-text", className)} aria-hidden="true">{value || rest.placeholder}</div>
+      <div className={cn("brief-print-text", className)} aria-hidden="true">{value}</div>
     </>
   );
 }
