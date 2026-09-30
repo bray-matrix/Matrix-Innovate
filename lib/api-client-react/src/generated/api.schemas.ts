@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Api
  * API specification
- * OpenAPI spec version: 1.5.0
+ * OpenAPI spec version: 1.6.13
  */
 export type InitiativeBriefExportInputMetadata = { [key: string]: unknown };
 
@@ -388,59 +388,34 @@ export interface ScoringWeight {
   weight: number;
 }
 
-export type AIProviderConfigProviderStatus = typeof AIProviderConfigProviderStatus[keyof typeof AIProviderConfigProviderStatus];
-
-
-export const AIProviderConfigProviderStatus = {
-  Active: 'Active',
-  Placeholder: 'Placeholder',
-} as const;
-
-export type AIProviderInfoStatus = typeof AIProviderInfoStatus[keyof typeof AIProviderInfoStatus];
-
-
-export const AIProviderInfoStatus = {
-  Active: 'Active',
-  Placeholder: 'Placeholder',
-} as const;
-
-export interface AIProviderInfo {
-  id: string;
-  label: string;
-  status: AIProviderInfoStatus;
-  notes: string;
-  /** Whether this provider is the currently active one */
-  isActive: boolean;
-  /** AIProvider capability method names this provider is registered for */
-  capabilities: string[];
-  /** Outcome of the most recent readiness test for this provider, or null if never tested */
-  lastTestPassed: boolean | null;
-  /** ISO timestamp of the most recent readiness test for this provider, or null if never tested */
-  lastTestAt: string | null;
-  /** Operator-facing description of what would happen if this provider became active */
-  switchImpact: string;
-}
-
-export interface AIProviderConfig {
-  /** Source label of the active provider (e.g. "Rule Engine v1") */
-  activeProvider: string;
-  /** Machine id of the active provider (e.g. "rule-based") */
-  activeProviderId: string;
-  providerStatus: AIProviderConfigProviderStatus;
-  availableProviders: AIProviderInfo[];
-  /** ISO timestamp of the last provider connectivity test, or null if never run */
-  lastProviderTest: string | null;
-  providerNotes: string;
+/**
+ * Read-only architecture reference; provider is documented, not runtime-verified. No supported live AI health/current provider-model metadata endpoint exists in SDK 1.2.1.
+ */
+export interface AIServiceStatus {
+  service: string;
+  /** Anthropic Claude per documented architecture, not measured runtime telemetry */
+  provider: string;
+  /** Not reported; no supported live AI status endpoint */
+  status: string;
+  statusNotes: string;
+  usedFor: string[];
+  /** Central configuration ownership only; never credentials or tokens */
+  credentials: string;
+  deterministicEngine: string;
+  deterministicUses: string[];
 }
 
 export interface Settings {
   departments: string[];
   departmentMaster: Department[];
+  /** Read-only system-defined values from routes/settings.ts; no editable category master. Initiative records store category text. */
   categories: string[];
+  /** Read-only system-defined initiative lifecycle reference from routes/settings.ts; not Jira or Project status mappings. Initiative records store status text. */
   statuses: string[];
+  /** Current scoring model, read-only code-defined policy reference. Calculation limits and thresholds are implemented in lib/scoring.ts. */
   scoringWeights: ScoringWeight[];
   applicationVersion: string;
-  aiProvider?: AIProviderConfig;
+  aiService: AIServiceStatus;
 }
 
 export interface DepartmentInput {
@@ -458,34 +433,6 @@ export interface DepartmentUpdate {
      */
   name?: string;
   active?: boolean;
-}
-
-export interface ProviderTestCapabilityResult {
-  /** AIProvider method tested, e.g. "classifyInitiative" */
-  capability: string;
-  passed: boolean;
-  /** Short outcome summary, or the failure detail */
-  message: string;
-}
-
-export type ProviderTestEventStatus = typeof ProviderTestEventStatus[keyof typeof ProviderTestEventStatus];
-
-
-export const ProviderTestEventStatus = {
-  Passed: 'Passed',
-  Failed: 'Failed',
-} as const;
-
-export interface ProviderTestEvent {
-  id: number;
-  providerId: string;
-  providerName: string;
-  passed: boolean;
-  status: ProviderTestEventStatus;
-  capabilities: ProviderTestCapabilityResult[];
-  errorMessage: string | null;
-  /** ISO timestamp of when the test ran */
-  createdAt: string;
 }
 
 export type ValidationRecordStatus = typeof ValidationRecordStatus[keyof typeof ValidationRecordStatus];
@@ -902,19 +849,6 @@ export interface EnvironmentStatus {
   environment: string;
   firstTimeSetupComplete: boolean;
   counts: EnvironmentStatusCounts;
-}
-
-export interface EnvironmentInitializeRequest {
-  /**
-     * Name of the administrator running the initialization
-     * @minLength 1
-     */
-  performedBy: string;
-  archiveSampleInitiatives?: boolean;
-  removeSampleInitiatives?: boolean;
-  clearValidationRecords?: boolean;
-  clearCalculationHistory?: boolean;
-  clearRecommendationHistory?: boolean;
 }
 
 export interface EnvironmentActionResult {

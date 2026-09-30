@@ -3,13 +3,10 @@
  * Do not edit manually.
  * Api
  * API specification
- * OpenAPI spec version: 1.5.0
+ * OpenAPI spec version: 1.6.13
  */
 
-export * from './aIProviderConfig';
-export * from './aIProviderConfigProviderStatus';
-export * from './aIProviderInfo';
-export * from './aIProviderInfoStatus';
+export * from './aIServiceStatus';
 export * from './approvalQueueEntry';
 export * from './backlogItem';
 export * from './backlogItemCreate';
@@ -38,7 +35,6 @@ export * from './departmentUpdate';
 export * from './document';
 export * from './environmentActionResult';
 export * from './environmentEvent';
-export * from './environmentInitializeRequest';
 export * from './environmentStatus';
 export * from './environmentStatusCounts';
 export * from './error';
@@ -108,9 +104,6 @@ export * from './projectRiskCreate';
 export * from './projectRiskUpdate';
 export * from './projectUpdate';
 export * from './promoteInitiativeRequest';
-export * from './providerTestCapabilityResult';
-export * from './providerTestEvent';
-export * from './providerTestEventStatus';
 export * from './readinessAssessment';
 export * from './readinessAssessmentCreate';
 export * from './readinessAssessmentUpdate';

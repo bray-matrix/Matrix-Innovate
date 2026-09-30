@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Api
  * API specification
- * OpenAPI spec version: 1.5.0
+ * OpenAPI spec version: 1.6.13
  */
 import * as zod from 'zod';
 
@@ -46,6 +46,9 @@ export const GetJiraConnectionResponse = zod.object({
 })
 
 
+/**
+ * Platform administrator only; safe read-only upstream connection test with persisted local outcome.
+ */
 export const TestJiraConnectionResponse = zod.object({
   "configured": zod.boolean(),
   "baseUrl": zod.string().nullable(),
@@ -69,6 +72,9 @@ export const ListJiraProjectsResponseItem = zod.object({
 export const ListJiraProjectsResponse = zod.array(ListJiraProjectsResponseItem)
 
 
+/**
+ * Platform administrator only.
+ */
 export const DiscoverJiraProjectsResponseItem = zod.object({
   "id": zod.number(),
   "jiraProjectId": zod.string(),
@@ -82,6 +88,9 @@ export const DiscoverJiraProjectsResponseItem = zod.object({
 export const DiscoverJiraProjectsResponse = zod.array(DiscoverJiraProjectsResponseItem)
 
 
+/**
+ * Platform administrator only.
+ */
 
 
 
@@ -210,6 +219,9 @@ export const GetJiraFieldMappingResponse = zod.object({
 })
 
 
+/**
+ * Platform administrator only.
+ */
 
 
 
@@ -252,6 +264,9 @@ export const SaveJiraFieldMappingResponse = zod.object({
 })
 
 
+/**
+ * Platform administrator only.
+ */
 
 export const discoverJiraStatusesResponseOneJiraStatusIdMax = 255;
 
@@ -288,6 +303,9 @@ export const ListJiraStatusMappingsResponseItem = zod.object({
 export const ListJiraStatusMappingsResponse = zod.array(ListJiraStatusMappingsResponseItem)
 
 
+/**
+ * Platform administrator only.
+ */
 
 export const saveJiraStatusMappingBodyJiraStatusIdMax = 255;
 
@@ -1043,36 +1061,28 @@ export const GetSettingsResponse = zod.object({
   "name": zod.string(),
   "active": zod.boolean()
 })),
-  "categories": zod.array(zod.string()),
-  "statuses": zod.array(zod.string()),
+  "categories": zod.array(zod.string()).describe('Read-only system-defined values from routes\/settings.ts; no editable category master. Initiative records store category text.'),
+  "statuses": zod.array(zod.string()).describe('Read-only system-defined initiative lifecycle reference from routes\/settings.ts; not Jira or Project status mappings. Initiative records store status text.'),
   "scoringWeights": zod.array(zod.object({
   "name": zod.string(),
   "weight": zod.number()
-})),
+})).describe('Current scoring model, read-only code-defined policy reference. Calculation limits and thresholds are implemented in lib\/scoring.ts.'),
   "applicationVersion": zod.string(),
-  "aiProvider": zod.object({
-  "activeProvider": zod.string().describe('Source label of the active provider (e.g. \"Rule Engine v1\")'),
-  "activeProviderId": zod.string().describe('Machine id of the active provider (e.g. \"rule-based\")'),
-  "providerStatus": zod.enum(['Active', 'Placeholder']),
-  "availableProviders": zod.array(zod.object({
-  "id": zod.string(),
-  "label": zod.string(),
-  "status": zod.enum(['Active', 'Placeholder']),
-  "notes": zod.string(),
-  "isActive": zod.boolean().describe('Whether this provider is the currently active one'),
-  "capabilities": zod.array(zod.string()).describe('AIProvider capability method names this provider is registered for'),
-  "lastTestPassed": zod.boolean().nullable().describe('Outcome of the most recent readiness test for this provider, or null if never tested'),
-  "lastTestAt": zod.string().nullable().describe('ISO timestamp of the most recent readiness test for this provider, or null if never tested'),
-  "switchImpact": zod.string().describe('Operator-facing description of what would happen if this provider became active')
-})),
-  "lastProviderTest": zod.string().nullable().describe('ISO timestamp of the last provider connectivity test, or null if never run'),
-  "providerNotes": zod.string()
-}).optional()
+  "aiService": zod.object({
+  "service": zod.string(),
+  "provider": zod.string().describe('Anthropic Claude per documented architecture, not measured runtime telemetry'),
+  "status": zod.string().describe('Not reported; no supported live AI status endpoint'),
+  "statusNotes": zod.string(),
+  "usedFor": zod.array(zod.string()),
+  "credentials": zod.string().describe('Central configuration ownership only; never credentials or tokens'),
+  "deterministicEngine": zod.string(),
+  "deterministicUses": zod.array(zod.string())
+}).describe('Read-only architecture reference; provider is documented, not runtime-verified. No supported live AI health\/current provider-model metadata endpoint exists in SDK 1.2.1.')
 })
 
 
 /**
- * @summary Add a department (Admin or Super Admin)
+ * @summary Add a department (Platform administrator)
  */
 export const createDepartmentBodyNameMax = 120;
 
@@ -1090,7 +1100,7 @@ export const CreateDepartmentResponse = zod.object({
 
 
 /**
- * @summary Explicitly seed default departments without duplicating existing names (Admin or Super Admin)
+ * @summary Explicitly seed default departments without duplicating existing names (Platform administrator)
  */
 export const InitializeDepartmentsResponseItem = zod.object({
   "id": zod.number(),
@@ -1101,7 +1111,7 @@ export const InitializeDepartmentsResponse = zod.array(InitializeDepartmentsResp
 
 
 /**
- * @summary Rename or change department active status (Admin or Super Admin)
+ * @summary Rename or change department active status (Platform administrator)
  */
 export const UpdateDepartmentParams = zod.object({
   "id": zod.coerce.number()
@@ -1124,42 +1134,17 @@ export const UpdateDepartmentResponse = zod.object({
 
 
 /**
- * @summary Run a readiness test against the active AI provider using sample data
+ * @deprecated
+ * @summary Retired local provider diagnostic (never executes)
  */
-export const TestAiProviderResponse = zod.object({
-  "id": zod.number(),
-  "providerId": zod.string(),
-  "providerName": zod.string(),
-  "passed": zod.boolean(),
-  "status": zod.enum(['Passed', 'Failed']),
-  "capabilities": zod.array(zod.object({
-  "capability": zod.string().describe('AIProvider method tested, e.g. \"classifyInitiative\"'),
-  "passed": zod.boolean(),
-  "message": zod.string().describe('Short outcome summary, or the failure detail')
-})),
-  "errorMessage": zod.string().nullable(),
-  "createdAt": zod.string().describe('ISO timestamp of when the test ran')
-})
+export const TestAiProviderResponse = zod.void()
 
 
 /**
- * @summary List AI provider test history, newest first
+ * @deprecated
+ * @summary Retired local provider history
  */
-export const ListAiProviderTestsResponseItem = zod.object({
-  "id": zod.number(),
-  "providerId": zod.string(),
-  "providerName": zod.string(),
-  "passed": zod.boolean(),
-  "status": zod.enum(['Passed', 'Failed']),
-  "capabilities": zod.array(zod.object({
-  "capability": zod.string().describe('AIProvider method tested, e.g. \"classifyInitiative\"'),
-  "passed": zod.boolean(),
-  "message": zod.string().describe('Short outcome summary, or the failure detail')
-})),
-  "errorMessage": zod.string().nullable(),
-  "createdAt": zod.string().describe('ISO timestamp of when the test ran')
-})
-export const ListAiProviderTestsResponse = zod.array(ListAiProviderTestsResponseItem)
+export const ListAiProviderTestsResponse = zod.void()
 
 
 /**
@@ -1396,37 +1381,11 @@ export const GetEnvironmentStatusResponse = zod.object({
 
 
 /**
- * Executes only the selected cleanup actions, marks first-time setup as complete, and records the run in the Environment History log.
- * @summary Run the System Initialization Wizard actions
+ * Disabled in all environments. No writes, transactions, or cleanup actions occur. Platform administrators receive 410; other authenticated users receive 403. Environment status and historical events remain available via GET.
+ * @deprecated
+ * @summary Retired setup/reset action (never executes)
  */
-
-export const initializeEnvironmentBodyArchiveSampleInitiativesDefault = false;
-export const initializeEnvironmentBodyRemoveSampleInitiativesDefault = false;
-export const initializeEnvironmentBodyClearValidationRecordsDefault = false;
-export const initializeEnvironmentBodyClearCalculationHistoryDefault = false;
-export const initializeEnvironmentBodyClearRecommendationHistoryDefault = false;
-
-export const InitializeEnvironmentBody = zod.object({
-  "performedBy": zod.string().min(1).describe('Name of the administrator running the initialization'),
-  "archiveSampleInitiatives": zod.boolean().default(initializeEnvironmentBodyArchiveSampleInitiativesDefault),
-  "removeSampleInitiatives": zod.boolean().default(initializeEnvironmentBodyRemoveSampleInitiativesDefault),
-  "clearValidationRecords": zod.boolean().default(initializeEnvironmentBodyClearValidationRecordsDefault),
-  "clearCalculationHistory": zod.boolean().default(initializeEnvironmentBodyClearCalculationHistoryDefault),
-  "clearRecommendationHistory": zod.boolean().default(initializeEnvironmentBodyClearRecommendationHistoryDefault)
-})
-
-export const InitializeEnvironmentResponse = zod.object({
-  "id": zod.number(),
-  "performedBy": zod.string(),
-  "environment": zod.string(),
-  "actions": zod.array(zod.object({
-  "action": zod.string(),
-  "label": zod.string(),
-  "records": zod.number(),
-  "detail": zod.string()
-})),
-  "createdAt": zod.coerce.date()
-})
+export const InitializeEnvironmentResponse = zod.void()
 
 
 /**

@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Api
  * API specification
- * OpenAPI spec version: 1.5.0
+ * OpenAPI spec version: 1.6.13
  */
 import type { ResourceAssignment } from './resourceAssignment';
 import type { ResourceWithCapacity } from './resourceWithCapacity';

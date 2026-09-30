@@ -22,7 +22,7 @@ const call = (router: any, method: string, path: string, body = {}, params = {},
   assert.ok(route, `${method} ${path} exists`);
   let status = 200;
   const res: any = { status: (v: number) => { status = v; return res; }, json: (value: unknown) => resolve({ status, body: value }), end: () => resolve({ status, body: null }), send: (value: unknown) => resolve({ status, body: value }), on: () => res, off: () => res };
-  Promise.resolve(route.route.stack[0].handle({ body, params, query, headers: {}, matrixIdentity: { sub: "fixture-user" }, log: { info() {}, error() { throw new Error("Unexpected error logging"); } } }, res, reject)).catch(reject);
+  Promise.resolve(route.route.stack[0].handle({ method: method.toUpperCase(), body, params, query, headers: {}, matrixIdentity: { sub: "fixture-user", roles: ["platform_administrator"] }, log: { info() {}, error() { throw new Error("Unexpected error logging"); } } }, res, reject)).catch(reject);
 });
 
 const issue = (id: string, key: string, summary = "Current Jira summary") => ({
@@ -470,11 +470,11 @@ test("J1 routes and PostgreSQL persistence in isolated TEMP tables", async t => 
     });
     await t.test("Matrix app-info and health version surfaces", async () => {
       const info = await call(matrixRouter, "GET", "/app-info");
-      assert.equal(info.body.version, "v1.6.12");
+      assert.equal(info.body.version, "v1.6.13");
       assert.equal(info.body.name, "Innovation Hub");
       noSecret(info);
       const health = await call(matrixRouter, "GET", "/health");
-      assert.equal(health.body.version, "v1.6.12"); noSecret(health);
+      assert.equal(health.body.version, "v1.6.13"); noSecret(health);
     });
     await t.test("unchanged Matrix session mint/verify", async () => {
       process.env.SESSION_SECRET = "J1-automated-test-session-secret-not-real";

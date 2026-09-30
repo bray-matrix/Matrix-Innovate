@@ -144,6 +144,13 @@ await expectStatus("signed platform_administrator passes department add authoriz
 await expectStatus("signed platform_administrator passes department update authorization", fetch(`${BASE}/api/settings/departments/invalid`, {
   method: "PATCH", headers: { cookie, "content-type": "application/json" }, body: JSON.stringify({ active: true }),
 }), 400);
+await expectStatus("signed platform_administrator cannot execute retired environment reset", fetch(`${BASE}/api/environment/initialize`, {
+  method: "POST", headers: { cookie, "content-type": "application/json" },
+  body: JSON.stringify({ performedBy: "Authorization validation", archiveSampleInitiatives: true, removeSampleInitiatives: true, clearValidationRecords: true, clearCalculationHistory: true }),
+}), 410);
+await expectStatus("signed platform_administrator cannot execute retired provider diagnostic", fetch(`${BASE}/api/settings/ai-provider/test`, {
+  method: "POST", headers: { cookie, "content-type": "application/json" }, body: "{}",
+}), 410);
 
 for (const roles of [[], ["User"], ["unknown_platform_role"], ["platform_administrator_extra"]]) {
   const label = JSON.stringify(roles);
@@ -157,6 +164,13 @@ for (const roles of [[], ["User"], ["unknown_platform_role"], ["platform_adminis
   results.push(`${JSON.stringify(deniedSessionBody?.user?.roles) === JSON.stringify(roles) ? "PASS" : "FAIL"} — ${label} roles remain unmodified in session`);
   for (const [method, path, body] of [
     ["POST", "/api/settings/departments/initialize", {}],
+    ["POST", "/api/environment/initialize", {}],
+    ["POST", "/api/jira/connection/test", {}],
+    ["POST", "/api/jira/projects/discover", {}],
+    ["PATCH", "/api/jira/projects/1", {}],
+    ["PUT", "/api/jira/projects/1/field-mapping", {}],
+    ["POST", "/api/jira/statuses", {}],
+    ["PUT", "/api/jira/status-mappings", {}],
     ["POST", "/api/settings/departments", { name: "Denied launch-guard department" }],
     ["PATCH", "/api/settings/departments/1", { name: "Denied launch-guard rename" }],
     ["PATCH", "/api/settings/departments/1", { active: false }],

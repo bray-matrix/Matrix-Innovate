@@ -9,3 +9,4 @@ description: How the real Matrix Platform IdP exposes OIDC metadata and what to 
 - A real production launch confirmed the administrative authorization contract `roles: ["platform_administrator"]` on 2026-09-30, through the authenticated session response (not raw token capture).
 - **Why:** Testing only invented Admin/Super Admin identities missed the actual Platform role vocabulary. Do not infer a missing Platform claim from hidden UI before inspecting the safe session roles.
 - **How to apply:** Use this exact observed role contract for regression checks; keep signature verification and server enforcement intact. Browser fixtures and synthetic signing validate handling, not live production acceptance. No ordinary-user Platform role value has yet been captured.
+- Production department administration using this role was explicitly confirmed working on 2026-09-30. Preserve this verified contract rather than replacing it with guessed administrator role names.

@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
-  version: 1.5.0
+  version: 1.6.13
   description: API specification
 servers:
   - url: /api
@@ -73,7 +73,10 @@ paths:
     post:
       operationId: testJiraConnection
       tags: [jira]
+      description: Platform administrator only; safe read-only upstream connection test with persisted local outcome.
       responses:
+        "403":
+          description: Admin access required
         "200":
           description: Persisted test outcome
           content:
@@ -93,7 +96,10 @@ paths:
     post:
       operationId: discoverJiraProjects
       tags: [jira]
+      description: Platform administrator only.
       responses:
+        "403":
+          description: Admin access required
         "200":
           description: Discovered projects
           content:
@@ -103,6 +109,7 @@ paths:
     patch:
       operationId: updateJiraProject
       tags: [jira]
+      description: Platform administrator only.
       parameters:
         - { name: id, in: path, required: true, schema: { type: integer, minimum: 1 } }
       requestBody:
@@ -116,6 +123,8 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/JiraProject" }
+        "403":
+          description: Admin access required
   /jira/fields:
     get:
       operationId: listJiraFields
@@ -179,6 +188,7 @@ paths:
     put:
       operationId: saveJiraFieldMapping
       tags: [jira]
+      description: Platform administrator only.
       requestBody:
         required: true
         content:
@@ -190,11 +200,16 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/JiraFieldMapping" }
+        "403":
+          description: Admin access required
   /jira/statuses:
     post:
       operationId: discoverJiraStatuses
       tags: [jira]
+      description: Platform administrator only.
       responses:
+        "403":
+          description: Admin access required
         "200":
           description: Global default statuses; explicit mappings retained
           content:
@@ -213,6 +228,7 @@ paths:
     put:
       operationId: saveJiraStatusMapping
       tags: [jira]
+      description: Platform administrator only.
       requestBody:
         required: true
         content:
@@ -224,6 +240,8 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/JiraStatusMapping" }
+        "403":
+          description: Admin access required
   /healthz:
     get:
       operationId: healthCheck
@@ -529,7 +547,7 @@ paths:
     post:
       operationId: createDepartment
       tags: [settings]
-      summary: Add a department (Admin or Super Admin)
+      summary: Add a department (Platform administrator)
       requestBody:
         required: true
         content:
@@ -547,7 +565,7 @@ paths:
     post:
       operationId: initializeDepartments
       tags: [settings]
-      summary: Explicitly seed default departments without duplicating existing names (Admin or Super Admin)
+      summary: Explicitly seed default departments without duplicating existing names (Platform administrator)
       responses:
         "200":
           description: All configured departments
@@ -561,7 +579,7 @@ paths:
     patch:
       operationId: updateDepartment
       tags: [settings]
-      summary: Rename or change department active status (Admin or Super Admin)
+      summary: Rename or change department active status (Platform administrator)
       parameters:
         - in: path
           name: id
@@ -585,28 +603,28 @@ paths:
     post:
       operationId: testAiProvider
       tags: [settings]
-      summary: Run a readiness test against the active AI provider using sample data
+      deprecated: true
+      summary: Retired local provider diagnostic (never executes)
       responses:
-        "200":
-          description: The stored test result
+        "410":
+          description: Local provider diagnostics retired; no generation or persistence
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ProviderTestEvent"
+                $ref: "#/components/schemas/Error"
   /settings/ai-provider/tests:
     get:
       operationId: listAiProviderTests
       tags: [settings]
-      summary: List AI provider test history, newest first
+      deprecated: true
+      summary: Retired local provider history
       responses:
-        "200":
-          description: A list of provider test events
+        "410":
+          description: Local provider diagnostics retired
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/ProviderTestEvent"
+                $ref: "#/components/schemas/Error"
   /backlog:
     get:
       operationId: listBacklogItems
@@ -779,23 +797,25 @@ paths:
     post:
       operationId: initializeEnvironment
       tags: [environment]
-      summary: Run the System Initialization Wizard actions
+      deprecated: true
+      summary: Retired setup/reset action (never executes)
       description: >
-        Executes only the selected cleanup actions, marks first-time setup as
-        complete, and records the run in the Environment History log.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/EnvironmentInitializeRequest"
+        Disabled in all environments. No writes, transactions, or cleanup actions occur.
+        Platform administrators receive 410; other authenticated users receive 403.
+        Environment status and historical events remain available via GET.
       responses:
-        "201":
-          description: The recorded environment initialization event
+        "403":
+          description: Platform administrator required
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/EnvironmentEvent"
+                $ref: "#/components/schemas/Error"
+        "410":
+          description: Environment initialization retired
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /environment/history:
     get:
       operationId: listEnvironmentHistory
@@ -2839,6 +2859,7 @@ components:
         - statuses
         - scoringWeights
         - applicationVersion
+        - aiService
       properties:
         departments:
           type: array
@@ -2850,20 +2871,23 @@ components:
             $ref: "#/components/schemas/Department"
         categories:
           type: array
+          description: Read-only system-defined values from routes/settings.ts; no editable category master. Initiative records store category text.
           items:
             type: string
         statuses:
           type: array
+          description: Read-only system-defined initiative lifecycle reference from routes/settings.ts; not Jira or Project status mappings. Initiative records store status text.
           items:
             type: string
         scoringWeights:
           type: array
+          description: Current scoring model, read-only code-defined policy reference. Calculation limits and thresholds are implemented in lib/scoring.ts.
           items:
             $ref: "#/components/schemas/ScoringWeight"
         applicationVersion:
           type: string
-        aiProvider:
-          $ref: "#/components/schemas/AIProviderConfig"
+        aiService:
+          $ref: "#/components/schemas/AIServiceStatus"
     Department:
       type: object
       required: [id, name, active]
@@ -2891,124 +2915,42 @@ components:
           maxLength: 120
         active:
           type: boolean
-    AIProviderConfig:
+    AIServiceStatus:
       type: object
+      description: Read-only architecture reference; provider is documented, not runtime-verified. No supported live AI health/current provider-model metadata endpoint exists in SDK 1.2.1.
       required:
-        - activeProvider
-        - activeProviderId
-        - providerStatus
-        - availableProviders
-        - lastProviderTest
-        - providerNotes
-      properties:
-        activeProvider:
-          type: string
-          description: Source label of the active provider (e.g. "Rule Engine v1")
-        activeProviderId:
-          type: string
-          description: Machine id of the active provider (e.g. "rule-based")
-        providerStatus:
-          type: string
-          enum: [Active, Placeholder]
-        availableProviders:
-          type: array
-          items:
-            $ref: "#/components/schemas/AIProviderInfo"
-        lastProviderTest:
-          type: string
-          nullable: true
-          description: ISO timestamp of the last provider connectivity test, or null if never run
-        providerNotes:
-          type: string
-    ProviderTestCapabilityResult:
-      type: object
-      required:
-        - capability
-        - passed
-        - message
-      properties:
-        capability:
-          type: string
-          description: AIProvider method tested, e.g. "classifyInitiative"
-        passed:
-          type: boolean
-        message:
-          type: string
-          description: Short outcome summary, or the failure detail
-    ProviderTestEvent:
-      type: object
-      required:
-        - id
-        - providerId
-        - providerName
-        - passed
+        - service
+        - provider
         - status
-        - capabilities
-        - errorMessage
-        - createdAt
+        - statusNotes
+        - usedFor
+        - credentials
+        - deterministicEngine
+        - deterministicUses
       properties:
-        id:
-          type: integer
-        providerId:
+        service:
           type: string
-        providerName:
+        provider:
           type: string
-        passed:
-          type: boolean
+          description: Anthropic Claude per documented architecture, not measured runtime telemetry
         status:
           type: string
-          enum: [Passed, Failed]
-        capabilities:
-          type: array
-          items:
-            $ref: "#/components/schemas/ProviderTestCapabilityResult"
-        errorMessage:
+          description: Not reported; no supported live AI status endpoint
+        statusNotes:
           type: string
-          nullable: true
-        createdAt:
-          type: string
-          description: ISO timestamp of when the test ran
-    AIProviderInfo:
-      type: object
-      required:
-        - id
-        - label
-        - status
-        - notes
-        - isActive
-        - capabilities
-        - lastTestPassed
-        - lastTestAt
-        - switchImpact
-      properties:
-        id:
-          type: string
-        label:
-          type: string
-        status:
-          type: string
-          enum: [Active, Placeholder]
-        notes:
-          type: string
-        isActive:
-          type: boolean
-          description: Whether this provider is the currently active one
-        capabilities:
+        usedFor:
           type: array
           items:
             type: string
-          description: AIProvider capability method names this provider is registered for
-        lastTestPassed:
-          type: boolean
-          nullable: true
-          description: Outcome of the most recent readiness test for this provider, or null if never tested
-        lastTestAt:
+        credentials:
           type: string
-          nullable: true
-          description: ISO timestamp of the most recent readiness test for this provider, or null if never tested
-        switchImpact:
+          description: Central configuration ownership only; never credentials or tokens
+        deterministicEngine:
           type: string
-          description: Operator-facing description of what would happen if this provider became active
+        deterministicUses:
+          type: array
+          items:
+            type: string
     ScoringWeight:
       type: object
       required:
@@ -3630,29 +3572,6 @@ components:
               type: integer
             archivedInitiatives:
               type: integer
-    EnvironmentInitializeRequest:
-      type: object
-      required: [performedBy]
-      properties:
-        performedBy:
-          type: string
-          minLength: 1
-          description: Name of the administrator running the initialization
-        archiveSampleInitiatives:
-          type: boolean
-          default: false
-        removeSampleInitiatives:
-          type: boolean
-          default: false
-        clearValidationRecords:
-          type: boolean
-          default: false
-        clearCalculationHistory:
-          type: boolean
-          default: false
-        clearRecommendationHistory:
-          type: boolean
-          default: false
     EnvironmentActionResult:
       type: object
       required: [action, label, records, detail]

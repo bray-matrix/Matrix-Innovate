@@ -4,9 +4,15 @@ import { eq, asc, and, isNull } from "drizzle-orm";
 import { UpdateJiraProjectBody, SaveJiraFieldMappingBody, SaveJiraStatusMappingBody } from "@workspace/api-zod";
 import { JiraClient, JiraError } from "../lib/jira-client";
 import { ContentBlockedError, blockedResponse } from "../lib/content-safety";
+import { isPlatformAdministrator } from "../lib/admin-authorization";
+import type { AuthenticatedRequest } from "../matrix/auth";
 
 const router: IRouter = Router();
 const handle = (fn: (req: Request, res: Response) => Promise<unknown>) => async (req: Request, res: Response) => {
+  if (req.method !== "GET" && !isPlatformAdministrator(req as AuthenticatedRequest)) {
+    res.status(403).json({ error: "Admin access required" });
+    return;
+  }
   try { await fn(req, res); }
   catch (error) {
     if (error instanceof ContentBlockedError) { res.status(422).json(blockedResponse(error)); return; }

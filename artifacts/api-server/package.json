@@ -1,9 +1,10 @@
 {
   "name": "@workspace/api-server",
-  "version": "1.6.12",
+  "version": "1.6.13",
   "private": true,
   "type": "module",
   "scripts": {
+    "test:admin-readiness": "node test-content-safety.mjs test-admin-readiness.test.ts",
     "test:jira": "node test-jira.mjs",
     "dev": "export NODE_ENV=development && pnpm run build && pnpm run start",
     "build": "node ./build.mjs",

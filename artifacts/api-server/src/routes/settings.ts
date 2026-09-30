@@ -1,20 +1,14 @@
 import { Router, type IRouter } from "express";
-import { db, providerTestEventsTable, departmentsTable, initiativesTable, resourcesTable, projectResourceAssignmentsTable } from "@workspace/db";
-import { desc, eq, sql } from "drizzle-orm";
+import { db, departmentsTable, initiativesTable, resourcesTable, projectResourceAssignmentsTable } from "@workspace/db";
+import { eq, sql } from "drizzle-orm";
 import type { AuthenticatedRequest } from "../matrix/auth";
 import { INITIAL_DEPARTMENTS, ensureDepartments, normalizeDepartmentName } from "../lib/departments";
 import { CreateDepartmentBody, UpdateDepartmentBody } from "@workspace/api-zod";
-import {
-  AI_CAPABILITY_NAMES,
-  getActiveAIProviderId,
-  getAIProvider,
-  listAIProviders,
-  runProviderTest,
-} from "../lib/ai";
+import { isPlatformAdministrator as canManageDepartments } from "../lib/admin-authorization";
 
 const router: IRouter = Router();
 
-export const APPLICATION_VERSION = "v1.6.12";
+export const APPLICATION_VERSION = "v1.6.13";
 
 const SETTINGS = {
   categories: [
@@ -49,96 +43,26 @@ const SETTINGS = {
   applicationVersion: APPLICATION_VERSION,
 };
 
-function serializeTestEvent(
-  row: typeof providerTestEventsTable.$inferSelect,
-) {
-  return {
-    id: row.id,
-    providerId: row.providerId,
-    providerName: row.providerLabel,
-    passed: row.passed,
-    status: row.passed ? "Passed" : "Failed",
-    capabilities: row.capabilities,
-    errorMessage: row.errorMessage,
-    createdAt: row.createdAt.toISOString(),
-  };
-}
-
-// Operator-facing description of what switching to each provider would mean
-// today. Switching itself is intentionally not exposed — the active provider
-// is selected via the AI_PROVIDER environment variable only.
-function describeSwitchImpact(status: string, isActive: boolean): string {
-  if (isActive) {
-    return "Currently active. All AI-generated intelligence is produced by this provider.";
-  }
-  if (status === "Active") {
-    return (
-      "Switching would route all AI-generated intelligence through this provider. " +
-      "It is implemented and would pass the readiness test."
-    );
-  }
-  return (
-    "Switching now would break all AI-generated intelligence: this provider is a registered " +
-    'placeholder and every capability call would fail with "Provider is registered but not configured." ' +
-    "It must be implemented and configured before it can be activated."
-  );
-}
-
 router.get("/settings", async (_req, res) => {
-  const active = getAIProvider();
-  const activeId = getActiveAIProviderId();
-  const testEvents = await db
-    .select()
-    .from(providerTestEventsTable)
-    .orderBy(desc(providerTestEventsTable.createdAt));
   const departments = await db.select().from(departmentsTable).orderBy(departmentsTable.name);
-  const latestTest = testEvents[0];
-  const latestByProvider = new Map<
-    string,
-    (typeof testEvents)[number]
-  >();
-  for (const event of testEvents) {
-    if (!latestByProvider.has(event.providerId)) {
-      latestByProvider.set(event.providerId, event);
-    }
-  }
   res.json({
     ...SETTINGS,
     departments: departments.length ? departments.filter(d => d.active).map(d => d.name) : INITIAL_DEPARTMENTS,
     departmentMaster: departments.map(d => ({ id: d.id, name: d.name, active: d.active })),
-    aiProvider: {
-      activeProvider: active.sourceLabel,
-      activeProviderId: activeId,
-      providerStatus: active.status,
-      availableProviders: listAIProviders().map((p) => {
-        const isActive = p.id === activeId;
-        const lastTest = latestByProvider.get(p.id);
-        return {
-          id: p.id,
-          label: p.sourceLabel,
-          status: p.status,
-          notes: p.notes,
-          isActive,
-          capabilities: [...AI_CAPABILITY_NAMES],
-          lastTestPassed: lastTest ? lastTest.passed : null,
-          lastTestAt: lastTest ? lastTest.createdAt.toISOString() : null,
-          switchImpact: describeSwitchImpact(p.status, isActive),
-        };
-      }),
-      lastProviderTest: latestTest
-        ? latestTest.createdAt.toISOString()
-        : null,
-      providerNotes:
-        "The active provider is selected via the AI_PROVIDER environment variable. " +
-        "Only the rule-based engine is active; vendor providers are registered placeholders and require no API keys yet.",
+    // SDK 1.2.1 exposes generation responses, not read-only AI health/current-model metadata.
+    // Provider is the documented architecture, not a measured runtime claim.
+    aiService: {
+      service: "Matrix Platform Shared AI Service",
+      provider: "Anthropic Claude",
+      status: "Not reported",
+      statusNotes: "Provider reflects the documented architecture. No supported live AI health or current provider/model metadata endpoint is exposed by the Platform SDK; runtime availability and current model are not reported.",
+      usedFor: ["Guided Idea Interview", "AI-assisted Initiative drafting/synthesis"],
+      credentials: "Vendor AI credentials/configuration are centrally managed by Matrix Platform, not stored or configured in Innovation Hub. Innovation Hub uses separately configured Platform application trust credentials to access the shared service.",
+      deterministicEngine: "Rule Engine v1",
+      deterministicUses: ["Scoring", "Readiness", "Workflow logic", "Matching", "Planning/recommendation rules"],
     },
   });
 });
-
-function canManageDepartments(req: AuthenticatedRequest): boolean {
-  // platform_administrator is the authoritative role confirmed by a real Platform launch.
-  return req.matrixIdentity?.roles.some(role => ["platform_administrator", "admin", "superadmin", "super_admin", "super admin"].includes(role.toLowerCase())) ?? false;
-}
 
 function isDuplicateName(error: unknown): boolean {
   if (!error || typeof error !== "object") return false;
@@ -217,30 +141,13 @@ router.patch("/settings/departments/:id", async (req, res) => {
   }
 });
 
-// Runs the readiness test against the ACTIVE provider using synthetic sample
-// data only, then stores the run in the provider test history.
+// Retired diagnostics never execute a local provider or write test history.
 router.post("/settings/ai-provider/test", async (_req, res) => {
-  const provider = getAIProvider();
-  const result = await runProviderTest(provider);
-  const [row] = await db
-    .insert(providerTestEventsTable)
-    .values({
-      providerId: result.providerId,
-      providerLabel: result.providerLabel,
-      passed: result.passed,
-      capabilities: result.capabilities,
-      errorMessage: result.errorMessage,
-    })
-    .returning();
-  res.json(serializeTestEvent(row));
+  res.status(410).json({ error: "Local AI provider diagnostics have been retired." });
 });
 
 router.get("/settings/ai-provider/tests", async (_req, res) => {
-  const rows = await db
-    .select()
-    .from(providerTestEventsTable)
-    .orderBy(desc(providerTestEventsTable.createdAt));
-  res.json(rows.map(serializeTestEvent));
+  res.status(410).json({ error: "Local AI provider diagnostics have been retired." });
 });
 
 export default router;

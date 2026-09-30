@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Api
  * API specification
- * OpenAPI spec version: 1.5.0
+ * OpenAPI spec version: 1.6.13
  */
 import {
   useMutation,
@@ -35,7 +35,6 @@ import type {
   DepartmentUpdate,
   Document,
   EnvironmentEvent,
-  EnvironmentInitializeRequest,
   EnvironmentStatus,
   Error,
   ExecutionSummary,
@@ -85,7 +84,6 @@ import type {
   ProjectRiskUpdate,
   ProjectUpdate,
   PromoteInitiativeRequest,
-  ProviderTestEvent,
   ReadinessAssessment,
   ReadinessAssessmentCreate,
   ReadinessAssessmentUpdate,
@@ -290,6 +288,9 @@ export const getTestJiraConnectionUrl = () => {
   return `/api/jira/connection/test`
 }
 
+/**
+ * Platform administrator only; safe read-only upstream connection test with persisted local outcome.
+ */
 export const testJiraConnection = async ( options?: RequestInit): Promise<JiraConnection> => {
 
   return customFetch<JiraConnection>(getTestJiraConnectionUrl(),
@@ -304,7 +305,7 @@ export const testJiraConnection = async ( options?: RequestInit): Promise<JiraCo
 
 
 
-export const getTestJiraConnectionMutationOptions = <TError = ErrorType<unknown>,
+export const getTestJiraConnectionMutationOptions = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof testJiraConnection>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof testJiraConnection>>, TError,void, TContext> => {
 
@@ -333,9 +334,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type TestJiraConnectionMutationResult = NonNullable<Awaited<ReturnType<typeof testJiraConnection>>>
 
-    export type TestJiraConnectionMutationError = ErrorType<unknown>
+    export type TestJiraConnectionMutationError = ErrorType<void>
 
-    export const useTestJiraConnection = <TError = ErrorType<unknown>,
+    export const useTestJiraConnection = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof testJiraConnection>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof testJiraConnection>>,
@@ -425,6 +426,9 @@ export const getDiscoverJiraProjectsUrl = () => {
   return `/api/jira/projects/discover`
 }
 
+/**
+ * Platform administrator only.
+ */
 export const discoverJiraProjects = async ( options?: RequestInit): Promise<JiraProject[]> => {
 
   return customFetch<JiraProject[]>(getDiscoverJiraProjectsUrl(),
@@ -439,7 +443,7 @@ export const discoverJiraProjects = async ( options?: RequestInit): Promise<Jira
 
 
 
-export const getDiscoverJiraProjectsMutationOptions = <TError = ErrorType<unknown>,
+export const getDiscoverJiraProjectsMutationOptions = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof discoverJiraProjects>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof discoverJiraProjects>>, TError,void, TContext> => {
 
@@ -468,9 +472,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type DiscoverJiraProjectsMutationResult = NonNullable<Awaited<ReturnType<typeof discoverJiraProjects>>>
 
-    export type DiscoverJiraProjectsMutationError = ErrorType<unknown>
+    export type DiscoverJiraProjectsMutationError = ErrorType<void>
 
-    export const useDiscoverJiraProjects = <TError = ErrorType<unknown>,
+    export const useDiscoverJiraProjects = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof discoverJiraProjects>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof discoverJiraProjects>>,
@@ -489,6 +493,9 @@ export const getUpdateJiraProjectUrl = (id: number,) => {
   return `/api/jira/projects/${id}`
 }
 
+/**
+ * Platform administrator only.
+ */
 export const updateJiraProject = async (id: number,
     jiraProjectInput: JiraProjectInput, options?: RequestInit): Promise<JiraProject> => {
 
@@ -504,7 +511,7 @@ export const updateJiraProject = async (id: number,
 
 
 
-export const getUpdateJiraProjectMutationOptions = <TError = ErrorType<unknown>,
+export const getUpdateJiraProjectMutationOptions = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateJiraProject>>, TError,{id: number;data: BodyType<JiraProjectInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof updateJiraProject>>, TError,{id: number;data: BodyType<JiraProjectInput>}, TContext> => {
 
@@ -533,9 +540,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type UpdateJiraProjectMutationResult = NonNullable<Awaited<ReturnType<typeof updateJiraProject>>>
     export type UpdateJiraProjectMutationBody = BodyType<JiraProjectInput>
-    export type UpdateJiraProjectMutationError = ErrorType<unknown>
+    export type UpdateJiraProjectMutationError = ErrorType<void>
 
-    export const useUpdateJiraProject = <TError = ErrorType<unknown>,
+    export const useUpdateJiraProject = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateJiraProject>>, TError,{id: number;data: BodyType<JiraProjectInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof updateJiraProject>>,
@@ -857,6 +864,9 @@ export const getSaveJiraFieldMappingUrl = (id: number,) => {
   return `/api/jira/projects/${id}/field-mapping`
 }
 
+/**
+ * Platform administrator only.
+ */
 export const saveJiraFieldMapping = async (id: number,
     jiraFieldMapping: JiraFieldMapping, options?: RequestInit): Promise<JiraFieldMapping> => {
 
@@ -872,7 +882,7 @@ export const saveJiraFieldMapping = async (id: number,
 
 
 
-export const getSaveJiraFieldMappingMutationOptions = <TError = ErrorType<unknown>,
+export const getSaveJiraFieldMappingMutationOptions = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveJiraFieldMapping>>, TError,{id: number;data: BodyType<JiraFieldMapping>}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof saveJiraFieldMapping>>, TError,{id: number;data: BodyType<JiraFieldMapping>}, TContext> => {
 
@@ -901,9 +911,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type SaveJiraFieldMappingMutationResult = NonNullable<Awaited<ReturnType<typeof saveJiraFieldMapping>>>
     export type SaveJiraFieldMappingMutationBody = BodyType<JiraFieldMapping>
-    export type SaveJiraFieldMappingMutationError = ErrorType<unknown>
+    export type SaveJiraFieldMappingMutationError = ErrorType<void>
 
-    export const useSaveJiraFieldMapping = <TError = ErrorType<unknown>,
+    export const useSaveJiraFieldMapping = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveJiraFieldMapping>>, TError,{id: number;data: BodyType<JiraFieldMapping>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof saveJiraFieldMapping>>,
@@ -922,6 +932,9 @@ export const getDiscoverJiraStatusesUrl = () => {
   return `/api/jira/statuses`
 }
 
+/**
+ * Platform administrator only.
+ */
 export const discoverJiraStatuses = async ( options?: RequestInit): Promise<JiraStatusMapping[]> => {
 
   return customFetch<JiraStatusMapping[]>(getDiscoverJiraStatusesUrl(),
@@ -936,7 +949,7 @@ export const discoverJiraStatuses = async ( options?: RequestInit): Promise<Jira
 
 
 
-export const getDiscoverJiraStatusesMutationOptions = <TError = ErrorType<unknown>,
+export const getDiscoverJiraStatusesMutationOptions = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof discoverJiraStatuses>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof discoverJiraStatuses>>, TError,void, TContext> => {
 
@@ -965,9 +978,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type DiscoverJiraStatusesMutationResult = NonNullable<Awaited<ReturnType<typeof discoverJiraStatuses>>>
 
-    export type DiscoverJiraStatusesMutationError = ErrorType<unknown>
+    export type DiscoverJiraStatusesMutationError = ErrorType<void>
 
-    export const useDiscoverJiraStatuses = <TError = ErrorType<unknown>,
+    export const useDiscoverJiraStatuses = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof discoverJiraStatuses>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof discoverJiraStatuses>>,
@@ -1057,6 +1070,9 @@ export const getSaveJiraStatusMappingUrl = () => {
   return `/api/jira/status-mappings`
 }
 
+/**
+ * Platform administrator only.
+ */
 export const saveJiraStatusMapping = async (jiraStatusMappingInput: JiraStatusMappingInput, options?: RequestInit): Promise<JiraStatusMapping> => {
 
   return customFetch<JiraStatusMapping>(getSaveJiraStatusMappingUrl(),
@@ -1071,7 +1087,7 @@ export const saveJiraStatusMapping = async (jiraStatusMappingInput: JiraStatusMa
 
 
 
-export const getSaveJiraStatusMappingMutationOptions = <TError = ErrorType<unknown>,
+export const getSaveJiraStatusMappingMutationOptions = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveJiraStatusMapping>>, TError,{data: BodyType<JiraStatusMappingInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof saveJiraStatusMapping>>, TError,{data: BodyType<JiraStatusMappingInput>}, TContext> => {
 
@@ -1100,9 +1116,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type SaveJiraStatusMappingMutationResult = NonNullable<Awaited<ReturnType<typeof saveJiraStatusMapping>>>
     export type SaveJiraStatusMappingMutationBody = BodyType<JiraStatusMappingInput>
-    export type SaveJiraStatusMappingMutationError = ErrorType<unknown>
+    export type SaveJiraStatusMappingMutationError = ErrorType<void>
 
-    export const useSaveJiraStatusMapping = <TError = ErrorType<unknown>,
+    export const useSaveJiraStatusMapping = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveJiraStatusMapping>>, TError,{data: BodyType<JiraStatusMappingInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof saveJiraStatusMapping>>,
@@ -2175,7 +2191,7 @@ export const getCreateDepartmentUrl = () => {
 }
 
 /**
- * @summary Add a department (Admin or Super Admin)
+ * @summary Add a department (Platform administrator)
  */
 export const createDepartment = async (departmentInput: DepartmentInput, options?: RequestInit): Promise<Department> => {
 
@@ -2223,7 +2239,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type CreateDepartmentMutationError = ErrorType<unknown>
 
     /**
- * @summary Add a department (Admin or Super Admin)
+ * @summary Add a department (Platform administrator)
  */
 export const useCreateDepartment = <TError = ErrorType<unknown>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createDepartment>>, TError,{data: BodyType<DepartmentInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
@@ -2245,7 +2261,7 @@ export const getInitializeDepartmentsUrl = () => {
 }
 
 /**
- * @summary Explicitly seed default departments without duplicating existing names (Admin or Super Admin)
+ * @summary Explicitly seed default departments without duplicating existing names (Platform administrator)
  */
 export const initializeDepartments = async ( options?: RequestInit): Promise<Department[]> => {
 
@@ -2293,7 +2309,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type InitializeDepartmentsMutationError = ErrorType<unknown>
 
     /**
- * @summary Explicitly seed default departments without duplicating existing names (Admin or Super Admin)
+ * @summary Explicitly seed default departments without duplicating existing names (Platform administrator)
  */
 export const useInitializeDepartments = <TError = ErrorType<unknown>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof initializeDepartments>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
@@ -2315,7 +2331,7 @@ export const getUpdateDepartmentUrl = (id: number,) => {
 }
 
 /**
- * @summary Rename or change department active status (Admin or Super Admin)
+ * @summary Rename or change department active status (Platform administrator)
  */
 export const updateDepartment = async (id: number,
     departmentUpdate: DepartmentUpdate, options?: RequestInit): Promise<Department> => {
@@ -2364,7 +2380,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type UpdateDepartmentMutationError = ErrorType<unknown>
 
     /**
- * @summary Rename or change department active status (Admin or Super Admin)
+ * @summary Rename or change department active status (Platform administrator)
  */
 export const useUpdateDepartment = <TError = ErrorType<unknown>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateDepartment>>, TError,{id: number;data: BodyType<DepartmentUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
@@ -2386,11 +2402,12 @@ export const getTestAiProviderUrl = () => {
 }
 
 /**
- * @summary Run a readiness test against the active AI provider using sample data
+ * @deprecated
+ * @summary Retired local provider diagnostic (never executes)
  */
-export const testAiProvider = async ( options?: RequestInit): Promise<ProviderTestEvent> => {
+export const testAiProvider = async ( options?: RequestInit): Promise<unknown> => {
 
-  return customFetch<ProviderTestEvent>(getTestAiProviderUrl(),
+  return customFetch<unknown>(getTestAiProviderUrl(),
   {
     ...options,
     method: 'POST'
@@ -2402,7 +2419,7 @@ export const testAiProvider = async ( options?: RequestInit): Promise<ProviderTe
 
 
 
-export const getTestAiProviderMutationOptions = <TError = ErrorType<unknown>,
+export const getTestAiProviderMutationOptions = <TError = ErrorType<Error>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof testAiProvider>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof testAiProvider>>, TError,void, TContext> => {
 
@@ -2431,12 +2448,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type TestAiProviderMutationResult = NonNullable<Awaited<ReturnType<typeof testAiProvider>>>
 
-    export type TestAiProviderMutationError = ErrorType<unknown>
+    export type TestAiProviderMutationError = ErrorType<Error>
 
     /**
- * @summary Run a readiness test against the active AI provider using sample data
+ * @deprecated
+ * @summary Retired local provider diagnostic (never executes)
  */
-export const useTestAiProvider = <TError = ErrorType<unknown>,
+export const useTestAiProvider = <TError = ErrorType<Error>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof testAiProvider>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof testAiProvider>>,
@@ -2456,11 +2474,12 @@ export const getListAiProviderTestsUrl = () => {
 }
 
 /**
- * @summary List AI provider test history, newest first
+ * @deprecated
+ * @summary Retired local provider history
  */
-export const listAiProviderTests = async ( options?: RequestInit): Promise<ProviderTestEvent[]> => {
+export const listAiProviderTests = async ( options?: RequestInit): Promise<unknown> => {
 
-  return customFetch<ProviderTestEvent[]>(getListAiProviderTestsUrl(),
+  return customFetch<unknown>(getListAiProviderTestsUrl(),
   {
     ...options,
     method: 'GET'
@@ -2480,7 +2499,7 @@ export const getListAiProviderTestsQueryKey = () => {
     }
 
 
-export const getListAiProviderTestsQueryOptions = <TData = Awaited<ReturnType<typeof listAiProviderTests>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAiProviderTests>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getListAiProviderTestsQueryOptions = <TData = Awaited<ReturnType<typeof listAiProviderTests>>, TError = ErrorType<Error>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAiProviderTests>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
@@ -2499,14 +2518,15 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type ListAiProviderTestsQueryResult = NonNullable<Awaited<ReturnType<typeof listAiProviderTests>>>
-export type ListAiProviderTestsQueryError = ErrorType<unknown>
+export type ListAiProviderTestsQueryError = ErrorType<Error>
 
 
 /**
- * @summary List AI provider test history, newest first
+ * @deprecated
+ * @summary Retired local provider history
  */
 
-export function useListAiProviderTests<TData = Awaited<ReturnType<typeof listAiProviderTests>>, TError = ErrorType<unknown>>(
+export function useListAiProviderTests<TData = Awaited<ReturnType<typeof listAiProviderTests>>, TError = ErrorType<Error>>(
   options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAiProviderTests>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
@@ -3263,26 +3283,27 @@ export const getInitializeEnvironmentUrl = () => {
 }
 
 /**
- * Executes only the selected cleanup actions, marks first-time setup as complete, and records the run in the Environment History log.
- * @summary Run the System Initialization Wizard actions
+ * Disabled in all environments. No writes, transactions, or cleanup actions occur. Platform administrators receive 410; other authenticated users receive 403. Environment status and historical events remain available via GET.
+ * @deprecated
+ * @summary Retired setup/reset action (never executes)
  */
-export const initializeEnvironment = async (environmentInitializeRequest: EnvironmentInitializeRequest, options?: RequestInit): Promise<EnvironmentEvent> => {
+export const initializeEnvironment = async ( options?: RequestInit): Promise<unknown> => {
 
-  return customFetch<EnvironmentEvent>(getInitializeEnvironmentUrl(),
+  return customFetch<unknown>(getInitializeEnvironmentUrl(),
   {
     ...options,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(environmentInitializeRequest)
+    method: 'POST'
+
+
   }
 );}
 
 
 
 
-export const getInitializeEnvironmentMutationOptions = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof initializeEnvironment>>, TError,{data: BodyType<EnvironmentInitializeRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof initializeEnvironment>>, TError,{data: BodyType<EnvironmentInitializeRequest>}, TContext> => {
+export const getInitializeEnvironmentMutationOptions = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof initializeEnvironment>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof initializeEnvironment>>, TError,void, TContext> => {
 
 const mutationKey = ['initializeEnvironment'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -3294,10 +3315,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof initializeEnvironment>>, {data: BodyType<EnvironmentInitializeRequest>}> = (props) => {
-          const {data} = props ?? {};
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof initializeEnvironment>>, void> = () => {
 
-          return  initializeEnvironment(data,requestOptions)
+
+          return  initializeEnvironment(requestOptions)
         }
 
 
@@ -3308,18 +3329,19 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type InitializeEnvironmentMutationResult = NonNullable<Awaited<ReturnType<typeof initializeEnvironment>>>
-    export type InitializeEnvironmentMutationBody = BodyType<EnvironmentInitializeRequest>
-    export type InitializeEnvironmentMutationError = ErrorType<unknown>
+
+    export type InitializeEnvironmentMutationError = ErrorType<Error>
 
     /**
- * @summary Run the System Initialization Wizard actions
+ * @deprecated
+ * @summary Retired setup/reset action (never executes)
  */
-export const useInitializeEnvironment = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof initializeEnvironment>>, TError,{data: BodyType<EnvironmentInitializeRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+export const useInitializeEnvironment = <TError = ErrorType<Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof initializeEnvironment>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof initializeEnvironment>>,
         TError,
-        {data: BodyType<EnvironmentInitializeRequest>},
+        void,
         TContext
       > => {
       return useMutation(getInitializeEnvironmentMutationOptions(options));

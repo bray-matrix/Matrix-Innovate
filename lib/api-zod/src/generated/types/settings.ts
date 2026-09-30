@@ -3,18 +3,21 @@
  * Do not edit manually.
  * Api
  * API specification
- * OpenAPI spec version: 1.5.0
+ * OpenAPI spec version: 1.6.13
  */
-import type { AIProviderConfig } from './aIProviderConfig';
+import type { AIServiceStatus } from './aIServiceStatus';
 import type { Department } from './department';
 import type { ScoringWeight } from './scoringWeight';
 
 export interface Settings {
   departments: string[];
   departmentMaster: Department[];
+  /** Read-only system-defined values from routes/settings.ts; no editable category master. Initiative records store category text. */
   categories: string[];
+  /** Read-only system-defined initiative lifecycle reference from routes/settings.ts; not Jira or Project status mappings. Initiative records store status text. */
   statuses: string[];
+  /** Current scoring model, read-only code-defined policy reference. Calculation limits and thresholds are implemented in lib/scoring.ts. */
   scoringWeights: ScoringWeight[];
   applicationVersion: string;
-  aiProvider?: AIProviderConfig;
+  aiService: AIServiceStatus;
 }

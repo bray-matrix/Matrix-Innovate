@@ -1,296 +1,124 @@
 import {
   useGetSettings,
   getGetSettingsQueryKey,
-  useTestAiProvider,
   useCreateDepartment,
   useUpdateDepartment,
   useInitializeDepartments,
-  useListAiProviderTests,
-  getListAiProviderTestsQueryKey,
 } from "@workspace/api-client-react";
-import type { ProviderTestEvent } from "@workspace/api-client-react";
+import type { AIServiceStatus } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useMatrixAuth } from "@/components/matrix-gate";
 import { useToast } from "@/hooks/use-toast";
-import { format } from "date-fns";
-import {
-  CheckCircle2,
-  XCircle,
-  FlaskConical,
-  Loader2,
-  AlertTriangle,
-  ArrowRight,
-} from "lucide-react";
-import type { AIProviderInfo } from "@workspace/api-client-react";
-import { InitializeEnvironmentCard } from "@/components/init-wizard";
+import { MoreHorizontal, Lock } from "lucide-react";
+import { EnvironmentHistoryCard } from "@/components/init-wizard";
 import { JiraIntegration } from "@/components/jira-integration";
 
-function formatTestTime(value: string): string {
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "—";
-  return format(d, "MMM d, yyyy p");
+// Must match the server allowlist (platform_administrator + existing aliases).
+const ADMIN_ROLES = ["platform_administrator", "admin", "superadmin", "super_admin", "super admin"];
+
+function Section({ title, description, children }: { title: string; description: string; children: ReactNode }) {
+  return (
+    <section aria-labelledby={`sec-${title}`} className="space-y-3">
+      <div className="border-b pb-2">
+        <h3 id={`sec-${title}`} className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">{title}</h3>
+        <p className="text-xs text-muted-foreground">{description}</p>
+      </div>
+      {children}
+    </section>
+  );
 }
 
-function TestStatusBadge({ passed }: { passed: boolean }) {
-  return passed ? (
-    <Badge className="bg-green-100 text-green-800 border border-green-300 hover:bg-green-100">
-      Passed
+function ReadOnlyBadge({ label = "Read-only" }: { label?: string }) {
+  return (
+    <Badge variant="outline" className="gap-1 font-normal">
+      <Lock className="h-3 w-3" aria-hidden="true" />{label}
     </Badge>
-  ) : (
-    <Badge className="bg-red-100 text-red-700 border border-red-300 hover:bg-red-100">
-      Failed
-    </Badge>
   );
 }
 
-function ProviderTestResultCard({ result }: { result: ProviderTestEvent }) {
+function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          {result.passed ? (
-            <CheckCircle2 className="h-5 w-5 text-green-600" />
-          ) : (
-            <XCircle className="h-5 w-5 text-red-600" />
-          )}
-          <span className="font-semibold text-sm">{result.providerName}</span>
-          <TestStatusBadge passed={result.passed} />
-        </div>
-        <span className="text-xs text-muted-foreground">
-          {formatTestTime(result.createdAt)}
-        </span>
-      </div>
-      {result.errorMessage && (
-        <p className="text-sm text-red-700">{result.errorMessage}</p>
-      )}
-      <div>
-        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
-          Capabilities Tested
-        </p>
-        <div className="space-y-1.5">
-          {result.capabilities.map(cap => (
-            <div key={cap.capability} className="flex items-start gap-2 text-sm">
-              {cap.passed ? (
-                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-600" />
-              ) : (
-                <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
-              )}
-              <span className="font-mono text-xs mt-0.5 shrink-0">{cap.capability}()</span>
-              <span className="text-xs text-muted-foreground">{cap.message}</span>
-            </div>
-          ))}
-        </div>
-      </div>
+    <div>
+      <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</dt>
+      <dd className="mt-0.5 text-sm">{children}</dd>
     </div>
   );
 }
 
-function ProviderStatusBadges({ provider }: { provider: AIProviderInfo }) {
+function AIServiceCard({ info }: { info: AIServiceStatus | null | undefined }) {
+  if (!info) {
+    return (
+      <Card>
+        <CardHeader>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <CardTitle>AI Service</CardTitle>
+            <ReadOnlyBadge />
+          </div>
+          <CardDescription>AI service metadata is unavailable. The server did not return it.</CardDescription>
+        </CardHeader>
+      </Card>
+    );
+  }
   return (
-    <div className="flex flex-wrap gap-1.5">
-      {provider.isActive ? (
-        <Badge className="bg-primary text-primary-foreground hover:bg-primary">Active</Badge>
-      ) : (
-        <Badge variant="secondary">Available</Badge>
-      )}
-      {provider.status !== "Active" && (
-        <Badge className="bg-amber-100 text-amber-800 border border-amber-300 hover:bg-amber-100">
-          Not Configured
-        </Badge>
-      )}
-      {provider.lastTestPassed === true && (
-        <Badge className="bg-green-100 text-green-800 border border-green-300 hover:bg-green-100">
-          Passed Last Test
-        </Badge>
-      )}
-      {provider.lastTestPassed === false && (
-        <Badge className="bg-red-100 text-red-700 border border-red-300 hover:bg-red-100">
-          Failed Last Test
-        </Badge>
-      )}
-    </div>
-  );
-}
-
-function ProviderSummary({ provider }: { provider: AIProviderInfo }) {
-  return (
-    <div className="rounded-lg border p-4 space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <span className="font-semibold text-sm">{provider.label}</span>
-          <span className="font-mono text-xs text-muted-foreground">{provider.id}</span>
-        </div>
-        <ProviderStatusBadges provider={provider} />
-      </div>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div>
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
-            Last Test Result
-          </p>
-          {provider.lastTestPassed === null ? (
-            <span className="text-sm text-muted-foreground">Never tested</span>
-          ) : (
-            <TestStatusBadge passed={provider.lastTestPassed} />
-          )}
-        </div>
-        <div>
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
-            Last Test Timestamp
-          </p>
-          <span className="text-sm">
-            {provider.lastTestAt ? formatTestTime(provider.lastTestAt) : "—"}
-          </span>
-        </div>
-      </div>
-      <div>
-        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5">
-          Capabilities
-        </p>
-        <div className="flex flex-wrap gap-1.5">
-          {provider.capabilities.map(cap => (
-            <Badge key={cap} variant="outline" className="font-mono text-xs font-normal">
-              {cap}
-            </Badge>
-          ))}
-        </div>
-      </div>
-      <div>
-        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
-          Notes
-        </p>
-        <p className="text-sm text-muted-foreground">{provider.notes}</p>
-      </div>
-    </div>
-  );
-}
-
-function ProviderSwitchingPreview({
-  activeProvider,
-  providers,
-}: {
-  activeProvider: string;
-  providers: AIProviderInfo[];
-}) {
-  return (
-    <Card className="md:col-span-2">
+    <Card>
       <CardHeader>
-        <CardTitle>Provider Switching Preview</CardTitle>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <CardTitle>AI Service</CardTitle>
+          <ReadOnlyBadge />
+        </div>
         <CardDescription>
-          A read-only preview of what switching providers would mean. Switching is not yet
-          enabled — the active provider is controlled by the AI_PROVIDER environment variable.
+          Generative AI is provided through a Matrix Platform shared service. There is no provider selection in Innovation Hub.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="flex flex-wrap items-center gap-2 text-sm">
-          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-            Current Active Provider
-          </span>
-          <Badge className="bg-primary text-primary-foreground hover:bg-primary">
-            {activeProvider}
-          </Badge>
-        </div>
-        <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 flex gap-2.5">
-          <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600 mt-0.5" />
-          <p className="text-sm text-amber-800">
-            OpenAI, Claude, Azure OpenAI, and Local LLM are registered but not configured.
-            Switching to any of them today would cause every AI capability to fail until the
-            provider is implemented and configured. No API keys are stored in this application.
-          </p>
-        </div>
-        <div className="space-y-2">
-          {providers.map(p => (
-            <div
-              key={p.id}
-              className="flex items-start gap-3 border-b pb-2.5 last:border-0 last:pb-0"
-            >
-              <ArrowRight className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-medium text-sm">{p.label}</span>
-                  {p.isActive ? (
-                    <Badge className="bg-primary text-primary-foreground hover:bg-primary">Active</Badge>
-                  ) : (
-                    <Badge variant="secondary">Available</Badge>
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground mt-0.5">{p.switchImpact}</p>
-              </div>
-            </div>
-          ))}
+        <dl className="grid gap-4 sm:grid-cols-3">
+          <Field label="Service">{info.service}</Field>
+          <Field label="Provider (documented architecture)">
+            {info.provider}
+            <span className="block text-xs text-muted-foreground">Documented policy, not a live observation.</span>
+          </Field>
+          <Field label="Runtime status">
+            <Badge variant="outline">{info.status}</Badge>
+            <span className="block text-xs text-muted-foreground">{info.statusNotes}</span>
+          </Field>
+        </dl>
+        <dl className="grid gap-4 sm:grid-cols-2">
+          <Field label="Used for">
+            <ul className="list-disc pl-4">{info.usedFor.map(u => <li key={u}>{u}</li>)}</ul>
+          </Field>
+          <Field label="Credentials">{info.credentials}</Field>
+        </dl>
+        <div className="rounded-md border bg-muted/30 p-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-semibold">Deterministic Rule Engine</span>
+            <Badge variant="secondary" className="font-mono text-xs">{info.deterministicEngine}</Badge>
+            <span className="text-xs text-muted-foreground">Not an AI model or LLM. Separate from the AI Service.</span>
+          </div>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {info.deterministicUses.map(u => <Badge key={u} variant="outline" className="font-normal">{u}</Badge>)}
+          </div>
         </div>
       </CardContent>
     </Card>
   );
 }
 
-function ProviderTestHistory() {
-  const { data, isLoading, isError } = useListAiProviderTests({
-    query: { queryKey: getListAiProviderTestsQueryKey() },
-  });
-
-  if (isLoading) return <Skeleton className="h-24" />;
-  if (isError) {
-    return (
-      <p className="text-sm text-muted-foreground">
-        Unable to load provider test history.
-      </p>
-    );
-  }
-  if (!data || data.length === 0) {
-    return (
-      <p className="text-sm text-muted-foreground">
-        No provider tests recorded yet. Run "Test Provider" above to record the
-        first readiness test.
-      </p>
-    );
-  }
-
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
-            <th className="py-2 pr-4 font-medium">Tested At</th>
-            <th className="py-2 pr-4 font-medium">Provider</th>
-            <th className="py-2 pr-4 font-medium">Result</th>
-            <th className="py-2 pr-4 font-medium">Capabilities</th>
-            <th className="py-2 font-medium">Error</th>
-          </tr>
-        </thead>
-        <tbody>
-          {data.map(event => {
-            const passedCount = event.capabilities.filter(c => c.passed).length;
-            return (
-              <tr key={event.id} className="border-b last:border-0 align-top">
-                <td className="py-2 pr-4 whitespace-nowrap">{formatTestTime(event.createdAt)}</td>
-                <td className="py-2 pr-4">{event.providerName}</td>
-                <td className="py-2 pr-4"><TestStatusBadge passed={event.passed} /></td>
-                <td className="py-2 pr-4 font-mono text-xs whitespace-nowrap">
-                  {passedCount}/{event.capabilities.length} passed
-                </td>
-                <td className="py-2 text-xs text-muted-foreground">
-                  {event.errorMessage ?? "—"}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
 export default function Admin() {
-  const { data: settings, isLoading } = useGetSettings();
+  const { data: settings, isLoading, isError, refetch } = useGetSettings();
   const { user } = useMatrixAuth();
-  // Match the server allowlist, including the role confirmed by a real Platform launch.
-  const canManage = user.roles?.some(role => ["platform_administrator", "admin", "superadmin", "super_admin", "super admin"].includes(role.toLowerCase())) ?? false;
+  const canManage = user.roles?.some(role => ADMIN_ROLES.includes(role.toLowerCase())) ?? false;
   const { toast } = useToast();
   const [departmentName, setDepartmentName] = useState("");
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -322,224 +150,162 @@ export default function Admin() {
     onSuccess: () => { setEditingId(null); setDepartmentName(""); refreshDepartments(); toast({ title: "Department updated" }); },
     onError: departmentError,
   } });
-  const [latestResult, setLatestResult] = useState<ProviderTestEvent | null>(null);
-  const { data: testHistory } = useListAiProviderTests({
-    query: { queryKey: getListAiProviderTestsQueryKey() },
-  });
-  const displayResult = latestResult ?? testHistory?.[0] ?? null;
-  const testMutation = useTestAiProvider({
-    mutation: {
-      onSuccess: (result) => {
-        setLatestResult(result);
-        queryClient.invalidateQueries({ queryKey: getListAiProviderTestsQueryKey() });
-        queryClient.invalidateQueries({ queryKey: getGetSettingsQueryKey() });
-      },
-    },
-  });
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 max-w-5xl mx-auto">
         <Skeleton className="h-8 w-64" />
-        <div className="grid gap-6 md:grid-cols-2">
-          <Skeleton className="h-64" />
-          <Skeleton className="h-64" />
-        </div>
+        <Skeleton className="h-48" />
+        <div className="grid gap-6 md:grid-cols-2"><Skeleton className="h-48" /><Skeleton className="h-48" /></div>
       </div>
     );
   }
 
-  if (!settings) return null;
+  if (isError || !settings) {
+    return (
+      <div role="alert" className="max-w-5xl mx-auto rounded-md border p-4 text-sm flex items-center justify-between gap-3">
+        <span>Admin settings could not be loaded.</span>
+        <Button size="sm" variant="outline" onClick={() => void refetch()}>Retry</Button>
+      </div>
+    );
+  }
+
+  const fallbackRows = settings.departmentMaster.length === 0
+    ? settings.departments.map(name => ({ key: `f-${name}`, name, active: true, id: null as number | null }))
+    : settings.departmentMaster.map(d => ({ key: `d-${d.id}`, name: d.name, active: d.active, id: d.id as number | null }));
+  const busy = initializeDepartments.isPending || updateDepartment.isPending;
+  const startRename = (row: { id: number | null; name: string }) => row.id === null
+    ? void withDefaultDepartment(row.name, id => { setEditingId(id); setDepartmentName(row.name); })
+    : (setEditingId(row.id), setDepartmentName(row.name));
+  const toggleActive = (row: { id: number | null; name: string; active: boolean }) => row.id === null
+    ? void withDefaultDepartment(row.name, id => updateDepartment.mutate({ id, data: { active: false } }))
+    : updateDepartment.mutate({ id: row.id, data: { active: !row.active } });
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
-      <div className="flex justify-between items-end">
+    <div className="space-y-8 max-w-5xl mx-auto">
+      <div className="flex justify-between items-end gap-3">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Admin Settings</h2>
-          <p className="text-muted-foreground">System configuration and application metadata.</p>
+          <p className="text-muted-foreground">Integrations, business configuration, and system policy reference.</p>
         </div>
-        <Badge variant="outline" className="text-sm px-3 py-1">
-          {settings.applicationVersion}
-        </Badge>
+        <Badge variant="outline" className="text-sm px-3 py-1">{settings.applicationVersion}</Badge>
       </div>
 
-      <JiraIntegration />
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Departments</CardTitle>
-            <CardDescription>Active departments are available for new selections. Inactive departments remain on historical records.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {settings.departmentMaster.length === 0 && settings.departments.map(name => (
-                <div key={name} className="flex items-center gap-2">
-                  <Badge variant="secondary">{name}</Badge>
-                  {canManage && <>
-                    <Button size="sm" variant="ghost" disabled={initializeDepartments.isPending} onClick={() => void withDefaultDepartment(name, id => { setEditingId(id); setDepartmentName(name); })}>Rename</Button>
-                    <Button size="sm" variant="ghost" disabled={initializeDepartments.isPending} onClick={() => void withDefaultDepartment(name, id => updateDepartment.mutate({ id, data: { active: false } }))}>Deactivate</Button>
-                  </>}
-                </div>
-              ))}
-              {settings.departmentMaster.map(dept => (
-                <div key={dept.id} className="flex items-center gap-2 flex-wrap">
-                  <Badge variant={dept.active ? "secondary" : "outline"}>{dept.name}{!dept.active && " (Inactive)"}</Badge>
-                  {canManage && <>
-                    <Button size="sm" variant="ghost" disabled={updateDepartment.isPending} onClick={() => { setEditingId(dept.id); setDepartmentName(dept.name); }}>Rename</Button>
-                    <Button size="sm" variant="ghost" disabled={updateDepartment.isPending} onClick={() => updateDepartment.mutate({ id: dept.id, data: { active: !dept.active } })}>{dept.active ? "Deactivate" : "Reactivate"}</Button>
-                  </>}
-                </div>
-              ))}
-              {canManage && <div className="flex gap-2">
-                <Input aria-label="Department name" value={departmentName} maxLength={120} onChange={e => setDepartmentName(e.target.value)} placeholder="Department name" />
-                <Button disabled={!departmentName.trim() || createDepartment.isPending || updateDepartment.isPending}
-                  onClick={() => editingId === null
-                    ? createDepartment.mutate({ data: { name: departmentName } })
-                    : updateDepartment.mutate({ id: editingId, data: { name: departmentName } })}>
-                  {editingId === null ? "Add" : "Save"}
-                </Button>
-                {editingId !== null && <Button variant="outline" onClick={() => { setEditingId(null); setDepartmentName(""); }}>Cancel</Button>}
-              </div>}
-            </div>
-          </CardContent>
-        </Card>
+      <Section title="Integrations" description="External services used by Innovation Hub.">
+        <JiraIntegration canManage={canManage} />
+        <AIServiceCard info={settings.aiService} />
+      </Section>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Categories</CardTitle>
-            <CardDescription>Initiative classification types</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-2">
-              {settings.categories.map(cat => (
-                <Badge key={cat} variant="secondary">{cat}</Badge>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Statuses</CardTitle>
-            <CardDescription>Workflow progression states</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-2">
-              {settings.statuses.map(stat => (
-                <Badge key={stat} variant="secondary">{stat}</Badge>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Scoring Weights</CardTitle>
-            <CardDescription>Maximum values for scoring components</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {settings.scoringWeights.map(sw => (
-                <div key={sw.name} className="flex justify-between items-center border-b pb-2 last:border-0 last:pb-0">
-                  <span className="font-medium text-sm">{sw.name}</span>
-                  <Badge variant="outline" className="font-mono">{sw.weight > 0 ? `+${sw.weight}` : sw.weight}</Badge>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {settings.aiProvider && (
-          <Card className="md:col-span-2">
+      <Section title="Business Configuration" description="Values administrators maintain for day-to-day use.">
+        <div className="grid gap-6 md:grid-cols-2">
+          <Card>
             <CardHeader>
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="space-y-1.5">
-                  <CardTitle>AI Provider Configuration</CardTitle>
-                  <CardDescription>
-                    All generated intelligence flows through a provider abstraction. No API keys are stored or shown here.
-                  </CardDescription>
-                </div>
-                <Button
-                  onClick={() => testMutation.mutate()}
-                  disabled={testMutation.isPending}
-                >
-                  {testMutation.isPending ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <FlaskConical className="mr-2 h-4 w-4" />
-                  )}
-                  Test Provider
-                </Button>
+              <div className="flex items-center justify-between gap-2">
+                <CardTitle>Departments</CardTitle>
+                {canManage ? <Badge variant="secondary" className="font-normal">Editable</Badge> : <ReadOnlyBadge />}
               </div>
+              <CardDescription>Active departments are available for new selections. Inactive departments remain on historical records.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-5">
-              <div className="grid gap-4 sm:grid-cols-3">
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Active Provider</p>
-                  <Badge className="bg-primary text-primary-foreground">{settings.aiProvider.activeProvider}</Badge>
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Status</p>
-                  <Badge variant={settings.aiProvider.providerStatus === "Active" ? "default" : "outline"}>
-                    {settings.aiProvider.providerStatus}
-                  </Badge>
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Last Provider Test</p>
-                  <span className="text-sm">
-                    {settings.aiProvider.lastProviderTest
-                      ? new Date(settings.aiProvider.lastProviderTest).toLocaleString()
-                      : "Never run"}
-                  </span>
-                </div>
-              </div>
-
-              <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Registered Providers</p>
-                <div className="space-y-3">
-                  {settings.aiProvider.availableProviders.map(p => (
-                    <ProviderSummary key={p.id} provider={p} />
-                  ))}
-                </div>
-              </div>
-
-              {testMutation.isError && (
-                <p className="text-sm text-red-700">
-                  The provider test could not be run. Check that the API server
-                  is reachable and try again.
-                </p>
+            <CardContent className="space-y-3">
+              <ul className="divide-y rounded-md border">
+                {fallbackRows.map(row => (
+                  <li key={row.key} className="flex items-center justify-between gap-2 px-3 py-1.5 min-h-10">
+                    <span className={`text-sm ${row.active ? "" : "text-muted-foreground"}`}>
+                      {row.name}
+                      {!row.active && <Badge variant="outline" className="ml-2 font-normal text-xs">Inactive</Badge>}
+                    </span>
+                    {canManage && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button size="icon" variant="ghost" className="h-8 w-8" disabled={busy} aria-label={`Actions for ${row.name}`}>
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onSelect={() => startRename(row)}>Rename</DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => toggleActive(row)}>{row.active ? "Deactivate" : "Reactivate"}</DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+                  </li>
+                ))}
+              </ul>
+              {canManage && (
+                <form className="flex gap-2" onSubmit={e => {
+                  e.preventDefault();
+                  if (!departmentName.trim()) return;
+                  if (editingId === null) createDepartment.mutate({ data: { name: departmentName } });
+                  else updateDepartment.mutate({ id: editingId, data: { name: departmentName } });
+                }}>
+                  <Input aria-label={editingId === null ? "New department name" : "Rename department"} value={departmentName} maxLength={120} onChange={e => setDepartmentName(e.target.value)} placeholder={editingId === null ? "New department name" : "Rename department"} />
+                  <Button type="submit" disabled={!departmentName.trim() || createDepartment.isPending || updateDepartment.isPending}>
+                    {editingId === null ? "Add" : "Save"}
+                  </Button>
+                  {editingId !== null && <Button type="button" variant="outline" onClick={() => { setEditingId(null); setDepartmentName(""); }}>Cancel</Button>}
+                </form>
               )}
-              {displayResult && <ProviderTestResultCard result={displayResult} />}
-
-              <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Notes</p>
-                <p className="text-sm text-muted-foreground">{settings.aiProvider.providerNotes}</p>
-              </div>
             </CardContent>
           </Card>
-        )}
 
-        {settings.aiProvider && (
-          <ProviderSwitchingPreview
-            activeProvider={settings.aiProvider.activeProvider}
-            providers={settings.aiProvider.availableProviders}
-          />
-        )}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between gap-2">
+                <CardTitle>Categories</CardTitle>
+                <ReadOnlyBadge label="Code-defined" />
+              </div>
+              <CardDescription>Initiative classification types. System-defined in application code; not editable here.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ul className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+                {settings.categories.map(cat => <li key={cat}>{cat}</li>)}
+              </ul>
+            </CardContent>
+          </Card>
+        </div>
+      </Section>
 
-        <Card className="md:col-span-2">
-          <CardHeader>
-            <CardTitle>Provider Test History</CardTitle>
-            <CardDescription>
-              Every readiness test run against a provider, newest first.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ProviderTestHistory />
-          </CardContent>
-        </Card>
+      <Section title="System Policy & Reference" description="Code-defined policy shown for reference. Changes require a release.">
+        <div className="grid gap-6 md:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between gap-2">
+                <CardTitle>Statuses</CardTitle>
+                <ReadOnlyBadge label="Code-defined" />
+              </div>
+              <CardDescription>Workflow progression states, controlled by the workflow. Not editable.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ol className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+                {settings.statuses.map((stat, i) => <li key={stat}><span className="font-mono text-xs text-muted-foreground mr-1">{i + 1}.</span>{stat}</li>)}
+              </ol>
+            </CardContent>
+          </Card>
 
-        <InitializeEnvironmentCard />
-      </div>
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between gap-2">
+                <CardTitle>Scoring Model</CardTitle>
+                <ReadOnlyBadge label="Code-defined" />
+              </div>
+              <CardDescription>Current scoring model, read-only. Maximum values for each scoring component.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <dl className="space-y-2">
+                {settings.scoringWeights.map(sw => (
+                  <div key={sw.name} className="flex justify-between items-center border-b pb-2 last:border-0 last:pb-0">
+                    <dt className="text-sm">{sw.name}</dt>
+                    <dd className="font-mono text-sm">{sw.weight > 0 ? `+${sw.weight}` : sw.weight}</dd>
+                  </div>
+                ))}
+              </dl>
+            </CardContent>
+          </Card>
+        </div>
+      </Section>
+
+      <Section title="System & Maintenance" description="Historical system records. No setup or reset actions are available here.">
+        <EnvironmentHistoryCard />
+      </Section>
     </div>
   );
 }

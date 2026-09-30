@@ -14,3 +14,4 @@
 - [Initiative Brief boundaries](initiative-brief-review.md) — document parity, unchanged scoring policy, and unflattened private drafts for safe save retries.
 - [Content safety boundary](content-safety-boundary.md) — local-first blocking; SDK inspection is not proof of Platform-wide moderation absence.
 - [Publish index introspection](publish-expression-index.md) — compare malformed diff SQL with PostgreSQL; generated-column indexing preserved normalization and produced a valid diff.
+- [Production Admin boundaries](admin-production-boundary.md) — retired broad setup/reset actions stay out of pilot Admin; documented AI architecture is not live health telemetry.
