@@ -107,13 +107,53 @@ export interface InterviewDraft {
 // agnostic to how many questions were asked or in what order.
 export type AnswerMap = Record<string, string>;
 
-export const INTERVIEW_DRAFT_KEY = "matrix-interview-draft-v2";
+import { withBase } from "../lib/base-path";
 
-// Never clear the whole origin: other drafts, saved Initiatives and application
-// state are not part of this interview's lifecycle.
-export function discardActiveInterviewDraft(storage: Pick<Storage, "removeItem">): void {
-  storage.removeItem(INTERVIEW_DRAFT_KEY);
+// Unfinished interviews are server-owned and scoped to the Matrix session.
+// Never put interview answers or Jira context in origin-wide localStorage.
+export interface PrivateInterviewDraft<State> {
+  id: string;
+  state: State;
+  revision: number;
 }
+
+// SPA navigation can unmount a composer before its final save completes.
+// A new instance for the same Matrix subject must wait for that write before
+// reading /active. No interview content or identity is persisted to storage.
+const pendingSaves = new Map<string, Promise<void>>();
+export function trackInterviewSave(owner: string, operation: Promise<void>): void {
+  pendingSaves.set(owner, operation);
+  void operation.finally(() => {
+    if (pendingSaves.get(owner) === operation) pendingSaves.delete(owner);
+  }).catch(() => {});
+}
+export async function waitForInterviewSave(owner: string): Promise<void> {
+  await pendingSaves.get(owner);
+}
+
+async function interviewRequest<T>(path: string, method = "GET", body?: unknown): Promise<T> {
+  const response = await fetch(withBase(`/api/interview${path}`), {
+    method, credentials: "include",
+    headers: body === undefined ? undefined : { "Content-Type": "application/json" },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => null) as { error?: string } | null;
+    throw new Error(error?.error || `Interview request failed (${response.status})`);
+  }
+  if (response.status === 204) return undefined as T;
+  return response.json() as Promise<T>;
+}
+
+export const privateInterview = {
+  active: <T>() => interviewRequest<{ draft: PrivateInterviewDraft<T> | null }>("/drafts/active"),
+  create: <T>(state: T) => interviewRequest<PrivateInterviewDraft<T>>("/drafts", "POST", { state }),
+  save: <T>(draft: PrivateInterviewDraft<T>, state: T) =>
+    interviewRequest<PrivateInterviewDraft<T>>(`/drafts/${encodeURIComponent(draft.id)}`, "PUT", { state, revision: draft.revision }),
+  discard: (id: string) => interviewRequest<unknown>(`/drafts/${encodeURIComponent(id)}`, "DELETE"),
+  complete: (id: string, initiativeId: number) =>
+    interviewRequest<unknown>(`/drafts/${encodeURIComponent(id)}/complete`, "POST", { initiativeId }),
+};
 
 // Planner positions can restart at fallback (or skip a known field). Count
 // submitted user turns from the retained transcript, not the current question.
@@ -169,7 +209,9 @@ function hasAny(text: string, terms: string[]): boolean {
   return terms.some((t) => lower.includes(t));
 }
 
-// Pulls plausible numbers out of the "time or money lost" answer.
+// Extract only explicitly framed potential savings/opportunity. Current loss
+// or effort is not automatically an achievable saving. All figures remain
+// user estimates for review; the server remains authoritative for scoring.
 export function parseLoss(answer: string): {
   hours: number;
   revenue: number;
@@ -178,7 +220,8 @@ export function parseLoss(answer: string): {
   const lower = (answer ?? "").toLowerCase();
   let hours = 0;
   const hoursMatch = lower.match(/(\d[\d,]*)\s*(hours?|hrs?)\s*(?:per|a|\/)\s*month\b/);
-  if (hoursMatch) hours = Number(hoursMatch[1].replace(/,/g, ""));
+  if (hoursMatch && /\b(?:sav(?:e|ed|ing|ings?)|reduc(?:e|ed|ing)|free(?:d)? up)\b/.test(lower))
+    hours = Number(hoursMatch[1].replace(/,/g, ""));
 
   const moneyMatches = lower.match(/\$\s*(\d[\d,]*(\.\d+)?)(\s*[kmb])?/g) || [];
   const moneyValues = moneyMatches.map((m) => {
@@ -189,10 +232,11 @@ export function parseLoss(answer: string): {
     return Number(raw);
   });
 
-  const revenue = hasAny(lower, ["revenue", "sales", "growth", "upsell"])
+  const revenue = /\b(?:revenue opportunity|additional revenue|increase(?:d)? revenue|new sales|sales opportunity|revenue growth)\b/.test(lower)
     ? Math.max(0, ...(moneyValues.length ? moneyValues : [0]))
     : 0;
-  const costSavings = moneyValues.length && hasAny(lower, ["saving", "cost", "expense", "labor"])
+  const costSavings = moneyValues.length &&
+    /\b(?:cost savings?|savings?|sav(?:e|ed|ing)|reduc(?:e|ed|ing) costs?|cost reduction)\b/.test(lower)
     ? Math.max(...moneyValues) : 0;
 
   return {

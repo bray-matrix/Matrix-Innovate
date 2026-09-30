@@ -14,8 +14,10 @@ import {
   validateInitiativeDraft,
   answersForReview,
   countTranscriptAnswers,
-  discardActiveInterviewDraft,
-  INTERVIEW_DRAFT_KEY,
+  privateInterview,
+  trackInterviewSave,
+  waitForInterviewSave,
+  type PrivateInterviewDraft,
   REQUIRED_INITIATIVE_FIELDS,
   type InterviewDraft,
   type InterviewQuestion,
@@ -26,6 +28,12 @@ import {
   interviewEngine,
   mapConversationToFallback,
   nextFallbackQuestion,
+  fallbackReadiness,
+  isInterviewReadiness,
+  canDraft,
+  missingCriticalContext,
+  shouldContinueInterview,
+  type InterviewReadiness,
   type CategoryDetection,
 } from "@/services/interviewEngine";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -65,24 +73,28 @@ import {
   RotateCcw,
 } from "lucide-react";
 
-const DRAFT_KEY = INTERVIEW_DRAFT_KEY;
 const MAX_QUESTIONS = 12;
 interface AIInterviewResult {
   knownFacts: { category: string; value: string; evidence: string; source: "user" | "jira" }[];
   inferredSuggestions: string[];
   unknowns: string[];
   nextQuestion: string;
-  interviewComplete: boolean;
+  readiness: InterviewReadiness;
+  readyToDraft: boolean;
+  nextQuestionValue: "high" | "medium" | "low";
+  missingCriticalContext: string[];
   suggestedInitiativeType: string;
   suggestedTitle: string;
+}
+interface FinalDraftResult {
+  suggestedTitle: string;
   draft: {
-    problemStatement: string;
-    currentProcess: string;
-    desiredOutcome: string;
-    expectedValue: string;
-    successMetric: string;
-    risks: string;
+    problemStatement: string; currentProcess: string; desiredOutcome: string;
+    expectedValue: string; successMetric: string; risks: string;
   };
+  knownFacts: AIInterviewResult["knownFacts"];
+  inferredSuggestions: string[];
+  unknowns: string[];
 }
 
 interface ChatMessage {
@@ -93,6 +105,12 @@ interface ChatMessage {
 type Phase = "jira" | "chat" | "processing" | "review";
 
 type AnswerMap = Record<string, string>;
+interface InterviewState {
+  phase: Phase; jira: JiraIntakeContext | null; answers: AnswerMap;
+  plan: InterviewQuestion[]; currentIndex: number; input: string;
+  messages: ChatMessage[]; fallback: boolean; aiResult: AIInterviewResult | null;
+  readyToReview: boolean; draft: InterviewDraft | null; finalResult: FinalDraftResult | null;
+}
 
 const LEVELS = ["Low", "Medium", "High"] as const;
 
@@ -103,6 +121,23 @@ function buildAnswerMap(
   const map: AnswerMap = {};
   for (const q of plan) map[q.id] = byId[q.id] ?? "";
   return map;
+}
+
+function transcriptTurns(messages: ChatMessage[]): { question: string; answer: string }[] {
+  let question = "";
+  const turns: { question: string; answer: string }[] = [];
+  for (const message of messages) {
+    if (message.role === "ai") question = message.text;
+    else if (question) turns.push({ question, answer: message.text === "(nothing to add)" ? "" : message.text });
+  }
+  return turns;
+}
+
+function mergeFacts(
+  existing: AIInterviewResult["knownFacts"] = [],
+  updates: AIInterviewResult["knownFacts"] = [],
+): AIInterviewResult["knownFacts"] {
+  return [...new Map([...existing, ...updates].map(f => [`${f.source}:${f.evidence}`, f])).values()].slice(-24);
 }
 
 export default function AIInnovationInterview() {
@@ -130,16 +165,73 @@ export default function AIInnovationInterview() {
   const [aiResult, setAiResult] = useState<AIInterviewResult | null>(null);
   const [fallback, setFallback] = useState(false);
   const [readyToReview, setReadyToReview] = useState(false);
+  const [finalResult, setFinalResult] = useState<FinalDraftResult | null>(null);
+  const [readiness, setReadiness] = useState<InterviewReadiness>(() => fallbackReadiness({}));
+  const [savedInterview, setSavedInterview] = useState<PrivateInterviewDraft<InterviewState> | null>(null);
+  const [resumeChoice, setResumeChoice] = useState(false);
+  const [loadingInterview, setLoadingInterview] = useState(true);
+  const [persistenceError, setPersistenceError] = useState("");
 
   const scrollRef = useRef<HTMLDivElement>(null);
-  const startedRef = useRef(false);
+  const ownerRef = useRef<string | null>(null);
+  const sessionGeneration = useRef(0);
+  const saveQueue = useRef<Promise<unknown>>(Promise.resolve());
+  const savedRef = useRef<PrivateInterviewDraft<InterviewState> | null>(null);
+  const stateRef = useRef<InterviewState | null>(null);
   const interviewGeneration = useRef(0);
   const pendingRequest = useRef<AbortController | null>(null);
-  useEffect(() => {
-    void fetchSessionUser().then(user => {
-      if (user?.name) setSubmitterName(user.name);
-    }).catch(() => { /* session unavailable: submitter can be entered at review */ });
+  const activeInterviewRef = useRef(false);
+  activeInterviewRef.current = !resumeChoice && phase !== "jira";
+  stateRef.current = { phase, jira, answers, plan, currentIndex, input, messages, fallback, aiResult, readyToReview, draft, finalResult };
+  const clearInterview = useCallback(() => {
+    interviewGeneration.current += 1;
+    pendingRequest.current?.abort();
+    pendingRequest.current = null;
+    savedRef.current = null;
+    setSavedInterview(null);
+    setResumeChoice(false);
+    setPhase("jira"); setJira(null); setMessages([]); setAnswers({});
+    setPlan(interviewEngine.planQuestions({})); setCurrentIndex(0); setInput("");
+    setIsTyping(false); setDraft(null); setDetection(null); setAiResult(null);
+    setFinalResult(null); setFallback(false); setReadyToReview(false);
+    setReadiness(fallbackReadiness({}));
   }, []);
+  useEffect(() => {
+    let active = true;
+    const checkSession = async () => {
+      try {
+        const user = await fetchSessionUser();
+        if (!active) return;
+        if (!user?.sub) throw new Error("Sign in to use your private interview.");
+        if (ownerRef.current === user.sub) return;
+        const generation = ++sessionGeneration.current;
+        clearInterview();
+        ownerRef.current = user.sub;
+        setSubmitterName(user.name ?? "");
+        setLoadingInterview(true);
+        await waitForInterviewSave(user.sub);
+        if (!active || sessionGeneration.current !== generation) return;
+        const { draft: remote } = await privateInterview.active<InterviewState>();
+        if (!active || sessionGeneration.current !== generation) return;
+        savedRef.current = remote;
+        setSavedInterview(remote);
+        setResumeChoice(!!remote);
+        setPersistenceError("");
+      } catch (error) {
+        if (!active) return;
+        ownerRef.current = null;
+        ++sessionGeneration.current;
+        clearInterview();
+        setPersistenceError(error instanceof Error ? error.message : "Could not load your interview.");
+      } finally {
+        if (active) setLoadingInterview(false);
+      }
+    };
+    void checkSession();
+    window.addEventListener("focus", checkSession);
+    const interval = window.setInterval(checkSession, 30_000);
+    return () => { active = false; window.removeEventListener("focus", checkSession); window.clearInterval(interval); };
+  }, [clearInterview]);
 
   const scrollToBottom = useCallback(() => {
     requestAnimationFrame(() => {
@@ -154,76 +246,25 @@ export default function AIInnovationInterview() {
     scrollToBottom();
   }, [messages, isTyping, scrollToBottom]);
 
-  // Kick off the interview once (resume a saved draft if present).
-  useEffect(() => {
-    if (startedRef.current) return;
-    startedRef.current = true;
-
-    let resumed = false;
-    try {
-      const saved = localStorage.getItem(DRAFT_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved) as {
-          answers?: AnswerMap;
-          currentIndex?: number;
-          jira?: JiraIntakeContext | null;
-          jiraChoice?: boolean;
-          plan?: InterviewQuestion[];
-          fallback?: boolean;
-          aiResult?: AIInterviewResult | null;
-          readyToReview?: boolean;
-          messages?: ChatMessage[];
-          input?: string;
-        };
-        if (parsed.jiraChoice) setPhase("chat");
-        if (parsed.jira) setJira(parsed.jira);
-        if (parsed.answers && typeof parsed.answers === "object") {
-          resumed = !!parsed.jiraChoice;
-          if (!resumed) return;
-          const savedAnswers = parsed.answers;
-          const resumedPlan = parsed.plan?.length ? parsed.plan : interviewEngine.planQuestions(savedAnswers);
-          const idx = Math.min(
-            Math.max(0, parsed.currentIndex ?? 0),
-            resumedPlan.length - 1,
-          );
-          setAnswers(savedAnswers);
-          setPlan(resumedPlan);
-          setFallback(!!parsed.fallback);
-          setAiResult(parsed.aiResult ?? null);
-          setReadyToReview(!!parsed.readyToReview);
-          setCurrentIndex(idx);
-          if ((savedAnswers.idea ?? "").trim().length > 0) {
-            setDetection(interviewEngine.classify(savedAnswers));
-          }
-
-          const restored: ChatMessage[] = [
-            { role: "ai", text: interviewEngine.getIntro() },
-          ];
-          for (let i = 0; i < idx; i++) {
-            const q = resumedPlan[i];
-            restored.push({ role: "ai", text: q.prompt });
-            const ans = savedAnswers[q.id];
-            if (ans) restored.push({ role: "user", text: ans });
-          }
-          restored.push({ role: "ai", text: resumedPlan[idx].prompt });
-          setMessages(Array.isArray(parsed.messages) && parsed.messages.every(m =>
-            (m.role === "ai" || m.role === "user") && typeof m.text === "string"
-          ) ? parsed.messages : restored);
-          setInput(parsed.input ?? savedAnswers[resumedPlan[idx].id] ?? "");
-          toast({
-            title: "Draft resumed",
-            description: "We picked up where you left off.",
-          });
-        }
-      }
-    } catch {
-      resumed = false;
+  const resumeInterviewDraft = () => {
+    const saved = savedRef.current?.state;
+    if (!saved || !Array.isArray(saved.plan) || !saved.plan.length || !Array.isArray(saved.messages)) {
+      setPersistenceError("This interview could not be resumed. You can start over.");
+      return;
     }
-
-    if (!resumed) setMessages([]);
-    return undefined;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [toast]);
+    setJira(saved.jira); setAnswers(saved.answers); setPlan(saved.plan);
+    setCurrentIndex(Math.max(0, Math.min(saved.currentIndex, saved.plan.length - 1)));
+    setInput(saved.input ?? ""); setMessages(saved.messages);
+    setFallback(saved.fallback); setAiResult(saved.aiResult); setDraft(saved.draft);
+    setFinalResult(saved.finalResult ?? null); setReadyToReview(saved.readyToReview || saved.phase === "processing");
+    setReadiness(isInterviewReadiness(saved.aiResult?.readiness) ? saved.aiResult.readiness :
+      fallbackReadiness(saved.answers, transcriptTurns(saved.messages),
+        saved.jira ? { summary: saved.jira.summary, description: saved.jira.description ?? "" } : null,
+        saved.aiResult?.knownFacts ?? [], saved.aiResult?.unknowns ?? []));
+    setDetection(saved.answers.idea ? interviewEngine.classify(saved.answers) : null);
+    setPhase(saved.phase === "processing" ? "chat" : saved.phase);
+    setResumeChoice(false);
+  };
 
   const totalQuestions = plan.length;
   const isLastQuestion = readyToReview || (fallback && currentIndex === totalQuestions - 1);
@@ -235,38 +276,66 @@ export default function AIInnovationInterview() {
     usingFallback = fallback, nextMessages = messages, nextAIResult = aiResult,
     reviewReady = readyToReview, nextInput = "",
   ) => {
-    try {
-      localStorage.setItem(
-        DRAFT_KEY,
-        JSON.stringify({ answers: nextAnswers, currentIndex: nextIndex, plan: nextPlan, fallback: usingFallback, aiResult: usingFallback ? null : nextAIResult, readyToReview: reviewReady, jira, jiraChoice: true, messages: nextMessages, input: nextInput }),
-      );
-    } catch {
-      /* ignore quota errors */
-    }
+    const state: InterviewState = {
+      ...stateRef.current!, phase: "chat", jira, answers: nextAnswers, currentIndex: nextIndex,
+      plan: nextPlan, fallback: usingFallback, aiResult: usingFallback ? null : nextAIResult,
+      readyToReview: reviewReady, messages: nextMessages, input: nextInput,
+    };
+    return queueSave(state);
   };
-  const startOver = () => {
-    try {
-      discardActiveInterviewDraft(localStorage);
-    } catch {
-      toast({ title: "Could not discard draft", description: "Local storage is unavailable. Please retry.", variant: "destructive" });
-      return;
-    }
+  const queueSave = (state: InterviewState): Promise<void> => {
+    const generation = sessionGeneration.current;
+    const operation = saveQueue.current.catch(() => {}).then(async () => {
+      const active = savedRef.current;
+      if (generation !== sessionGeneration.current || !active) return;
+      const updated = await privateInterview.save(active, state);
+      if (generation !== sessionGeneration.current) return;
+      savedRef.current = updated;
+      setSavedInterview(updated);
+      setPersistenceError("");
+    }).catch(error => {
+      if (generation === sessionGeneration.current)
+        setPersistenceError(error instanceof Error ? error.message : "Could not save interview.");
+      throw error;
+    });
+    saveQueue.current = operation.catch(() => {});
+    if (ownerRef.current) trackInterviewSave(ownerRef.current, operation);
+    return operation;
+  };
+  useEffect(() => () => {
+    if (activeInterviewRef.current && savedRef.current && stateRef.current)
+      void queueSave(stateRef.current).catch(() => {});
     interviewGeneration.current += 1;
     pendingRequest.current?.abort();
-    pendingRequest.current = null;
-    setPhase("jira");
-    setJira(null);
-    setMessages([]);
-    setAnswers({});
-    setPlan(interviewEngine.planQuestions({}));
-    setCurrentIndex(0);
-    setInput("");
-    setIsTyping(false);
-    setDraft(null);
-    setDetection(null);
-    setAiResult(null);
-    setFallback(false);
-    setReadyToReview(false);
+    // Only the final state is flushed; no origin-wide browser storage is used.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    if (!savedRef.current || resumeChoice || phase !== "chat") return;
+    const timer = window.setTimeout(() => {
+      if (stateRef.current) void queueSave(stateRef.current).catch(() => {});
+    }, 700);
+    return () => window.clearTimeout(timer);
+    // Inputs are autosaved; transitions also call persistDraft explicitly.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [input, phase, resumeChoice]);
+  const startOver = async () => {
+    const generation = ++sessionGeneration.current;
+    const ownedId = savedRef.current?.id;
+    const owner = ownerRef.current;
+    interviewGeneration.current += 1;
+    pendingRequest.current?.abort();
+    try {
+      await saveQueue.current;
+      if (sessionGeneration.current !== generation || ownerRef.current !== owner) return;
+      if (ownedId) await privateInterview.discard(ownedId);
+      if (sessionGeneration.current !== generation) return;
+    } catch (error) {
+      setPersistenceError(error instanceof Error ? error.message : "Could not discard your interview.");
+      return;
+    }
+    clearInterview();
+    setPersistenceError("");
   };
   const startOverControl = (
     <AlertDialog>
@@ -290,33 +359,51 @@ export default function AIInnovationInterview() {
       </AlertDialogContent>
     </AlertDialog>
   );
-  const startInterview = (item: JiraIntakeContext | null) => {
-    setJira(item);
+  const startInterview = async (item: JiraIntakeContext | null) => {
+    if (!ownerRef.current || savedRef.current) return;
+    setLoadingInterview(true);
     const initialAnswers: AnswerMap = item
       ? { jiraIssueId: item.jiraIssueId, idea: item.summary.trim(), ...(item.description?.trim() ? { problem: item.description.trim() } : {}) }
       : {};
     const initialPlan = interviewEngine.planQuestions(initialAnswers);
-    setAnswers(initialAnswers);
-    setPlan(initialPlan);
-    setCurrentIndex(0);
-    setFallback(false);
-    setReadyToReview(false);
-    setAiResult(null);
-    setDraft(null);
-    setInput("");
-    setDetection(item ? interviewEngine.classify(initialAnswers) : null);
-    setPhase("chat");
     const initialMessages: ChatMessage[] = [
       { role: "ai", text: interviewEngine.getIntro() },
       ...(item ? [{ role: "ai" as const, text: `I found ${item.jiraIssueKey}: ${item.summary}. ${item.description?.trim() ? "I have its description too, so we can focus on what is missing." : "Let's add the business context that's missing."}` }] : []),
       { role: "ai", text: initialPlan[0].prompt },
     ];
-    setMessages(initialMessages);
-    try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ answers: initialAnswers, currentIndex: 0, plan: initialPlan, jira: item, jiraChoice: true, messages: initialMessages })); } catch { /* storage unavailable */ }
+    const initialState: InterviewState = {
+      phase: "chat", jira: item, answers: initialAnswers, plan: initialPlan,
+      currentIndex: 0, fallback: false, readyToReview: false, aiResult: null,
+      draft: null, finalResult: null, input: "", messages: initialMessages,
+    };
+    const generation = sessionGeneration.current;
+    try {
+      const created = await privateInterview.create(initialState);
+      if (generation !== sessionGeneration.current) return;
+      savedRef.current = created;
+      setSavedInterview(created);
+      setJira(item); setAnswers(initialAnswers); setPlan(initialPlan);
+      setCurrentIndex(0); setFallback(false); setReadyToReview(false);
+      setAiResult(null); setDraft(null); setFinalResult(null); setInput("");
+      setReadiness(fallbackReadiness(initialAnswers, [],
+        item ? { summary: item.summary, description: item.description ?? "" } : null));
+      setDetection(item ? interviewEngine.classify(initialAnswers) : null);
+      setMessages(initialMessages); setPhase("chat"); setPersistenceError("");
+    } catch (error) {
+      setPersistenceError(error instanceof Error ? error.message : "Could not start your interview.");
+      if (error instanceof Error && /active|409/i.test(error.message)) {
+        const active = await privateInterview.active<InterviewState>().catch(() => null);
+        if (active?.draft && generation === sessionGeneration.current) {
+          savedRef.current = active.draft; setSavedInterview(active.draft); setResumeChoice(true);
+        }
+      }
+    } finally {
+      if (generation === sessionGeneration.current) setLoadingInterview(false);
+    }
   };
 
   const handleNext = async () => {
-    if (isTyping) return;
+    if (isTyping || !savedRef.current || countTranscriptAnswers(messages) >= MAX_QUESTIONS) return;
     const generation = interviewGeneration.current;
     const trimmed = input.trim();
     if (!trimmed && currentQuestion.id === "idea") return;
@@ -336,38 +423,66 @@ export default function AIInnovationInterview() {
       { role: "user", text: trimmed || "(nothing to add)" },
     ]);
     setInput("");
+    // A navigation during AI inference must retain this submitted turn. On
+    // resume, offer drafting rather than repeating the answered question.
+    setReadyToReview(true);
+    if (stateRef.current) stateRef.current = {
+      ...stateRef.current, answers: nextAnswers, messages: answeredMessages,
+      input: "", readyToReview: true,
+    };
+    void persistDraft(nextAnswers, currentIndex, plan, fallback, answeredMessages, aiResult, true).catch(() => {});
 
     const newDetection = interviewEngine.classify(nextAnswers);
     setDetection(newDetection);
     const nextIndex = currentIndex + 1;
+    const turns = transcriptTurns(answeredMessages);
+    const answerCount = turns.length;
+    const localReadiness = fallbackReadiness(nextAnswers, turns, jira ? { summary: jira.summary, description: jira.description ?? "" } : null);
+    setReadiness(localReadiness);
     setIsTyping(true);
+    // The hard ceiling drafts from all submitted answers, even if AI is down.
+    if (answerCount >= MAX_QUESTIONS) {
+      setReadyToReview(true);
+      setMessages([...answeredMessages, { role: "ai", text: "You have reached the interview limit. Let's review the best available draft." }]);
+      setIsTyping(false);
+      await persistDraft(nextAnswers, currentIndex, plan, fallback, answeredMessages, aiResult, true).catch(() => {});
+      await runProcessing(nextAnswers, plan, !fallback, generation, answeredMessages);
+      return;
+    }
     if (!fallback) {
       try {
-        const turns = plan.slice(0, nextIndex).map(q => ({
-          question: q.prompt, answer: nextAnswers[q.id] ?? "",
-        }));
         const controller = new AbortController();
         pendingRequest.current = controller;
         const response = await fetch(withBase("/api/interview/advance"), {
           method: "POST", credentials: "include",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ turns, jira: jira ? { summary: jira.summary, description: jira.description ?? "" } : null }),
+          body: JSON.stringify({ turns, jira: jira ? { summary: jira.summary, description: jira.description ?? "" } : null,
+            knownFacts: aiResult?.knownFacts?.slice(-24) ?? [] }),
           signal: controller.signal,
         });
         if (interviewGeneration.current !== generation) return;
         if (!response.ok) throw new Error("Interview service unavailable");
         const result = await response.json() as AIInterviewResult;
         if (interviewGeneration.current !== generation) return;
-        if (typeof result.interviewComplete !== "boolean" ||
-          !Array.isArray(result.knownFacts) || !Array.isArray(result.inferredSuggestions) ||
-          (!result.interviewComplete && !result.nextQuestion?.trim())) throw new Error("Invalid interview response");
+        if (typeof result.readyToDraft !== "boolean" ||
+          !["high", "medium", "low"].includes(result.nextQuestionValue) ||
+          !Array.isArray(result.missingCriticalContext) ||
+          !Array.isArray(result.knownFacts) || !Array.isArray(result.inferredSuggestions))
+          throw new Error("Invalid interview response");
+        result.knownFacts = mergeFacts(aiResult?.knownFacts, result.knownFacts);
+        if (!isInterviewReadiness(result.readiness))
+          result.readiness = fallbackReadiness(nextAnswers, turns,
+            jira ? { summary: jira.summary, description: jira.description ?? "" } : null,
+            result.knownFacts, result.unknowns);
         setAiResult(result);
-        if (result.interviewComplete || nextIndex >= MAX_QUESTIONS) {
+        setReadiness(result.readiness);
+        if (result.readyToDraft || !shouldContinueInterview(result.readiness, answerCount, result.nextQuestionValue, result.missingCriticalContext) ||
+          !result.nextQuestion?.trim()) {
           setReadyToReview(true);
           const completedMessages: ChatMessage[] = [...answeredMessages, { role: "ai", text: "Looks like I have enough to draft this initiative." }];
           setMessages(completedMessages);
           setIsTyping(false);
-          persistDraft(nextAnswers, currentIndex, plan, false, completedMessages, result, true);
+          await persistDraft(nextAnswers, currentIndex, plan, false, completedMessages, result, true).catch(() => {});
           return;
         }
         const nextQuestion = { id: `ai_${nextIndex}`, prompt: result.nextQuestion, hint: "A rough answer is fine. You can also skip what you don't know.", placeholder: "Share what you know..." };
@@ -376,8 +491,9 @@ export default function AIInnovationInterview() {
         const continuedMessages: ChatMessage[] = [...answeredMessages, { role: "ai", text: nextQuestion.prompt }];
         setMessages(continuedMessages);
         setCurrentIndex(nextIndex);
+        setReadyToReview(false);
         setIsTyping(false);
-        persistDraft(nextAnswers, nextIndex, nextPlan, false, continuedMessages, result, false);
+        await persistDraft(nextAnswers, nextIndex, nextPlan, false, continuedMessages, result, false).catch(() => {});
         return;
       } catch {
         if (interviewGeneration.current !== generation) return;
@@ -389,9 +505,7 @@ export default function AIInnovationInterview() {
         if (interviewGeneration.current === generation) pendingRequest.current = null;
       }
     }
-    const knownAnswers = mapConversationToFallback(nextAnswers, plan.slice(0, nextIndex).map(q => ({
-      question: q.prompt, answer: nextAnswers[q.id] ?? "",
-    })));
+    const knownAnswers = mapConversationToFallback(nextAnswers, turns);
     setAnswers(knownAnswers);
     const newPlan = interviewEngine.planQuestions(knownAnswers);
     setPlan(newPlan);
@@ -400,10 +514,11 @@ export default function AIInnovationInterview() {
     const fallbackIndex = fallback
       ? (() => { const index = nextFallbackQuestion(newPlan.slice(nextIndex), knownAnswers); return index < 0 ? -1 : nextIndex + index; })()
       : nextFallbackQuestion(newPlan, knownAnswers);
-    if (fallbackIndex < 0 || fallbackIndex >= newPlan.length) {
+    if (canDraft(localReadiness) || fallbackIndex < 0 || fallbackIndex >= newPlan.length ||
+        nextFallbackQuestion(newPlan, knownAnswers) < 0) {
       setIsTyping(false);
-      persistDraft(knownAnswers, currentIndex, newPlan, true, answeredMessages, null);
-      await runProcessing(knownAnswers, newPlan, false, generation);
+      await persistDraft(knownAnswers, currentIndex, newPlan, true, answeredMessages, null);
+      await runProcessing(knownAnswers, newPlan, false, generation, answeredMessages);
       return;
     }
 
@@ -416,14 +531,22 @@ export default function AIInnovationInterview() {
     const nextQuestion = newPlan[fallbackIndex];
     answeredMessages.push({ role: "ai", text: nextQuestion.prompt });
     setMessages([...answeredMessages]);
-    persistDraft(knownAnswers, fallbackIndex, newPlan, true, answeredMessages, null, false);
+    setReadyToReview(false);
+    await persistDraft(knownAnswers, fallbackIndex, newPlan, true, answeredMessages, null, false).catch(() => {});
     setIsTyping(false);
     setCurrentIndex(fallbackIndex);
     setInput(knownAnswers[nextQuestion.id] ?? "");
   };
 
   const handleBack = () => {
-    if (isTyping || currentIndex === 0) return;
+    if (isTyping || (currentIndex === 0 && !readyToReview)) return;
+    if (readyToReview) {
+      const previousMessages = messages.slice(0, -2);
+      const previousInput = answers[currentQuestion.id] ?? "";
+      setReadyToReview(false); setInput(previousInput); setMessages(previousMessages);
+      void persistDraft(answers, currentIndex, plan, fallback, previousMessages, aiResult, false, previousInput).catch(() => {});
+      return;
+    }
     if (!fallback) {
       const prevIndex = currentIndex - 1;
       setCurrentIndex(prevIndex);
@@ -463,17 +586,18 @@ export default function AIInnovationInterview() {
     persistDraft(nextAnswers, prevIndex, rebuiltPlan, true, rebuilt, null, false, nextAnswers[rebuiltPlan[prevIndex].id] ?? "");
   };
 
-  const handleSaveDraft = () => {
+  const handleSaveDraft = async () => {
     const nextAnswers: AnswerMap = {
       ...answers,
       [currentQuestion.id]: input.trim(),
     };
     setAnswers(nextAnswers);
-    persistDraft(nextAnswers, currentIndex, plan, fallback, messages, aiResult, readyToReview, input.trim());
-    toast({
-      title: "Draft saved",
-      description: "Your answers are saved on this device. Resume anytime.",
-    });
+    try {
+      await persistDraft(nextAnswers, currentIndex, plan, fallback, messages, aiResult, readyToReview, input.trim());
+      toast({ title: "Interview saved", description: "Only you can resume this interview." });
+    } catch (error) {
+      toast({ title: "Could not save", description: error instanceof Error ? error.message : "Please retry.", variant: "destructive" });
+    }
   };
 
   const runProcessing = async (
@@ -481,15 +605,43 @@ export default function AIInnovationInterview() {
     finalPlan: InterviewQuestion[],
     useAI = !fallback,
     generation = interviewGeneration.current,
+    finalMessages = messages,
   ) => {
     setPhase("processing");
-    const answerMap = buildAnswerMap(finalPlan, finalAnswers);
+    const answerMap = { ...finalAnswers, ...buildAnswerMap(finalPlan, finalAnswers) };
+    const turns = transcriptTurns(finalMessages);
+    const context = turns.map(t => `${t.question}: ${t.answer || "Not yet known"}`).join("\n");
     if (finalAnswers.aiContext) answerMap.notes = [answerMap.notes, finalAnswers.aiContext].filter(Boolean).join("\n");
     const result = await interviewEngine.generateDraft(answerMap, finalPlan);
     if (interviewGeneration.current !== generation) return;
-    if (aiResult && useAI) {
-      const business = aiResult.draft;
-      result.fields.title = aiResult.suggestedTitle.trim() || result.fields.title;
+    if (!result.fields.problemStatement.trim()) result.fields.problemStatement = finalAnswers.idea?.trim() || jira?.summary || "";
+    let completed: FinalDraftResult | null = null;
+    if (useAI && turns.length) {
+      try {
+        const controller = new AbortController();
+        pendingRequest.current = controller;
+        const response = await fetch(withBase("/api/interview/draft"), {
+          method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ turns: turns.slice(0, MAX_QUESTIONS),
+            jira: jira ? { summary: jira.summary, description: jira.description ?? "" } : null,
+            knownFacts: aiResult?.knownFacts?.slice(0, 24) ?? [] }),
+          signal: controller.signal,
+        });
+        if (!response.ok) throw new Error("Final drafting unavailable");
+        const data = await response.json() as FinalDraftResult;
+        if (!data.draft || !Array.isArray(data.unknowns) || !Array.isArray(data.knownFacts))
+          throw new Error("Invalid final draft");
+        completed = data;
+      } catch {
+        // All supplied answers remain in the deterministic draft on AI failure.
+      } finally {
+        pendingRequest.current = null;
+      }
+    }
+    if (interviewGeneration.current !== generation) return;
+    if (completed) {
+      const business = completed.draft;
+      result.fields.title = completed.suggestedTitle?.trim() || result.fields.title;
       result.fields.problemStatement = business.problemStatement.trim() || result.fields.problemStatement;
       result.fields.currentProcess = business.currentProcess.trim() || result.fields.currentProcess;
       result.fields.desiredOutcome = business.desiredOutcome.trim() || result.fields.desiredOutcome;
@@ -499,12 +651,28 @@ export default function AIInnovationInterview() {
       result.canvas.desiredOutcome = result.fields.desiredOutcome;
       result.canvas.successMetric = result.fields.successMetric;
       result.canvas.expectedValue = business.expectedValue.trim() || "Value not yet quantified";
-      result.canvas.risks = business.risks.trim();
+      result.canvas.risks = business.risks.trim() || "Risks not yet known.";
       result.executiveSummary = `${result.fields.title} addresses: ${result.fields.problemStatement}. ${result.fields.desiredOutcome ? `Desired outcome: ${result.fields.desiredOutcome}.` : ""} ${result.canvas.expectedValue}.`;
       result.canvas.executiveSummary = result.executiveSummary;
     }
+    if (!completed) {
+      // Keep the verbatim transcript in the reviewable deterministic draft,
+      // including answers that have no matching rule-engine field.
+      result.fields.currentProcess = [result.fields.currentProcess, context].filter(Boolean).join("\n\n");
+      result.canvas.problem = result.fields.problemStatement;
+      result.canvas.currentProcess = result.fields.currentProcess;
+      result.canvas.risks = "Risks not yet known; review and add known considerations.";
+    }
+    const reviewResult = completed ?? {
+      knownFacts: aiResult?.knownFacts ?? [], inferredSuggestions: aiResult?.inferredSuggestions ?? [],
+      unknowns: [...new Set([...(aiResult?.unknowns ?? []), ...missingCriticalContext(fallbackReadiness(finalAnswers, turns, jira ? { summary: jira.summary, description: jira.description ?? "" } : null))])],
+      suggestedTitle: "", draft: { problemStatement: "", currentProcess: "", desiredOutcome: "", expectedValue: "", successMetric: "", risks: "" },
+    };
+    setFinalResult(reviewResult);
     setDraft(result);
     setPhase("review");
+    void queueSave({ ...stateRef.current!, phase: "review", answers: finalAnswers, plan: finalPlan,
+      draft: result, finalResult: reviewResult, messages: finalMessages, readyToReview: true }).catch(() => {});
   };
 
   const handleFinish = async () => {
@@ -512,25 +680,56 @@ export default function AIInnovationInterview() {
     // A completed AI turn was already saved and the disabled input is empty.
     // Do not replace its answer when moving to review.
     const nextAnswers = answersForReview(answers, currentQuestion.id, input, readyToReview);
+    const finalMessages: ChatMessage[] = !readyToReview && input.trim()
+      ? [...messages, { role: "user", text: input.trim() }] : messages;
     setAnswers(nextAnswers);
+    setMessages(finalMessages);
     const finalPlan = fallback ? interviewEngine.planQuestions(nextAnswers) : plan;
     setPlan(finalPlan);
-    persistDraft(nextAnswers, currentIndex);
-    await runProcessing(nextAnswers, finalPlan);
+    await persistDraft(nextAnswers, currentIndex, finalPlan, fallback, finalMessages, aiResult, true).catch(() => {});
+    await runProcessing(nextAnswers, finalPlan, !fallback, interviewGeneration.current, finalMessages);
   };
 
   const resumeInterview = () => {
     setPhase("chat");
   };
+  const continueInterview = () => {
+    if (!aiResult?.nextQuestion?.trim() ||
+      !shouldContinueInterview(readiness, transcriptTurns(messages).length,
+        aiResult.nextQuestionValue, aiResult.missingCriticalContext)) return;
+    const nextIndex = currentIndex + 1;
+    const question: InterviewQuestion = { id: `ai_${nextIndex}`, prompt: aiResult.nextQuestion,
+      hint: "A rough answer is fine. You can skip what you don't know.", placeholder: "Share what you know..." };
+    const nextPlan = [...plan.slice(0, nextIndex), question];
+    const nextMessages = [...messages, { role: "ai" as const, text: question.prompt }];
+    setPlan(nextPlan); setCurrentIndex(nextIndex); setMessages(nextMessages);
+    setReadyToReview(false); setInput("");
+    void persistDraft(answers, nextIndex, nextPlan, false, nextMessages, aiResult, false).catch(() => {});
+  };
+
+  if (loadingInterview || resumeChoice || (persistenceError && !savedInterview && !ownerRef.current)) {
+    return <div className="max-w-3xl mx-auto py-16 space-y-5 text-center">
+      <h2 className="text-2xl font-bold">Guided Idea Interview</h2>
+      {loadingInterview ? <p data-testid="status-loading-interview">Loading your private interview…</p> : resumeChoice ?
+        <><p>You have an unfinished interview. Choose how to proceed.</p>
+          {persistenceError && <p role="alert" className="text-destructive">{persistenceError}</p>}
+          <div className="flex justify-center gap-3">
+            <Button data-testid="button-resume-interview" onClick={resumeInterviewDraft}>Resume Interview</Button>
+            {startOverControl}
+          </div></> :
+        <p role="alert" className="text-destructive">{persistenceError}</p>}
+    </div>;
+  }
 
   // -------- Review / edit before saving --------
   if (phase === "review" && draft) {
     return (
       <>
       <div className="max-w-5xl mx-auto flex justify-end mb-3">{startOverControl}</div>
+      {persistenceError && <p role="alert" className="max-w-5xl mx-auto text-destructive mb-3">Autosave failed: {persistenceError}</p>}
       <ReviewDraft
         draft={draft}
-        aiResult={!fallback ? aiResult : null}
+        aiResult={finalResult}
         jira={jira}
         submitterName={submitterName}
         departments={settings?.departments ?? []}
@@ -538,36 +737,72 @@ export default function AIInnovationInterview() {
         levels={[...LEVELS]}
         saving={createInitiative.isPending || updateInitiative.isPending}
         onBack={resumeInterview}
-        onSave={(fields, scoring) => {
+        onDraftChange={(updated) => {
+          setDraft(updated);
+          void queueSave({ ...stateRef.current!, draft: updated }).catch(() => {});
+        }}
+        onSave={async (fields, scoring) => {
+          const owned = savedRef.current;
+          const ownerGeneration = sessionGeneration.current;
+          if (!owned || !ownerRef.current) {
+            setPersistenceError("Your private interview is no longer available. Please reload.");
+            return;
+          }
+          try {
+            await saveQueue.current;
+            if (ownerGeneration !== sessionGeneration.current || savedRef.current?.id !== owned.id) return;
+            await queueSave({ ...stateRef.current!, phase: "review",
+              draft: { ...draft, fields, scoring } });
+            if (ownerGeneration !== sessionGeneration.current || savedRef.current?.id !== owned.id) return;
+          } catch {
+            toast({ title: "Interview not saved", description: "Please retry before saving your initiative.", variant: "destructive" });
+            return;
+          }
+          const initiativeInput = { ...fields, interviewDraftId: owned.id,
+            ...(jira ? { jiraIssueId: jira.jiraIssueId } : {}) };
           createInitiative.mutate(
-            { data: { ...fields, ...(jira ? { jiraIssueId: jira.jiraIssueId } : {}) } },
+            { data: initiativeInput },
             {
               onSuccess: (created) => {
+                if (ownerGeneration !== sessionGeneration.current || savedRef.current?.id !== owned.id) return;
+                const completeOwned = async () => {
+                  if (ownerGeneration !== sessionGeneration.current || savedRef.current?.id !== owned.id) return;
+                  try {
+                    await saveQueue.current;
+                    await privateInterview.complete(owned.id, created.id);
+                    savedRef.current = null;
+                    setSavedInterview(null);
+                  } catch (error) {
+                    toast({ title: "Initiative saved, interview not archived",
+                      description: error instanceof Error ? error.message : "Please contact support.", variant: "destructive" });
+                  }
+                };
                 updateInitiative.mutate(
                   { id: created.id, data: scoring },
                   {
-                    onSuccess: () => {
+                    onSuccess: async () => {
+                      if (ownerGeneration !== sessionGeneration.current) return;
                       queryClient.invalidateQueries({
                         queryKey: getListInitiativesQueryKey(),
                       });
                       queryClient.invalidateQueries({
                         queryKey: getGetDashboardSummaryQueryKey(),
                       });
-                      try {
-                        localStorage.removeItem(DRAFT_KEY);
-                      } catch {
-                        /* ignore */
-                      }
+                      await completeOwned();
+                      if (ownerGeneration !== sessionGeneration.current) return;
                       toast({
                         title: "Initiative created",
                         description: "Your initiative has been saved and scored.",
                       });
                       setLocation(`/initiatives/${created.id}`);
                     },
-                    onError: () => {
+                    onError: async () => {
+                      if (ownerGeneration !== sessionGeneration.current) return;
                       queryClient.invalidateQueries({
                         queryKey: getListInitiativesQueryKey(),
                       });
+                      await completeOwned();
+                      if (ownerGeneration !== sessionGeneration.current) return;
                       toast({
                         title: "Saved without score",
                         description:
@@ -580,6 +815,7 @@ export default function AIInnovationInterview() {
                 );
               },
               onError: () => {
+                if (ownerGeneration !== sessionGeneration.current) return;
                 toast({
                   title: "Error",
                   description: "Failed to create the initiative.",
@@ -593,7 +829,10 @@ export default function AIInnovationInterview() {
       </>
     );
   }
-  if (phase === "jira") return <InterviewJiraPicker onConfirm={startInterview} onSkip={() => startInterview(null)} />;
+  if (phase === "jira") return <div>
+    {persistenceError && <p role="alert" className="text-destructive mb-4">{persistenceError}</p>}
+    <InterviewJiraPicker onConfirm={startInterview} onSkip={() => startInterview(null)} />
+  </div>;
 
   // -------- Processing --------
   if (phase === "processing") {
@@ -617,8 +856,12 @@ export default function AIInnovationInterview() {
   }
 
   // -------- Chat interview --------
-  const progressValue = readyToReview ? 100 : Math.min(95, ((currentIndex + 1) / MAX_QUESTIONS) * 100);
+  const progressValue = readiness.score;
   const answerCount = countTranscriptAnswers(messages);
+  const allowEarlyDraft = canDraft(readiness) && answerCount > 0;
+  const allowContinue = readyToReview && !fallback && !!aiResult?.nextQuestion?.trim() &&
+    shouldContinueInterview(readiness, transcriptTurns(messages).length,
+      aiResult.nextQuestionValue, aiResult.missingCriticalContext);
 
   return (
     <div className="max-w-3xl mx-auto flex flex-col h-[calc(100dvh-8rem)]">
@@ -636,9 +879,10 @@ export default function AIInnovationInterview() {
         </div>
         <div className="text-right min-w-[9rem] flex flex-col items-end gap-2">
           {startOverControl}
-          <div className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">
-              {readyToReview ? "Ready to review" : `Business context · ${answerCount} ${answerCount === 1 ? "answer" : "answers"}`}
+          <div data-testid="status-interview-readiness" className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">
+            Interview Readiness · {progressValue}% — {readiness.label}
           </div>
+          <div data-testid="text-interview-answer-count" className="text-xs text-muted-foreground">{answerCount} {answerCount === 1 ? "answer" : "answers"}</div>
           <Progress value={progressValue} className="h-2 mt-2 w-36" />
         </div>
       </div>
@@ -650,6 +894,7 @@ export default function AIInnovationInterview() {
       )}
 
       <Card className="flex-1 flex flex-col overflow-hidden">
+        {persistenceError && <p role="alert" className="text-destructive text-sm p-3 border-b">Autosave failed: {persistenceError}</p>}
         <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4">
           {messages.map((m, i) => (
             <ChatBubble key={i} role={m.role} text={m.text} />
@@ -666,11 +911,14 @@ export default function AIInnovationInterview() {
           <Textarea
             value={input}
             maxLength={1000}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={(e) => {
+              if (stateRef.current) stateRef.current = { ...stateRef.current, input: e.target.value };
+              setInput(e.target.value);
+            }}
             onKeyDown={(e) => {
               if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
                 e.preventDefault();
-                if (isLastQuestion) handleFinish();
+                if (isLastQuestion) void handleFinish();
                 else handleNext();
               }
             }}
@@ -684,7 +932,7 @@ export default function AIInnovationInterview() {
                 variant="outline"
                 size="sm"
                 onClick={handleBack}
-                disabled={currentIndex === 0 || isTyping}
+                disabled={(currentIndex === 0 && !readyToReview) || isTyping}
               >
                 <ArrowLeft className="mr-1 h-4 w-4" /> Back
               </Button>
@@ -699,21 +947,20 @@ export default function AIInnovationInterview() {
             </div>
             <div className="flex items-center gap-2">
                {!isLastQuestion ? (
+                <>
+                {allowEarlyDraft && <Button data-testid="button-early-draft" variant="outline" onClick={handleFinish} disabled={isTyping}>Draft My Initiative</Button>}
                 <Button onClick={handleNext} disabled={!canSubmitAnswer || isTyping}>
                    {input.trim() ? "Next" : "Skip / Not known yet"} <ArrowRight className="ml-1 h-4 w-4" />
                 </Button>
+                </>
               ) : (
                 <>
-                  <Button
-                    variant="outline"
-                    onClick={handleNext}
-                    disabled={isTyping || !input.trim()}
-                    title="Send this answer to the transcript"
-                  >
+                  {allowContinue && <Button data-testid="button-continue-interview" variant="outline" onClick={continueInterview}>Continue Interview</Button>}
+                  {!readyToReview && <Button variant="outline" onClick={handleNext} disabled={isTyping || !input.trim()}>
                     <Send className="mr-1 h-4 w-4" /> Send
-                  </Button>
+                  </Button>}
                    <Button onClick={handleFinish} disabled={isTyping}>
-                     <CheckCircle2 className="mr-1 h-4 w-4" /> Review Initiative
+                     <CheckCircle2 className="mr-1 h-4 w-4" /> Draft My Initiative
                   </Button>
                 </>
               )}
@@ -785,7 +1032,7 @@ function TypingIndicator() {
 // ------------------------------------------------------------------
 interface ReviewProps {
   draft: InterviewDraft;
-  aiResult: AIInterviewResult | null;
+  aiResult: FinalDraftResult | null;
   jira: JiraIntakeContext | null;
   submitterName: string;
   departments: string[];
@@ -793,6 +1040,7 @@ interface ReviewProps {
   levels: string[];
   saving: boolean;
   onBack: () => void;
+  onDraftChange: (draft: InterviewDraft) => void;
   onSave: (fields: InitiativeDraftFields, scoring: ScoringComponents) => void;
 }
 
@@ -806,6 +1054,7 @@ function ReviewDraft({
   levels,
   saving,
   onBack,
+  onDraftChange,
   onSave,
 }: ReviewProps) {
   const [fields, setFields] = useState<InitiativeDraftFields>({ ...draft.fields, submitterName: submitterName || draft.fields.submitterName });
@@ -813,6 +1062,27 @@ function ReviewDraft({
   const [considerations, setConsiderations] = useState(draft.canvas.risks);
   const [scoring, setScoring] = useState<ScoringComponents>(draft.scoring);
   const [errors, setErrors] = useState<Partial<Record<keyof InitiativeDraftFields, string>>>({});
+  const changeRef = useRef(onDraftChange);
+  changeRef.current = onDraftChange;
+  const draftBaseRef = useRef(draft);
+  draftBaseRef.current = draft;
+  const editsRef = useRef({ fields, scoring, expectedValue, considerations });
+  editsRef.current = { fields, scoring, expectedValue, considerations };
+  useEffect(() => () => {
+    const latest = editsRef.current;
+    const base = draftBaseRef.current;
+    changeRef.current({ ...base, fields: latest.fields, scoring: latest.scoring,
+      canvas: { ...base.canvas, expectedValue: latest.expectedValue, risks: latest.considerations } });
+  }, []);
+  useEffect(() => {
+    const timer = window.setTimeout(() => changeRef.current({
+      ...draft, fields, scoring,
+      canvas: { ...draft.canvas, expectedValue, risks: considerations },
+    }), 700);
+    return () => window.clearTimeout(timer);
+    // The draft prop is refreshed by this save; only edits trigger another save.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fields, scoring, expectedValue, considerations]);
   useEffect(() => {
     if (submitterName) setFields(prev => prev.submitterName ? prev : { ...prev, submitterName });
   }, [submitterName]);
@@ -821,12 +1091,16 @@ function ReviewDraft({
     key: K,
     value: InitiativeDraftFields[K],
   ) => {
+    editsRef.current = { ...editsRef.current, fields: { ...editsRef.current.fields, [key]: value } };
     setFields((prev) => ({ ...prev, [key]: value }));
     setErrors(prev => ({ ...prev, [key]: undefined }));
   };
 
   const setScore = (key: keyof ScoringComponents, value: string) => {
     const num = parseInt(value, 10);
+    editsRef.current = { ...editsRef.current, scoring: {
+      ...editsRef.current.scoring, [key]: Number.isNaN(num) ? 0 : num,
+    } };
     setScoring((prev) => ({ ...prev, [key]: Number.isNaN(num) ? 0 : num }));
   };
 
@@ -880,7 +1154,8 @@ function ReviewDraft({
             Review your initiative
           </h2>
           <p className="text-muted-foreground text-sm">
-            Everything below was drafted from your interview. Edit anything, then save.
+            Known facts appear separately below. The Executive Summary, Canvas and editable prose are
+            AI-drafted suggestions (or rule-engine fallback), not verified facts. Edit anything before saving.
           </p>
         </div>
         <Button variant="outline" onClick={onBack} disabled={saving}>
@@ -898,7 +1173,7 @@ function ReviewDraft({
               Executive Summary
             </CardTitle>
             <span className="text-xs opacity-75">
-               Draft for your review · scoring: {RULE_ENGINE_SOURCE_LABEL}
+               AI-drafted language for review · scoring: {RULE_ENGINE_SOURCE_LABEL}
             </span>
           </div>
         </CardHeader>
@@ -912,8 +1187,7 @@ function ReviewDraft({
           <Sparkles className="h-5 w-5 text-secondary" />
           <h3 className="text-lg font-bold">Innovation Canvas</h3>
           <span className="text-xs text-muted-foreground">
-             Drafted from your interview.
-            Review and refine the initiative fields below before saving.
+            Suggested language, not established facts. Review and refine the initiative fields below before saving.
           </span>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -974,11 +1248,17 @@ function ReviewDraft({
             <p className="text-sm text-muted-foreground">These draft notes are not established facts. Edit or remove them before saving; they will be included with the desired outcome.</p>
             <div className="space-y-2">
               <Label htmlFor="review-expectedValue">Expected business value</Label>
-              <Textarea id="review-expectedValue" value={expectedValue} onChange={e => setExpectedValue(e.target.value)} />
+              <Textarea id="review-expectedValue" value={expectedValue} onChange={e => {
+                editsRef.current = { ...editsRef.current, expectedValue: e.target.value };
+                setExpectedValue(e.target.value);
+              }} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="review-considerations">Risks / considerations</Label>
-              <Textarea id="review-considerations" value={considerations} onChange={e => setConsiderations(e.target.value)} />
+              <Textarea id="review-considerations" value={considerations} onChange={e => {
+                editsRef.current = { ...editsRef.current, considerations: e.target.value };
+                setConsiderations(e.target.value);
+              }} />
             </div>
           </CardContent>
         </Card>
@@ -1207,7 +1487,7 @@ function ReviewDraft({
               <CardTitle className="text-lg">Impact & Readiness</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <p className="text-xs text-muted-foreground">Leave estimates blank when not yet known. Value not yet quantified is not the same as no value.</p>
+              <p className="text-xs text-muted-foreground">Numbers extracted from your answers are unverified user estimates, not authoritative financial results. Verify or remove them. Leave unknown estimates blank; unquantified value is not zero value.</p>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
                   <Label className="text-xs">Hours Saved / mo</Label>

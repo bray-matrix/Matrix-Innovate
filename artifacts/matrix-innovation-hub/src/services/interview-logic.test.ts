@@ -1,9 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { interviewEngine, mapConversationToFallback, nextFallbackQuestion } from "./interviewEngine";
+import { interviewEngine, mapConversationToFallback, nextFallbackQuestion,
+  fallbackReadiness, canDraft, shouldContinueInterview, missingCriticalContext, isInterviewReadiness } from "./interviewEngine";
 import {
-  answersForReview, buildDraft, computeScore, countTranscriptAnswers, discardActiveInterviewDraft,
-  INTERVIEW_DRAFT_KEY, toTitle, validateInitiativeDraft,
+  answersForReview, buildDraft, computeScore, countTranscriptAnswers,
+  toTitle, validateInitiativeDraft, privateInterview, trackInterviewSave, waitForInterviewSave, parseLoss,
   type InitiativeDraftFields,
 } from "./aiInterviewService";
 
@@ -58,6 +59,13 @@ test("unknown impact does not manufacture monetary value; negative penalties sta
   assert.equal(computeScore(draft.scoring), draft.score);
 });
 
+test("current effort or loss is not silently promoted into authoritative savings", () => {
+  assert.deepEqual(parseLoss("We spend 40 hours per month and $20,000 in labor costs."),
+    { hours: 0, revenue: 0, costSavings: 0 });
+  assert.deepEqual(parseLoss("User estimates we could save 40 hours per month and $20,000 in cost savings."),
+    { hours: 40, revenue: 0, costSavings: 20000 });
+});
+
 test("completed AI interview preserves the final submitted answer through review", () => {
   const answers = { idea: "Improve requests", ai_1: "The client is affected" };
   assert.deepEqual(answersForReview(answers, "ai_1", "", true), answers);
@@ -107,15 +115,62 @@ test("AI outage still yields a usable deterministic interview and draft without 
   assert.equal(draft.fields.estimatedRevenueOpportunity, 0);
 });
 
-test("Start Over discards only the active interview including Jira and transcript; saved Initiatives remain", () => {
-  const values = new Map([
-    [INTERVIEW_DRAFT_KEY, JSON.stringify({ jira: { jiraIssueId: "123" }, answers: { idea: "Draft" }, messages: [{ role: "user", text: "Draft" }] })],
-    ["saved-initiatives", JSON.stringify([{ id: 7, title: "Previously saved" }])],
+test("fallback readiness shares the server's pure dimensions, not answer-count progress", () => {
+  const initial = fallbackReadiness({});
+  assert.equal(initial.score, 0);
+  const strong = fallbackReadiness({ idea: "Customer support requests are delayed by manual routing." }, [
+    { question: "What problem or opportunity would you like to address?", answer: "Customer support requests are delayed by manual routing." },
+    { question: "Who is affected?", answer: "Our support team and customers wait for each request to be routed." },
+    { question: "What business impact does this have?", answer: "Delays cause missed service expectations and wasted time every week." },
+    { question: "What would a better outcome look like?", answer: "We want faster, reliable routing and fewer missed requests." },
+    { question: "Are there any constraints?", answer: "We must keep customer data secure." },
   ]);
-  discardActiveInterviewDraft({ removeItem: key => { values.delete(key); } });
-  assert.equal(values.has(INTERVIEW_DRAFT_KEY), false);
-  assert.deepEqual(JSON.parse(values.get("saved-initiatives")!), [{ id: 7, title: "Previously saved" }]);
-  assert.equal(interviewEngine.planQuestions({})[0].id, "idea");
+  assert.ok(strong.score > initial.score);
+  assert.equal(strong.dimensions.length, 7);
+  assert.equal(isInterviewReadiness(strong), true);
+  assert.equal(isInterviewReadiness({ ...strong, dimensions: {} }), false);
+  assert.equal(isInterviewReadiness({ ...strong, score: Number.NaN }), false);
+  assert.equal(canDraft(strong), true);
+  assert.equal(shouldContinueInterview(strong, 5, "low"), false);
+  assert.ok(missingCriticalContext(initial).length > 0);
+  assert.equal(shouldContinueInterview(initial, 12, "high"), false);
+});
+
+test("navigation waits for the final in-flight private save for that subject only", async () => {
+  let resolve!: () => void;
+  const pending = new Promise<void>(done => { resolve = done; });
+  trackInterviewSave("subject-a", pending);
+  let resumed = false;
+  const resume = waitForInterviewSave("subject-a").then(() => { resumed = true; });
+  await waitForInterviewSave("subject-b");
+  assert.equal(resumed, false);
+  resolve();
+  await resume;
+  assert.equal(resumed, true);
+});
+
+test("a failed navigation flush is surfaced instead of silently resuming stale state", async () => {
+  let reject!: (error: Error) => void;
+  const pending = new Promise<void>((_, fail) => { reject = fail; });
+  trackInterviewSave("subject-failed", pending);
+  const resumed = waitForInterviewSave("subject-failed");
+  reject(new Error("Interview revision conflict"));
+  await assert.rejects(resumed, /revision conflict/);
+});
+
+test("unknown numbers do not require another question after the opportunity is clear", () => {
+  const readiness = fallbackReadiness({}, [
+    { question: "What problem?", answer: "Manual customer intake regularly delays service requests." },
+    { question: "Who is affected?", answer: "Support staff and customers are affected by long waits." },
+    { question: "What happens today?", answer: "Today requests are manually transferred by email between teams." },
+    { question: "What is the impact?", answer: "Frequent delays cause missed customer expectations and rework." },
+    { question: "What is the desired outcome?", answer: "We want fewer handoffs and faster customer responses." },
+    { question: "How much money is lost?", answer: "I don't know" },
+    { question: "What constraints exist?", answer: "Not sure yet" },
+  ]);
+  assert.ok(readiness.dimensions.find(d => d.key === "impact")?.status === "known");
+  assert.ok(readiness.score >= 65);
+  assert.equal(shouldContinueInterview(readiness, 7, "low"), false);
 });
 
 test("interview answer count follows retained user transcript across fallback planner reset and resume", () => {
@@ -131,4 +186,38 @@ test("interview answer count follows retained user transcript across fallback pl
   assert.equal(countTranscriptAnswers(transcript), 3);
   assert.equal(countTranscriptAnswers(JSON.parse(JSON.stringify(transcript))), 3);
   assert.equal(countTranscriptAnswers(transcript.slice(0, 4)), 2);
+});
+
+test("private draft client sends revision and source initiative to session-scoped endpoints", async () => {
+  const original = globalThis.fetch;
+  const requests: { url: string; method: string; body?: unknown; credentials?: string }[] = [];
+  globalThis.fetch = (async (url: string | URL | Request, options?: RequestInit) => {
+    requests.push({
+      url: String(url), method: options?.method ?? "GET", credentials: options?.credentials,
+      body: options?.body ? JSON.parse(String(options.body)) : undefined,
+    });
+    const state = { answers: { idea: "Customer onboarding" } };
+    if (requests.length === 4) return new Response(null, { status: 204 });
+    return new Response(JSON.stringify(requests.length === 1 ? { draft: null }
+      : { id: "owned-id", state, revision: requests.length - 1 }), {
+      status: 200, headers: { "Content-Type": "application/json" },
+    });
+  }) as typeof fetch;
+  try {
+    assert.deepEqual(await privateInterview.active(), { draft: null });
+    const created = await privateInterview.create({ answers: { idea: "Customer onboarding" } });
+    await privateInterview.save(created, { answers: { idea: "Customer onboarding" } });
+    await privateInterview.complete(created.id, 73);
+    assert.equal(requests.every(r => r.credentials === "include"), true);
+    assert.deepEqual(requests.map(r => [r.method, r.url]), [
+      ["GET", "/api/interview/drafts/active"],
+      ["POST", "/api/interview/drafts"],
+      ["PUT", "/api/interview/drafts/owned-id"],
+      ["POST", "/api/interview/drafts/owned-id/complete"],
+    ]);
+    assert.deepEqual(requests[2].body, { state: { answers: { idea: "Customer onboarding" } }, revision: 1 });
+    assert.deepEqual(requests[3].body, { initiativeId: 73 });
+  } finally {
+    globalThis.fetch = original;
+  }
 });

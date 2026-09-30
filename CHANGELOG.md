@@ -5,6 +5,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and the
 project adheres to semantic versioning (patch = fixes/edits, minor = new
 features, major = breaking or milestone changes).
 
+## [1.6.3] - Unreleased
+
+### Confidence-driven Guided Idea Interview (in progress)
+- Plan compact interview-turn AI output and a separate full Initiative draft call to reduce output-pressure failures; do not treat a larger token budget alone as the fix.
+- Plan deterministic readiness, early drafting, high-value question convergence, a strict 12-answer ceiling, and user-private unfinished interviews with server-side ownership checks.
+- Production investigation found `invalid_provider_response` after provider HTTP 200, **not a timeout**; the 2,048-token output ceiling was reached, but truncation remains unproven. See `docs/v1.6.3-validation.md` for findings and validation still required.
+
 ## [1.6.2] - Unreleased
 
 ### Shared AI reliability integration

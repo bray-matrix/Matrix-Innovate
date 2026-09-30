@@ -20,6 +20,25 @@ import {
   type InterviewDraft,
   type InterviewQuestion,
 } from "./aiInterviewService";
+import {
+  calculateInterviewReadiness, missingCriticalContext, canDraft, shouldContinueInterview,
+  type InterviewReadiness, type InterviewFact,
+} from "../../../api-server/src/lib/interview-readiness";
+export { missingCriticalContext, canDraft, shouldContinueInterview };
+export type { InterviewReadiness };
+
+export function isInterviewReadiness(value: unknown): value is InterviewReadiness {
+  if (!value || typeof value !== "object") return false;
+  const item = value as Partial<InterviewReadiness>;
+  return typeof item.score === "number" && Number.isFinite(item.score) &&
+    item.score >= 0 && item.score <= 100 &&
+    typeof item.label === "string" &&
+    Array.isArray(item.dimensions) && item.dimensions.length === 7 &&
+    item.dimensions.every(d => d && typeof d.key === "string" &&
+      typeof d.label === "string" && typeof d.weight === "number" &&
+      typeof d.points === "number" &&
+      ["known", "partial", "unknown", "not_applicable", "missing"].includes(d.status));
+}
 
 export type InitiativeCategory =
   | "Operations"
@@ -636,7 +655,19 @@ export function mapConversationToFallback(
 }
 
 export function nextFallbackQuestion(plan: InterviewQuestion[], answers: AnswerMap): number {
-  return plan.findIndex(q => !answers[q.id]?.trim());
+  return plan.findIndex(q => !answers[q.id]?.trim() && !/\b(?:api|database|architecture|implementation|integration mechanics)\b/i.test(q.prompt));
+}
+
+export function fallbackReadiness(
+  answers: AnswerMap,
+  turns: { question: string; answer: string }[] = [],
+  jira: { summary: string; description: string } | null = null,
+  knownFacts: InterviewFact[] = [],
+  unknowns: string[] = [],
+): InterviewReadiness {
+  const questions = turns.length ? turns : interviewEngine.planQuestions(answers)
+    .filter(q => !!answers[q.id]?.trim()).map(q => ({ question: q.prompt, answer: answers[q.id] }));
+  return calculateInterviewReadiness({ turns: questions, jira, knownFacts, unknowns });
 }
 
 export const interviewEngine: InterviewEngine = {

@@ -6,9 +6,11 @@ import {
   calculationEventsTable,
   initiativeJiraLinksTable,
   jiraProjectsTable,
+  interviewDraftsTable,
   type CalculationComponentChange,
 } from "@workspace/db";
-import { eq, desc, inArray } from "drizzle-orm";
+import { eq, desc, inArray, and } from "drizzle-orm";
+import type { AuthenticatedRequest } from "../matrix/auth";
 import {
   CreateInitiativeBody,
   UpdateInitiativeBody,
@@ -129,6 +131,19 @@ router.post("/initiatives", async (req, res, next) => {
     res.status(400).json({ error: "Invalid initiative data" });
     return;
   }
+  const draftId = req.body?.interviewDraftId;
+  let draftOwner: string | undefined;
+  if (draftId !== undefined) {
+    draftOwner = (req as AuthenticatedRequest).matrixIdentity?.sub;
+    if (!draftOwner) {
+      res.status(401).json({ error: "Authentication required" });
+      return;
+    }
+    if (typeof draftId !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(draftId)) {
+      res.status(400).json({ error: "Invalid interview draft id" });
+      return;
+    }
+  }
   const data = parsed.data;
   let issue: Awaited<ReturnType<JiraClient["issue"]>> | null = null;
   try {
@@ -152,7 +167,17 @@ router.post("/initiatives", async (req, res, next) => {
     now.getTime() + REVIEW_CYCLE_DAYS * 24 * 60 * 60 * 1000,
   );
 
-  const row = await db.transaction(async (tx) => {
+  let row: typeof initiativesTable.$inferSelect;
+  try {
+    row = await db.transaction(async (tx) => {
+    // Lock the owner's active draft before saving. Start Over and competing
+    // saves cannot produce a receipt for an absent or foreign draft.
+    if (draftId && draftOwner) {
+      const [owned] = await tx.select({ id: interviewDraftsTable.id }).from(interviewDraftsTable)
+        .where(and(eq(interviewDraftsTable.id, draftId), eq(interviewDraftsTable.ownerSub, draftOwner), eq(interviewDraftsTable.status, "active")))
+        .for("update").limit(1);
+      if (!owned) throw new Error("INTERVIEW_DRAFT_NOT_FOUND");
+    }
     const [created] = await tx
       .insert(initiativesTable)
       .values({
@@ -208,8 +233,22 @@ router.post("/initiatives", async (req, res, next) => {
       });
     }
 
+    if (draftId && draftOwner) {
+      await tx.update(interviewDraftsTable)
+        .set({ savedInitiativeId: created.id, updatedAt: new Date() })
+        .where(and(eq(interviewDraftsTable.id, draftId), eq(interviewDraftsTable.ownerSub, draftOwner), eq(interviewDraftsTable.status, "active")));
+    }
+
     return created;
   });
+  } catch (error) {
+    if (error instanceof Error && error.message === "INTERVIEW_DRAFT_NOT_FOUND") {
+      res.status(404).json({ error: "Active interview draft not found" });
+      return;
+    }
+    next(error);
+    return;
+  }
 
   res.status(201).json(await withLinks(row));
 });

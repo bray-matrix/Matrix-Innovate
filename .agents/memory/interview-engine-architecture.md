@@ -17,6 +17,12 @@ Preserve complete interview context within Platform's request bounds; do not sil
 
 ## Verification boundary
 
+Normal interview turns must return compact context deltas, not regenerate a complete Initiative. Generate full draft prose only at completion.
+
+**Why:** A production provider response reached its 2,048-token budget and was rejected by Platform after HTTP 200. Truncation was plausible but not proven; reducing repeated output addresses the architectural pressure without asserting an unverified cause.
+
+**How to apply:** Preserve the transcript separately, keep structured collections bounded, verify SDK-supported budgets before raising them, and never use a normal answer-count cutoff to force convergence. Twelve is only the emergency ceiling.
+
 Use browser-only Matrix/Jira fixtures without weakening real authentication; verify actual relationship persistence separately with isolated database route tests.
 
 **Why:** A fixture can make save look successful without persisting Jira identity, while an incomplete detail/settings fixture can incorrectly make working navigation look broken.
