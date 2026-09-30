@@ -143,7 +143,22 @@ type Output = z.infer<typeof outputSchema>;
 type Metadata = { requestId?: string; provider?: string; model?: string; usage?: {
   inputTokens?: number | null; outputTokens?: number | null; totalTokens?: number | null;
 } };
-type Failure = { path: string; constraint: string; retry: boolean; durationMs: number };
+type Failure = { path: string; constraint: string; retry: boolean; durationMs: number;
+  sdkError?: PlatformServiceError };
+
+// The SDK deliberately exposes only correlation, category and HTTP status on errors.
+// Never serialize an Error: its message/cause may contain transport details.
+const safeLabel = (value: unknown) =>
+  typeof value === "string" && /^[a-zA-Z0-9._:/-]{1,120}$/.test(value) ? value : undefined;
+export function safePlatformErrorMetadata(error: unknown) {
+  if (!(error instanceof PlatformServiceError)) return { code: "unavailable" };
+  return {
+    code: error.code,
+    requestId: safeLabel(error.requestId),
+    status: Number.isInteger(error.status) && error.status! >= 100 && error.status! <= 599
+      ? error.status : undefined,
+  };
+}
 
 function failureFor(issue: z.ZodIssue): { path: string; constraint: string } {
   const path = issue.path.reduce<string>((part, segment) =>
@@ -205,6 +220,7 @@ export async function advanceInterview(
   onInvalid: (attempt: number, category: string, details?: Failure) => void = () => {},
   maxAttempts = 2,
   onMetadata: (metadata: Metadata, attempt: number) => void = () => {},
+  onAttempt: (attempt: number) => void = () => {},
 ): Promise<Output | null> {
   const messages = buildInterviewMessages(input);
   if (!messages) return null;
@@ -215,6 +231,7 @@ export async function advanceInterview(
   const limit = Math.min(Math.max(1, maxAttempts), 2);
   let correction = "";
   for (let attempt = 0; attempt < limit; attempt++) {
+    onAttempt(attempt + 1);
     const retryInstruction = instruction + correction;
     if (retryInstruction.length > 8000 ||
         retryInstruction.length + messages.reduce((sum, m) => sum + m.content.length, 0) > 24000) return null;
@@ -230,7 +247,7 @@ export async function advanceInterview(
         correction = "\nPrevious response failed the required structured JSON shape. Return all required fields with the specified types and no extra fields.";
         onInvalid(attempt + 1, "sdk_invalid_response", {
           path: "root", constraint: "sdk_invalid_response", retry: attempt + 1 < limit,
-          durationMs: Date.now() - started,
+          durationMs: Date.now() - started, sdkError: error,
         });
         continue;
       }
@@ -281,17 +298,21 @@ router.post("/interview/advance", async (req, res) => {
   }
   const started = Date.now();
   // Metadata is supplied by the SDK, not the model body. Bound it before logging.
-  const safeLabel = (value: string | undefined) =>
-    typeof value === "string" && /^[a-zA-Z0-9._:/-]{1,120}$/.test(value) ? value : undefined;
   let sdkMetadata: Record<string, unknown> = {};
+  let failedSdkMetadata: Record<string, unknown> = {};
+  let inferenceAttempt = 0;
   try {
     const data = await advanceInterview(parsed.data, request => getPlatform().ai.generateStructured(request),
-      (attempt, category, details) => req.log.warn({
-        feature: "guided-interview-v2", ...sdkMetadata, attempt, category,
-        fieldPath: details?.path, constraint: details?.constraint,
-        durationMs: details?.durationMs, retryOccurred: details?.retry ?? false,
-        validationFailure: true,
-      }, "Interview response validation failed"), 2,
+      (attempt, category, details) => {
+        failedSdkMetadata = details?.sdkError ? safePlatformErrorMetadata(details.sdkError) : {};
+        req.log.warn({
+          feature: "guided-interview-v2", ...sdkMetadata, ...failedSdkMetadata,
+          attempt, category,
+          fieldPath: details?.path, constraint: details?.constraint,
+          durationMs: details?.durationMs, retryOccurred: details?.retry ?? false,
+          validationFailure: true,
+        }, "Interview response validation failed");
+      }, 2,
       (metadata) => {
         sdkMetadata = {
           requestId: safeLabel(metadata.requestId),
@@ -302,20 +323,28 @@ router.post("/interview/advance", async (req, res) => {
             totalTokens: metadata.usage.totalTokens,
           } : {}),
         };
+      }, (attempt) => {
+        inferenceAttempt = attempt;
+        sdkMetadata = {}; // A later attempt must never inherit an earlier response's ID.
+        failedSdkMetadata = {};
       });
     if (data) {
       req.log.info({ feature: "guided-interview-v2", ...sdkMetadata, durationMs: Date.now() - started,
+        attempt: inferenceAttempt, retryOccurred: inferenceAttempt > 1,
         questionsAsked: turns.length, complete: data.interviewComplete, fallback: false, outcome: "ai" }, "Interview AI succeeded");
       res.json(data);
       return;
     }
-    req.log.warn({ feature: "guided-interview-v2", ...sdkMetadata, durationMs: Date.now() - started,
+    req.log.warn({ feature: "guided-interview-v2", ...sdkMetadata, ...failedSdkMetadata,
+      durationMs: Date.now() - started,
+      attempt: inferenceAttempt, retryOccurred: inferenceAttempt > 1,
       questionsAsked: turns.length, fallback: true, outcome: "fallback", validationFailure: true }, "Interview AI fallback");
     res.status(503).json({ error: "Guided interview temporarily unavailable" });
   } catch (error) {
-    req.log.warn({ feature: "guided-interview-v2", ...sdkMetadata, durationMs: Date.now() - started,
+    req.log.warn({ feature: "guided-interview-v2", ...sdkMetadata, ...safePlatformErrorMetadata(error),
+      durationMs: Date.now() - started, attempt: inferenceAttempt, retryOccurred: inferenceAttempt > 1,
       questionsAsked: turns.length, fallback: true, outcome: "fallback",
-      code: error instanceof PlatformServiceError ? error.code : "unavailable" }, "Interview AI fallback");
+      category: error instanceof PlatformServiceError ? "sdk_failure" : "unavailable" }, "Interview AI fallback");
     res.status(503).json({ error: "Guided interview temporarily unavailable" });
   }
 });

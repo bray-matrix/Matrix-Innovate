@@ -5,6 +5,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and the
 project adheres to semantic versioning (patch = fixes/edits, minor = new
 features, major = breaking or milestone changes).
 
+## [1.6.2] - Unreleased
+
+### Shared AI reliability integration
+- Upgrade Matrix Platform Server SDK to v1.2.1 for its 75-second AI HTTP deadline and safe request correlation.
+- Retain bounded, content-free interview diagnostics for SDK failures and local validation retries without changing interview or fallback behavior.
+
 ## [1.6.1] - Unreleased
 
 ### AI Business Analyst corrective release

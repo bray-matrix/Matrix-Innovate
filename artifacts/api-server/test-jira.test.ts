@@ -430,11 +430,11 @@ test("J1 routes and PostgreSQL persistence in isolated TEMP tables", async t => 
     });
     await t.test("Matrix app-info and health version surfaces", async () => {
       const info = await call(matrixRouter, "GET", "/app-info");
-      assert.equal(info.body.version, "v1.6.1");
+      assert.equal(info.body.version, "v1.6.2");
       assert.equal(info.body.name, "Innovation Hub");
       noSecret(info);
       const health = await call(matrixRouter, "GET", "/health");
-      assert.equal(health.body.version, "v1.6.1"); noSecret(health);
+      assert.equal(health.body.version, "v1.6.2"); noSecret(health);
     });
     await t.test("unchanged Matrix session mint/verify", async () => {
       process.env.SESSION_SECRET = "J1-automated-test-session-secret-not-real";

@@ -1,6 +1,6 @@
 {
   "name": "@workspace/api-server",
-  "version": "1.6.1",
+  "version": "1.6.2",
   "private": true,
   "type": "module",
   "scripts": {
@@ -11,7 +11,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@workspace/matrix-sdk": "file:../../vendor/workspace-matrix-sdk-1.2.0.tgz",
+    "@workspace/matrix-sdk": "file:../../vendor/workspace-matrix-sdk-1.2.1.tgz",
     "zod": "^3.25.76",
     "@workspace/api-zod": "workspace:*",
     "@workspace/db": "workspace:*",

@@ -51,9 +51,9 @@ async function api(method, path, body) {
 
 check("P. Platform authentication", sessRes.status === 200 && !!cookie);
 const appInfo = await (await fetch(`${BASE}/matrix/app-info`)).json();
-check("A/Q. app-info Innovation Hub v1.6.1", appInfo.name === "Innovation Hub" && appInfo.version === "v1.6.1", JSON.stringify(appInfo));
+check("A/Q. app-info Innovation Hub v1.6.2", appInfo.name === "Innovation Hub" && appInfo.version === "v1.6.2", JSON.stringify(appInfo));
 const health = await (await fetch(`${BASE}/matrix/health`)).json();
-check("R. /matrix/health passes", health.checks?.database === "ok" && health.version === "v1.6.1");
+check("R. /matrix/health passes", health.checks?.database === "ok" && health.version === "v1.6.2");
 
 const initsBefore = (await api("GET", "/api/initiatives")).json.length;
 const projsBefore = (await api("GET", "/api/projects")).json.length;

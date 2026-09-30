@@ -173,8 +173,8 @@ importers:
         specifier: workspace:*
         version: link:../../lib/db
       '@workspace/matrix-sdk':
-        specifier: file:../../vendor/workspace-matrix-sdk-1.2.0.tgz
-        version: file:vendor/workspace-matrix-sdk-1.2.0.tgz
+        specifier: file:../../vendor/workspace-matrix-sdk-1.2.1.tgz
+        version: file:vendor/workspace-matrix-sdk-1.2.1.tgz
       cookie-parser:
         specifier: ^1.4.7
         version: 1.4.7
@@ -1735,9 +1735,9 @@ packages:
     peerDependencies:
       vite: ^4.2.0 || ^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0
 
-  '@workspace/matrix-sdk@file:vendor/workspace-matrix-sdk-1.2.0.tgz':
-    resolution: {integrity: sha512-A9IfXC8znyMKToQodv4fQtnCdbW9Qg5urbwL6/auDDV7HZWwjakZnh8pfrtdnPdf90V532ils9ANWWTi+NCUbA==, tarball: file:vendor/workspace-matrix-sdk-1.2.0.tgz}
-    version: 1.2.0
+  '@workspace/matrix-sdk@file:vendor/workspace-matrix-sdk-1.2.1.tgz':
+    resolution: {integrity: sha512-+hwer3UtbAJ9kEtJq2Bp4MG3yejm2ti4W4nwKglO3UFRlxQqyJFHZIlK0HsyxBee8NXgqQtjSvpi82f+8mgj8g==, tarball: file:vendor/workspace-matrix-sdk-1.2.1.tgz}
+    version: 1.2.1
 
   accepts@2.0.0:
     resolution: {integrity: sha512-5cvg6CtKwfgdmVqY1WIiXKc3Q1bkRqGLi+2W/6ao+6Y7gu/RCwRuAhGEzh5B4KlszSuTLgZYuqFqo5bImjNKng==}
@@ -4480,7 +4480,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@workspace/matrix-sdk@file:vendor/workspace-matrix-sdk-1.2.0.tgz':
+  '@workspace/matrix-sdk@file:vendor/workspace-matrix-sdk-1.2.1.tgz':
     dependencies:
       jose: 6.2.3
       zod: 3.25.76

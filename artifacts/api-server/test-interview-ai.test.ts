@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { PlatformServiceError } from "@workspace/matrix-sdk";
-import interviewRouter, { advanceInterview, buildInterviewMessages, inputSchema } from "./src/routes/interview-ai";
+import { createPlatformClient, PlatformServiceError } from "@workspace/matrix-sdk";
+import interviewRouter, { advanceInterview, buildInterviewMessages, inputSchema, safePlatformErrorMetadata } from "./src/routes/interview-ai";
 
 type Input = Parameters<typeof advanceInterview>[0];
 const make = (answers: string[], jira: Input["jira"] = null): Input => ({
@@ -281,4 +281,94 @@ test("K: instruction prefers one primary question without making the interview r
     assert.match(request.instruction, /natural and adaptive/i);
     return { data: output(input) };
   });
+});
+
+test("SDK AI transport survives >10 seconds and returns Platform request correlation", async () => {
+  const input = make(["Manual intake causes delays."]);
+  let aiCalls = 0;
+  let requestId: string | undefined;
+  const client = createPlatformClient({
+    platformUrl: "https://platform.example",
+    applicationId: "test-app",
+    applicationSecret: "test-secret",
+    fetch: async (url, init) => {
+      if (String(url).endsWith("/api/bridge/login")) {
+        return Response.json({ ok: true, token: `mxt_${"a".repeat(24)}`,
+          expiresAt: new Date(Date.now() + 3600_000).toISOString() });
+      }
+      aiCalls++;
+      requestId = new Headers(init?.headers).get("X-Request-ID") ?? undefined;
+      assert.match(requestId!, /^[0-9a-f-]{36}$/);
+      assert.equal(init?.credentials, "omit");
+      assert.equal(init?.redirect, "error");
+      await new Promise<void>((resolve, reject) => {
+        const timer = setTimeout(resolve, 10_050);
+        init?.signal?.addEventListener("abort", () => {
+          clearTimeout(timer);
+          reject(new Error("transport aborted"));
+        }, { once: true });
+      });
+      return Response.json({ data: output(input), requestId, provider: "test",
+        model: "test", durationMs: 10_050,
+        usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2, actualCost: null } });
+    },
+  });
+  const ids: string[] = [];
+  const result = await advanceInterview(input, request => client.ai.generateStructured(request),
+    undefined, 1, metadata => { ids.push(metadata.requestId!); });
+  assert.ok(result);
+  assert.equal(aiCalls, 1);
+  assert.deepEqual(ids, [requestId]);
+});
+
+test("SDK status and correlation survive service/structured errors; retry diagnostics do not inherit prior IDs", async () => {
+  const client = createPlatformClient({
+    platformUrl: "https://platform.example", applicationId: "test-app", applicationSecret: "test-secret",
+    fetch: async (url, init) => String(url).endsWith("/api/bridge/login")
+      ? Response.json({ ok: true, token: `mxt_${"a".repeat(24)}`,
+        expiresAt: new Date(Date.now() + 3600_000).toISOString() })
+      : new Response("do not log this content", { status: 503 }),
+  });
+  const input = make(["A process issue"]);
+  await assert.rejects(advanceInterview(input, request => client.ai.generateStructured(request)),
+    (error: unknown) => {
+      const fields = safePlatformErrorMetadata(error);
+      assert.deepEqual(fields, { code: "unavailable",
+        requestId: (error as PlatformServiceError).requestId, status: 503 });
+      assert.match(fields.requestId!, /^[0-9a-f-]{36}$/);
+      assert.equal(JSON.stringify(fields).includes("do not log"), false);
+      return true;
+    });
+  assert.deepEqual(safePlatformErrorMetadata(new PlatformServiceError("invalid_response", 200, "bad\nid")),
+    { code: "invalid_response", requestId: undefined, status: 200 });
+  const invalidClient = createPlatformClient({
+    platformUrl: "https://platform.example", applicationId: "test-app", applicationSecret: "test-secret",
+    fetch: async (url) => String(url).endsWith("/api/bridge/login")
+      ? Response.json({ ok: true, token: `mxt_${"a".repeat(24)}`,
+        expiresAt: new Date(Date.now() + 3600_000).toISOString() })
+      : Response.json({ data: { invalid: true } }), // SDK response envelope validation fails
+  });
+  assert.equal(await advanceInterview(input, request => invalidClient.ai.generateStructured(request),
+    (attempt, category, details) => {
+      assert.equal(category, "sdk_invalid_response");
+      assert.equal(attempt, 1);
+      assert.equal(safePlatformErrorMetadata(details?.sdkError).code, "invalid_response");
+      assert.match(safePlatformErrorMetadata(details?.sdkError).requestId!, /^[0-9a-f-]{36}$/);
+    }, 1), null); // advanceInterview handles SDK validation failure
+
+  const events: Array<{ attempt: number; id?: string; sdkId?: string }> = [];
+  let currentId: string | undefined;
+  let calls = 0;
+  const result = await advanceInterview(input, async () => {
+    if (++calls === 1) return { data: { invalid: true }, requestId: "first-attempt" };
+    throw new PlatformServiceError("invalid_response", 200, "second-attempt");
+  }, (attempt, _category, details) => {
+    events.push({ attempt, id: currentId, sdkId: safePlatformErrorMetadata(details?.sdkError).requestId });
+  }, 2, metadata => { currentId = metadata.requestId; },
+  () => { currentId = undefined; });
+  assert.equal(result, null);
+  assert.deepEqual(events, [
+    { attempt: 1, id: "first-attempt", sdkId: undefined },
+    { attempt: 2, id: undefined, sdkId: "second-attempt" },
+  ]);
 });
