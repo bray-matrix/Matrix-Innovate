@@ -12,6 +12,7 @@ import {
 } from "./review-model";
 
 const LONG = "Applications are tracked across spreadsheets, email threads and team wikis. ".repeat(20);
+const CAPTURE_PATH = new URL("../../../../../attached_assets/generated/application-inventory-neutral-validation-fresh.json", import.meta.url);
 function fixture() {
   const draft = buildDraft({
     idea: "Centralized Application Inventory and Ownership System",
@@ -112,7 +113,7 @@ test("generated future benefits are qualified while source facts and reviewed ed
 });
 
 test("captured synthetic final completion is replayed through baseline and review before export", async () => {
-  const capture = JSON.parse(await readFile("attached_assets/generated/application-inventory-neutral-validation-fresh.json", "utf8"));
+  const capture = JSON.parse(await readFile(CAPTURE_PATH, "utf8"));
   const evidence = capture.input.turns.map((turn: { answer: string }) => ({ value: turn.answer, source: "user" as const }));
   const completed = finalizeInterviewDraft(capture.baseline, capture.final, capture.final, evidence);
   const narrative = initialNarrative(completed, capture.final);
@@ -177,6 +178,67 @@ test("risk containment deduplication retains supplied prose and leaves room for 
   assert.doesNotMatch(n.risks, /We depend on institutional knowledge/);
   assert.doesNotMatch(n.risks, /Later it could extend/);
   assert.ok(n.risks.startsWith(draft.canvas.risks));
+});
+
+test("risk synthesis drops verbatim problem/impact copy and repeated clauses without inventing exposure", () => {
+  const { draft } = fixture();
+  draft.fields.problemStatement = "Delayed handoffs waste time. Unclear ownership creates accountability risk.";
+  draft.fields.currentProcess = "Teams use disconnected request queues.";
+  draft.canvas.risks = "Delayed handoffs waste time. Unclear ownership creates accountability risk; unclear ownership creates accountability risk. Missed escalations delay customer response. Missed escalations delay customer response.";
+  const n = synthesizeBriefNarrative({ draft, aiResult: { knownFacts: [
+    { category: "risk", value: "Missed escalations delay customer response.", source: "user" },
+  ] } });
+  assert.doesNotMatch(n.risks, /Delayed handoffs waste time/);
+  assert.equal((n.risks.match(/accountability risk/g) ?? []).length, 1);
+  assert.equal((n.risks.match(/Missed escalations delay customer response/g) ?? []).length, 1);
+  assert.doesNotMatch(n.risks, /security|compliance|financial/i);
+});
+
+test("a copied problem alone is not presented as a risk; independent supported delivery risk is", () => {
+  const { draft } = fixture();
+  draft.fields.problemStatement = "The old process relies on handwritten labels.";
+  draft.fields.currentProcess = "";
+  draft.canvas.risks = draft.fields.problemStatement;
+  assert.equal(synthesizeBriefNarrative({ draft }).risks, "");
+  const supported = synthesizeBriefNarrative({ draft, aiResult: { knownFacts: [
+    { category: "constraint", value: "The trial depends on supplier approval.", source: "jira" },
+  ] } });
+  assert.equal(supported.risks, "The trial depends on supplier approval.");
+});
+
+test("an impact fact copied into draft risks yields to independently evidenced risk", () => {
+  const { draft } = fixture();
+  draft.fields.problemStatement = "Requests are handled manually.";
+  draft.canvas.risks = "Teams waste time rekeying requests. Supplier delays create a delivery risk.";
+  const n = synthesizeBriefNarrative({ draft, aiResult: { knownFacts: [
+    { category: "impact", value: "Teams waste time rekeying requests.", source: "user" },
+    { category: "risk", value: "Supplier delays create a delivery risk.", source: "jira" },
+  ] } });
+  assert.equal(n.risks, "Supplier delays create a delivery risk.");
+});
+
+test("four distinct source-backed considerations are retained rather than truncating the final security risk", () => {
+  const { draft } = fixture();
+  draft.fields.problemStatement = "The handoff process is fragmented.";
+  draft.canvas.risks = "Unclear ownership creates accountability risk. Supplier dependence creates continuity risk. Incomplete records complicate change management. Limited access visibility creates security exposure.";
+  const n = synthesizeBriefNarrative({ draft });
+  assert.equal(n.risks, draft.canvas.risks);
+});
+
+test("available captured application-inventory facts give distinct risks; the requested 83% original capture is unavailable", async () => {
+  // This prior browser fixture has score 45 and readiness 90, not the requested
+  // original 45/83 document. It validates the available source facts only.
+  const capture = JSON.parse(await readFile(CAPTURE_PATH, "utf8"));
+  assert.equal(capture.baseline.score, 45);
+  assert.equal(capture.final.readiness.score, 90);
+  const evidence = capture.input.turns.map((turn: { answer: string }) => ({ value: turn.answer, source: "user" as const }));
+  const completed = finalizeInterviewDraft(capture.baseline, capture.final, capture.final, evidence);
+  const n = initialNarrative(completed, capture.final);
+  assert.match(n.risks, /security and compliance exposure/);
+  assert.match(n.risks, /Credential-management visibility is limited/);
+  assert.match(n.risks, /knowledge loss when people leave/);
+  assert.doesNotMatch(n.risks, /waste time rediscovering|fragmented across spreadsheets/);
+  assert.equal((n.risks.match(/security and compliance exposure/g) ?? []).length, 1);
 });
 
 test("live-style compliance details stay discovery and completion benefits become suggested measurable indicators", () => {

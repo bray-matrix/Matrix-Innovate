@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { inflateRawSync, inflateSync } from "node:zlib";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { mkdtemp, rm } from "node:fs/promises";
@@ -41,6 +41,15 @@ const brief = buildInitiativeBrief({
   draft, aiResult, jira: { jiraIssueKey: "APP-123" }, generatedAt: "2026-09-30T12:00:00.000Z",
   review: { candidateSuccessMeasures: ["Percentage of applications with a validated owner"] },
 });
+
+function zipXml(buffer: Buffer, name: string): string {
+  const part = buffer.toString("latin1").indexOf(name);
+  assert.ok(part >= 30, `Missing OOXML part: ${name}`);
+  const header = part - 30;
+  assert.equal(buffer.readUInt32LE(header), 0x04034b50);
+  const offset = header + 30 + buffer.readUInt16LE(header + 26) + buffer.readUInt16LE(header + 28);
+  return inflateRawSync(buffer.subarray(offset, offset + buffer.readUInt32LE(header + 18))).toString("utf8");
+}
 
 test("normalizes unknowns and provenance without inventing financial value", () => {
   assert.equal(brief.expectedValue.qualitative.text, "Clear accountability and reduced duplication.");
@@ -122,6 +131,12 @@ test("generates editable OOXML Word and text-selectable PDF with matching brief 
   const headerXml = inflateRawSync(docx.subarray(headerStart, headerStart + docx.readUInt32LE(headerOffset + 18))).toString("utf8");
   assert.match(headerXml, /<w:shd[^>]*w:fill="07316B"/);
   assert.match(headerXml, /<a:blip/);
+  const core = zipXml(docx, "docProps/core.xml");
+  const footer = zipXml(docx, "word/footer1.xml");
+  assert.match(core, /<dc:creator>Innovation Hub<\/dc:creator>/);
+  assert.doesNotMatch(core, /Matrix Innovation Hub/);
+  assert.match(footer, /Innovation Hub  •  2026-09-30  •  Page /);
+  assert.doesNotMatch(footer, /Matrix Innovation Hub/);
   assert.match(xml, /Centralized Application Inventory and Ownership System/);
   assert.match(xml, /Percentage of applications with a validated owner/);
   assert.match(xml, /Validate a pilot inventory with two business units/);
@@ -131,6 +146,13 @@ test("generates editable OOXML Word and text-selectable PDF with matching brief 
   assert.equal(xml.split("Draft narrative was generated from interview responses").length - 1, 1);
   assert.match(xml, /<w:keepNext\/>/);
   assert.doesNotMatch(xml, /<w:pageBreakBefore\/>|<w:br w:type="page"/);
+  // Only section headings and the suggestions caption keep with one next row.
+  const paragraphs = [...xml.matchAll(/<w:p(?:\s[^>]*)?>[\s\S]*?<\/w:p>/g)].map(match => match[0]);
+  const headingCount = briefSections(brief).length;
+  const kept = paragraphs.filter(p => p.includes("<w:keepNext/>"));
+  assert.equal(kept.length, headingCount + 1);
+  assert.ok(kept.every(p => p.includes('w:pStyle w:val="Heading2"') ||
+    p.includes("Potential Success Measures (suggestions, not accepted):")));
   assert.match(xml, /Current Assessment/);
   assert.match(xml, /Some scoring dimensions remain unquantified/);
   assert.match(xml, /Not yet established/);
@@ -156,6 +178,8 @@ test("generates editable OOXML Word and text-selectable PDF with matching brief 
   assert.equal(extractedText.split("Draft narrative was generated from interview responses").length - 1, 1);
   assert.match(extractedText, /Some scoring dimensions remain unquantified/);
   assert.match(extractedText, /Not yet established/);
+  assert.match(extractedText, /Innovation Hub  \x95  2026-09-30  \x95  Page /);
+  assert.doesNotMatch(extractedText, /Matrix Innovation Hub/);
   let previousPdfSection = -1;
   let previousWordSection = -1;
   for (const section of briefSections(brief)) {
@@ -247,6 +271,7 @@ test("representative browser-export payload flows supporting context without a s
       await writeFile("/tmp/innovation-representative-part-a.docx", docx);
     }
     const info = execFileSync("pdfinfo", [pdfPath], { encoding: "utf8" });
+    assert.match(info, /^Author:\s+Innovation Hub$/m);
     const pages = Number(info.match(/^Pages:\s+(\d+)/m)?.[1]);
     assert.equal(pages, 2, "representative Supporting Context must not be stranded on page three");
     const text = execFileSync("pdftotext", ["-layout", pdfPath, "-"], { encoding: "utf8" })
@@ -267,6 +292,47 @@ test("representative browser-export payload flows supporting context without a s
       for (const row of section.rows)
         assert.ok(xml.includes(row.body.replace(/&/g, "&amp;")), `Word missing ${section.title}: ${row.heading}`);
     }
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("corrected browser review content does not orphan the last Supporting Context fact in Word", async () => {
+  // This semantic payload reproduces the full 2026-09-30 browser download,
+  // including the fourth risk sentence absent from the shorter previous fixture.
+  const actual = parseInitiativeBrief(JSON.parse(
+    await readFile(new URL("./initiative-brief-corrected-browser.fixture.json", import.meta.url), "utf8")));
+  const docx = await renderInitiativeBriefDocx(actual);
+  const xml = zipXml(docx, "word/document.xml");
+  assert.equal(actual.assessment.score, 45);
+  assert.equal(actual.assessment.readiness, "83% — Strong Business Context");
+  assert.equal(actual.supportingContext.facts.length, 4);
+  assert.match(actual.risks.text, /Limited credential-management visibility creates security and compliance exposure/);
+  for (const section of briefSections(actual)) {
+    assert.ok(xml.includes(section.title.replace(/&/g, "&amp;")), `Word missing ${section.title}`);
+    for (const row of section.rows)
+      assert.ok(xml.includes(row.body.replace(/&/g, "&amp;")), `Word missing ${section.title}: ${row.heading}`);
+  }
+  // LibreOffice is the offline pagination oracle, not a guarantee of identical
+  // Microsoft Word layout. Leave this semantic-content test portable without LO.
+  if (spawnSync("which", ["libreoffice"]).status !== 0) return;
+  const directory = await mkdtemp(path.join(tmpdir(), "innovation-corrected-browser-"));
+  try {
+    const docxPath = path.join(directory, "browser-review.docx");
+    await writeFile(docxPath, docx);
+    execFileSync("libreoffice", [
+      `-env:UserInstallation=file://${directory}/lo`, "--headless", "--convert-to", "pdf",
+      "--outdir", directory, docxPath,
+    ], { timeout: 60000 });
+    const pdfPath = path.join(directory, "browser-review.pdf");
+    assert.match(execFileSync("pdfinfo", [pdfPath], { encoding: "utf8" }), /^Pages:\s+2$/m,
+      "the final risk fact must not occupy its own trailing page");
+    const text = execFileSync("pdftotext", ["-layout", pdfPath, "-"], { encoding: "utf8" })
+      .replace(/-\s*\n\s*/g, "-").replace(/\s+/g, " ");
+    const normalized = (value: string) => value.replace(/\s+/g, " ");
+    for (const section of briefSections(actual))
+      for (const row of section.rows)
+        assert.ok(text.includes(normalized(row.body)), `rendered Word missing ${section.title}: ${row.heading}`);
   } finally {
     await rm(directory, { recursive: true, force: true });
   }

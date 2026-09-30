@@ -125,6 +125,17 @@ const benefitSignal = /\b(?:reduc(?:e|ed|ing|tion)|improv(?:e|ed|ing|ement)|fast
 const riskSignal = /\b(?:risk|exposure|unclear|unknown ownership|lack of|knowledge loss|dependence|dependent on|lost when|lose.*(?:leave|leaves)|security|compliance|credential)\b/i;
 const adverseSignal = /\b(?:risk|exposure|unclear|unknown ownership|lack|loss|lost|lose|limited|dependence|dependent|concern|gap|vulnerab\w*)\b/i;
 const unresolved = /^(?:(?:i|we) (?:am |are )?)?(?:not yet (?:known|established|quantified)|do not know|don't know|unsure|tbd)\b/i;
+const riskKey = (value: string): string => value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+/** Remove only verbatim repeated clauses. Do not merge differently worded assertions. */
+function distinctRiskClauses(value: string): string {
+  const seen = new Set<string>();
+  return value.split(/\s*;\s*/).filter(clause => {
+    const key = riskKey(clause);
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).join("; ");
+}
 /** Conservative word-set containment handles reordered/subsumed risk facts,
  * while keeping the supplied wording. No rewritten facts or inferred risks. */
 function distinctRisks(items: string[]): string[] {
@@ -135,7 +146,7 @@ function distinctRisks(items: string[]): string[] {
       : w.replace(/(?:ing|ed|s)$/, "")));
   const selected: string[] = [];
   const keys: Set<string>[] = [];
-  for (const item of unique(items, Number.MAX_SAFE_INTEGER)) {
+  for (const item of unique(items.map(distinctRiskClauses), Number.MAX_SAFE_INTEGER)) {
     const key = tokens(item);
     if (keys.some(other => {
       const smaller = key.size <= other.size ? key : other;
@@ -143,7 +154,7 @@ function distinctRisks(items: string[]): string[] {
       return smaller.size >= 3 && [...smaller].every(word => larger.has(word));
     })) continue;
     selected.push(item); keys.push(key);
-    if (selected.length === 3) break;
+    if (selected.length === 4) break;
   }
   return selected;
 }
@@ -187,10 +198,22 @@ export function synthesizeBriefNarrative({ draft, aiResult, evidence = [] }: Bri
   const suppliedRisks = draft.canvas.risks;
   const knownRisks = facts.filter(fact => /\b(?:risk|constraint|consideration)\b/i.test(fact.category))
     .flatMap(fact => sentences(fact.value)).filter(s => !unresolved.test(s));
-  const risks = prose(distinctRisks([
+  // A source problem/impact may contain the word "risk". Prefer actual risk
+  // statements when present instead of reciting that problem as a risk.
+  const problemSentences = new Set([
+    f.problemStatement, f.currentProcess,
+    ...facts.filter(fact => /\b(?:problem|impact|current state)\b/i.test(fact.category)).map(fact => fact.value),
+  ].flatMap(sentences).map(riskKey));
+  const riskCandidates = [
     ...(validNarrative(suppliedRisks) && !/^Compliance:.*Complexity:/i.test(suppliedRisks) ? sentences(suppliedRisks) : []),
     ...knownRisks, ...evidenceSentences.filter(s => riskSignal.test(s) && adverseSignal.test(s) && !benefitSignal.test(s)),
-  ]));
+  ];
+  const actualRisks = riskCandidates.filter(s =>
+    !problemSentences.has(riskKey(s)) ||
+    // A sentence can be both a problem sentence and an explicit risk. Retain
+    // that risk, but not copied impact/throughput prose or bare problem facts.
+    (/\b(?:risk|exposure)\b/i.test(s) && adverseSignal.test(s) && !benefitSignal.test(s)));
+  const risks = prose(distinctRisks(actualRisks));
   const suppliedSummary = aiResult?.draft?.executiveSummary || draft.executiveSummary;
   const mechanical = /\b(?:addresses:|Desired outcome:|Classified as|Value not yet quantified|scores \d+\/100)/i;
   const problem = sentences(f.problemStatement)[0];

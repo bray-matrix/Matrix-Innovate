@@ -34,7 +34,7 @@ async function brandImage(): Promise<Buffer> {
   throw new Error("Approved Matrix wordmark asset is missing from Innovation Hub public assets");
 }
 
-interface Row { heading: string; body: string; bullet?: boolean }
+interface Row { heading: string; body: string; bullet?: boolean; keepNext?: boolean }
 interface Section { title: string; rows: Row[] }
 function row(heading: string, value: BriefText): Row {
   return { heading, body: value.text };
@@ -67,7 +67,7 @@ export function briefSections(b: InitiativeBrief): Section[] {
         ? row("Drafted measure (review before accepting)", b.successMeasures.drafted)
         : { heading: "", body: "Success measures have not yet been finalized." },
       ...(b.successMeasures.candidates.length
-        ? [{ heading: "", body: "Potential Success Measures (suggestions, not accepted):" }] : []),
+        ? [{ heading: "", body: "Potential Success Measures (suggestions, not accepted):", keepNext: true }] : []),
       ...b.successMeasures.candidates.map(v => ({ ...row("Suggested measure", v), bullet: true })),
     ] },
     { title: "Risks, Constraints & Unknowns", rows: [
@@ -107,9 +107,11 @@ function metaRows(b: InitiativeBrief): Row[] {
 }
 export async function renderInitiativeBriefDocx(b: InitiativeBrief): Promise<Buffer> {
   const logo = await brandImage();
-  const paragraph = (r: Row, keepNext = false) => new Paragraph({
-    keepNext,
-    spacing: { after: 105, line: 300 },
+  const paragraph = (r: Row) => new Paragraph({
+    // A suggestions caption stays with its first bullet; all other body rows
+    // remain free to flow instead of carrying whole sections forward.
+    keepNext: r.keepNext,
+    spacing: { after: 40, line: 270 },
     bullet: r.bullet ? { level: 0 } : undefined,
     children: [
       ...(r.heading ? [new TextRun({ text: `${r.heading}: `, bold: true, color: blue })] : []),
@@ -117,9 +119,10 @@ export async function renderInitiativeBriefDocx(b: InitiativeBrief): Promise<Buf
     ],
   });
   const doc = new Document({
-    creator: "Matrix Innovation Hub", title: b.metadata.title,
+    creator: "Innovation Hub", title: b.metadata.title,
     sections: [{
-      properties: { page: { margin: { top: 1400, bottom: 960, left: 1100, right: 1100 } } },
+      properties: { page: { margin: { top: 1300, bottom: 800, left: 850, right: 850,
+        header: 450, footer: 450 } } },
       headers: { default: new Header({ children: [new Table({
         width: { size: 2250, type: WidthType.DXA }, columnWidths: [2250],
         borders: { top: { style: "none" }, bottom: { style: "none" },
@@ -134,7 +137,7 @@ export async function renderInitiativeBriefDocx(b: InitiativeBrief): Promise<Buf
       footers: { default: new Footer({ children: [new Paragraph({
         alignment: AlignmentType.RIGHT,
         children: [
-          new TextRun({ text: `Matrix Innovation Hub  •  ${b.metadata.generatedAt.slice(0, 10)}  •  Page `, color: "64748B", size: 17 }),
+          new TextRun({ text: `Innovation Hub  •  ${b.metadata.generatedAt.slice(0, 10)}  •  Page `, color: "64748B", size: 17 }),
           new TextRun({ children: [PageNumber.CURRENT], color: "64748B", size: 17 }),
         ],
       })] }) },
@@ -145,14 +148,12 @@ export async function renderInitiativeBriefDocx(b: InitiativeBrief): Promise<Buf
           new TextRun({ text: provenanceNote, italics: true, color: "64748B", size: 18 }),
         ] }),
         ...metaRows(b).map(r => new Paragraph({
-          spacing: { after: 65, line: 280 },
+          spacing: { after: 55, line: 275 },
           children: [new TextRun({ text: `${r.heading}: `, bold: true, color: blue }), new TextRun(r.body)],
         })),
         ...briefSections(b).flatMap(section => [
           new Paragraph({ text: section.title, heading: HeadingLevel.HEADING_2,
-            keepNext: section.rows.length > 0, spacing: { before: 235, after: 95 } }),
-          // Keep the heading with its first row, but let longer sections flow
-          // naturally. Chaining every supporting fact pushes the whole block.
+            keepNext: section.rows.length > 0, spacing: { before: 80, after: 50 } }),
           ...section.rows.map(r => paragraph(r)),
         ]),
       ],
@@ -186,7 +187,7 @@ export async function renderInitiativeBriefPdf(b: InitiativeBrief): Promise<Buff
     pageBreakBefore: (node, queries) => node.headlineLevel === 2 &&
       queries.getFollowingNodesOnPage().length === 0 && queries.getNodesOnNextPage().length > 0,
     defaultStyle: { font: "Helvetica", fontSize: 9, color: "#25354B", lineHeight: 1.28 },
-    info: { title: b.metadata.title, author: "Matrix Innovation Hub" },
+    info: { title: b.metadata.title, author: "Innovation Hub" },
     header: {
       table: { widths: [150], body: [[{
         image: `data:image/png;base64,${logo.toString("base64")}`, width: 130, fillColor: "#07316B",
@@ -197,7 +198,7 @@ export async function renderInitiativeBriefPdf(b: InitiativeBrief): Promise<Buff
       margin: [48, 24, 0, 0],
     },
     footer: (page, pages) => ({
-      text: `Matrix Innovation Hub  •  ${b.metadata.generatedAt.slice(0, 10)}  •  Page ${page} of ${pages}`,
+      text: `Innovation Hub  •  ${b.metadata.generatedAt.slice(0, 10)}  •  Page ${page} of ${pages}`,
       alignment: "right", color: "#64748B", fontSize: 8, margin: [0, 16, 48, 0],
     }),
     content: [

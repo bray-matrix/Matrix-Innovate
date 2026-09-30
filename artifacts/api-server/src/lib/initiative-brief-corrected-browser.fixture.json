@@ -1,0 +1,101 @@
+{
+  "metadata": {
+    "title": "Centralized Application Inventory and Ownership Program",
+    "type": "Internal Productivity",
+    "department": "Operations",
+    "submitter": "Browser v165 Reviewer",
+    "businessOwner": "",
+    "executiveSponsor": "",
+    "generatedAt": "2026-09-30T15:49:00.000Z",
+    "status": "Draft",
+    "jiraKey": ""
+  },
+  "executiveSummary": {
+    "text": "IT and business teams currently waste time rediscovering fragmented application information scattered across spreadsheets, email, wikis and individual knowledge, slowing troubleshooting, onboarding, renewals and changes while creating security and compliance exposure. Establishing a reliable system of record with clear application ownership and business purpose, administered by IT with business owner validation, will centralize critical information, accelerate operational activities, strengthen security visibility and reduce dangerous dependence on institutional knowledge during transitions and departures.",
+    "source": "ai-draft"
+  },
+  "businessNeed": {
+    "problem": {
+      "text": "Application information is fragmented across spreadsheets, email, wikis and individual knowledge, with unclear ownership, dependencies, and credential-management visibility. This creates operational, security, compliance, and continuity exposure.",
+      "source": "ai-draft"
+    },
+    "currentState": {
+      "text": "Teams maintain application information in disconnected sources. IT and business owners repeatedly rediscover ownership, business purpose, integrations, dependencies, and where credentials are securely managed.",
+      "source": "ai-draft"
+    },
+    "businessImpact": {
+      "text": "IT and business teams waste time rediscovering application information and finding the right people. Troubleshooting and onboarding are slower.",
+      "source": "user"
+    }
+  },
+  "futureState": {
+    "outcome": {
+      "text": "Phase 1 should establish a reliable inventory of application ownership and business purpose. IT would administer the inventory and business owners would validate their records. Later phases may extend visibility to integrations, dependencies, licensing, cost, and credential management.",
+      "source": "ai-draft"
+    },
+    "approach": {
+      "text": "Not yet established",
+      "source": "ai-draft"
+    }
+  },
+  "expectedValue": {
+    "qualitative": {
+      "text": "A reliable inventory is expected to reduce rediscovery and support clearer ownership, dependency, and security visibility.",
+      "source": "ai-draft"
+    },
+    "quantified": [
+      { "label": "Monthly hours saved", "text": "Not yet established", "source": "reviewed", "status": "unknown" },
+      { "label": "Revenue opportunity", "text": "Not yet established", "source": "reviewed", "status": "unknown" },
+      { "label": "Cost savings", "text": "Not yet established", "source": "reviewed", "status": "unknown" }
+    ]
+  },
+  "successMeasures": {
+    "drafted": { "text": "Not yet established", "source": "ai-draft" },
+    "candidates": [
+      { "text": "Reduction in time spent by IT and business teams rediscovering application information and locating owners", "source": "suggestion" },
+      { "text": "Time to complete troubleshooting, onboarding, renewal and change-management activities", "source": "suggestion" }
+    ]
+  },
+  "risks": {
+    "text": "Continued reliance on institutional knowledge creates continuity risk. Unclear ownership weakens accountability. Incomplete dependency and integration visibility complicates troubleshooting and change management. Limited credential-management visibility creates security and compliance exposure.",
+    "source": "ai-draft"
+  },
+  "unknowns": [
+    { "text": "Who is the accountable business owner and which department will own the application inventory?", "priority": "critical" },
+    { "text": "Success metric not established", "priority": "critical" },
+    { "text": "What are the specific compliance and audit requirements that must be addressed?", "priority": "discovery" },
+    { "text": "What is the total number of applications to be inventoried and which source systems will be the primary data sources?", "priority": "discovery" },
+    { "text": "What budget and resource allocation is required for Phase 1 implementation?", "priority": "discovery" }
+  ],
+  "nextSteps": {
+    "text": "Confirm the accountable business owner and department. Resolve the critical unknowns that affect the decision to advance. Validate the qualitative benefits and develop value estimates where useful. Decide whether to advance to Project evaluation.",
+    "source": "ai-draft"
+  },
+  "assessment": {
+    "score": 45,
+    "priority": "Low",
+    "readiness": "83% — Strong Business Context",
+    "factors": [
+      { "label": "Business value", "value": "25/25" },
+      { "label": "Strategic alignment", "value": "8/10" },
+      { "label": "Readiness score", "value": "10/10" },
+      { "label": "Delivery confidence", "value": "7/10" },
+      { "label": "Risk / complexity", "value": "-11 (complexity -6, risk -5)" },
+      { "label": "Customer impact score", "value": "6/15" },
+      { "label": "Revenue potential score", "value": "0/15" },
+      { "label": "Cost savings score", "value": "0/15" },
+      { "label": "AI readiness category", "value": "High" },
+      { "label": "Technical complexity", "value": "Medium" },
+      { "label": "Compliance risk", "value": "High" }
+    ]
+  },
+  "supportingContext": {
+    "facts": [
+      { "category": "problem", "value": "Application information is fragmented across spreadsheets, email, team wikis and individual knowledge. Ownership and dependencies are unclear.", "source": "user" },
+      { "category": "impact", "value": "Renewals and changes are harder because information is incomplete.", "source": "user" },
+      { "category": "risk", "value": "Unclear ownership and dependencies create security and compliance exposure.", "source": "user" },
+      { "category": "risk", "value": "Dependence on institutional knowledge creates a risk of knowledge loss when people leave.", "source": "user" }
+    ],
+    "jiraKey": ""
+  }
+}

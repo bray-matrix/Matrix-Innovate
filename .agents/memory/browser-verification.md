@@ -13,3 +13,9 @@ Use stored representative evidence for validation; never substitute a fresh inte
 **Why:** A shortened live interview produced a different score and was initially mistaken for a regression. An incorrectly seeded explicit-zero flag and missing source facts also produced misleading export failures. Saved-detail editing and Initiative Review are different surfaces; scrolling in one does not establish a defect in the other.
 
 **How to apply:** Verify the exact component and fixture semantics before judging results. For download/persistence acceptance, use authenticated development API requests rather than simulated successful responses. Inspect rendered final pages: successful downloads and selectable text alone do not establish acceptable pagination.
+
+Distinguish reconstructed fixtures and LibreOffice pagination from the original user's Word document.
+
+**Why:** A reported four-page Word export could only be reconstructed as a three-page LibreOffice document with the available source facts. Prior captures also had different readiness values. Those are useful regression samples, not proof of exact historical reproduction.
+
+**How to apply:** Preserve the actual browser download and semantic baseline before edits, compare like-for-like content, name the rendering engine, and disclose fixture-assigned scores/readiness rather than claiming they were recalculated.

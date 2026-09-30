@@ -84,3 +84,31 @@ mtime_ms = 1790781373918
 storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:40451992-c03c-4e01-8515-2c896d8b22c5/d306ac2b-f25a-4e7b-b0e2-14f66537b49d/06188dd9-e665-404d-aa7c-264920099733"
 storage_version_token = "1790781383043144"
 content_type = "application/pdf"
+
+[[outputs]]
+id = "HCZxjzQxsRkxGEvji1UlV"
+uri = "file://attached_assets/generated/initiative-brief-v1.6.6-validated.docx"
+type = "word_document"
+title = "v1.6.6 validated Word export"
+description = "Actual browser download of the reconstructed representative; two pages when rendered in LibreOffice."
+logical_id = "16167472-83bc-4816-a1eb-c9bc665758c8"
+content_hash = "sha256:d108f0b93e46e392362c2d76a807d834c8fb09220de24fdc56761b90892c1625"
+size = 19071
+mtime_ms = 1790784280175
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:40451992-c03c-4e01-8515-2c896d8b22c5/16167472-83bc-4816-a1eb-c9bc665758c8/3fb7831d-10ee-4e15-8a6e-34a425364ecc"
+storage_version_token = "1790784307140085"
+content_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+
+[[outputs]]
+id = "q7o2EKktSZShDzXkjdUsX"
+uri = "file://attached_assets/generated/initiative-brief-v1.6.6-validated.pdf"
+type = "pdf"
+title = "v1.6.6 validated PDF export"
+description = "Actual browser download; two pages with selectable text."
+logical_id = "50f019e3-44ad-49c1-b155-a51c837c4080"
+content_hash = "sha256:6d04ba62dfe59a708efe914356a4063b652593872aec2a4fcdfd64c4a9eefbc7"
+size = 18610
+mtime_ms = 1790784280181
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:40451992-c03c-4e01-8515-2c896d8b22c5/50f019e3-44ad-49c1-b155-a51c837c4080/170e5d60-a611-43f5-8bfe-9c886d00ae4f"
+storage_version_token = "1790784307677549"
+content_type = "application/pdf"

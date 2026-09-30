@@ -1,6 +1,6 @@
 kind = "web"
 previewPath = "/"
-title = "Matrix Innovation Hub"
+title = "Innovation Hub"
 version = "1.0.0"
 id = "artifacts/matrix-innovation-hub"
 router = "path"

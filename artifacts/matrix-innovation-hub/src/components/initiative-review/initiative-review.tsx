@@ -451,7 +451,7 @@ export function InitiativeReview({
         )}
 
         <footer className="brief-footer">
-          <span>Matrix Innovation Hub</span>
+          <span>Innovation Hub</span>
           <span>{brief.metadata.title} &middot; Generated {generated}</span>
         </footer>
       </article>
