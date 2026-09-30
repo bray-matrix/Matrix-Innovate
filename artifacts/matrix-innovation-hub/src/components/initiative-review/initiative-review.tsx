@@ -23,6 +23,7 @@ import {
 } from "./review-model";
 import type { InitiativeReviewMetadata } from "@/services/aiInterviewService";
 import type { BriefText } from "@workspace/initiative-brief";
+import type { InitiativeBrief } from "@workspace/initiative-brief";
 
 type ZeroField = NonNullable<InitiativeReviewMetadata["confirmedZeroFields"]>[number];
 const NOT_ESTABLISHED = "Not yet established";
@@ -44,7 +45,7 @@ export interface InitiativeReviewProps {
   generatedAt?: string;
   onBack: () => void;
   onDraftChange: (draft: InterviewDraft) => void;
-  onSave: (fields: InitiativeDraftFields, scoring: ScoringComponents, extras: { executiveSummary: string; reviewDraft: InterviewDraft }) => void;
+  onSave: (fields: InitiativeDraftFields, scoring: ScoringComponents, extras: { executiveSummary: string; reviewDraft: InterviewDraft; reviewedBrief: InitiativeBrief }) => void;
 }
 
 type Errors = Partial<Record<keyof InitiativeDraftFields, string>>;
@@ -180,6 +181,7 @@ export function InitiativeReview({
     });
     onSave(out.fields, scoring, {
       executiveSummary: out.executiveSummary,
+      reviewedBrief: brief,
       reviewDraft: mergeReviewIntoDraft(
         { ...draft, review: { ...draft.review, confirmedZeroFields: confirmedZero } }, fields, scoring, narrative,
       ),

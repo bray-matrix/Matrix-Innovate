@@ -316,7 +316,7 @@ test("J1 routes and PostgreSQL persistence in isolated TEMP tables", async t => 
       // Temporary shadow tables isolate every write; no permanent rows or live Jira.
       await client.query(`CREATE TEMP TABLE initiatives (
         id serial PRIMARY KEY, title text NOT NULL, department text NOT NULL, submitter_name text NOT NULL,
-        business_owner text, executive_sponsor text, executive_summary text, category text NOT NULL,
+        business_owner text, executive_sponsor text, executive_summary text, reviewed_brief jsonb, category text NOT NULL,
         status text NOT NULL DEFAULT 'Idea', problem_statement text NOT NULL DEFAULT '',
         current_process text NOT NULL DEFAULT '', desired_outcome text NOT NULL DEFAULT '',
         ai_concept text NOT NULL DEFAULT '', prototype_goal text NOT NULL DEFAULT '', success_metric text NOT NULL DEFAULT '',
@@ -430,11 +430,11 @@ test("J1 routes and PostgreSQL persistence in isolated TEMP tables", async t => 
     });
     await t.test("Matrix app-info and health version surfaces", async () => {
       const info = await call(matrixRouter, "GET", "/app-info");
-      assert.equal(info.body.version, "v1.6.8");
+      assert.equal(info.body.version, "v1.6.9");
       assert.equal(info.body.name, "Innovation Hub");
       noSecret(info);
       const health = await call(matrixRouter, "GET", "/health");
-      assert.equal(health.body.version, "v1.6.8"); noSecret(health);
+      assert.equal(health.body.version, "v1.6.9"); noSecret(health);
     });
     await t.test("unchanged Matrix session mint/verify", async () => {
       process.env.SESSION_SECRET = "J1-automated-test-session-secret-not-real";

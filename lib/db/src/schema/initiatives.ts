@@ -9,6 +9,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
+import type { InitiativeBrief } from "@workspace/initiative-brief";
 
 export const initiativesTable = pgTable("initiatives", {
   id: serial("id").primaryKey(),
@@ -22,6 +23,7 @@ export const initiativesTable = pgTable("initiatives", {
   // Optional user-authored override; when null the UI composes a summary
   // from title/category/department automatically.
   executiveSummary: text("executive_summary"),
+  reviewedBrief: jsonb("reviewed_brief").$type<InitiativeBrief>(),
   problemStatement: text("problem_statement").notNull().default(""),
   currentProcess: text("current_process").notNull().default(""),
   desiredOutcome: text("desired_outcome").notNull().default(""),

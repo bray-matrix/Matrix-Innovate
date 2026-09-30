@@ -32,6 +32,7 @@ const SAMPLE_INITIATIVE: InitiativeRecord = {
   category: "Internal Productivity",
   status: "Idea",
   executiveSummary: null,
+  reviewedBrief: null,
   problemStatement:
     "Support agents spend hours each week manually drafting near-identical responses to routine customer emails.",
   currentProcess:

@@ -4,10 +4,10 @@ import { useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useCreateInitiative,
-  useUpdateInitiative,
   useGetSettings,
   getListInitiativesQueryKey,
   getGetDashboardSummaryQueryKey,
+  type InitiativeInput,
 } from "@workspace/api-client-react";
 import {
   answersForReview,
@@ -133,7 +133,8 @@ export default function AIInnovationInterview() {
   const queryClient = useQueryClient();
   const { data: settings } = useGetSettings();
   const createInitiative = useCreateInitiative();
-  const updateInitiative = useUpdateInitiative();
+  const createInFlight = useRef(false);
+  const [savingInitiative, setSavingInitiative] = useState(false);
 
   const [phase, setPhase] = useState<Phase>("jira");
   const [jira, setJira] = useState<JiraIntakeContext | null>(null);
@@ -172,6 +173,8 @@ export default function AIInnovationInterview() {
   activeInterviewRef.current = !resumeChoice && phase !== "jira";
   stateRef.current = { phase, jira, answers, plan, currentIndex, input, messages, fallback, aiResult, readyToReview, draft, finalResult };
   const clearInterview = useCallback(() => {
+    createInFlight.current = false;
+    setSavingInitiative(false);
     interviewGeneration.current += 1;
     pendingRequest.current?.abort();
     pendingRequest.current = null;
@@ -345,7 +348,7 @@ export default function AIInnovationInterview() {
   const startOverControl = (
     <AlertDialog>
       <AlertDialogTrigger asChild>
-        <Button variant="outline" size="sm" disabled={createInitiative.isPending || updateInitiative.isPending}>
+        <Button variant="outline" size="sm" disabled={savingInitiative || createInitiative.isPending}>
           <RotateCcw className="mr-1 h-4 w-4" /> Start Over
         </Button>
       </AlertDialogTrigger>
@@ -746,7 +749,7 @@ export default function AIInnovationInterview() {
         departments={settings?.departments ?? []}
         categories={settings?.categories ?? []}
         levels={[...LEVELS]}
-        saving={createInitiative.isPending || updateInitiative.isPending}
+        saving={savingInitiative || createInitiative.isPending}
         readiness={`${readiness.score}% \u2014 ${readiness.label}`}
         toolbarExtra={startOverControl}
         onBack={resumeInterview}
@@ -755,83 +758,61 @@ export default function AIInnovationInterview() {
           void queueSave({ ...stateRef.current!, draft: updated }).catch(() => {});
         }}
         onSave={async (fields, scoring, extras) => {
+          if (createInFlight.current) return;
+          createInFlight.current = true;
+          setSavingInitiative(true);
           const owned = savedRef.current;
           const ownerGeneration = sessionGeneration.current;
           if (!owned || !ownerRef.current) {
             setPersistenceError("Your private interview is no longer available. Please reload.");
+            createInFlight.current = false;
+            setSavingInitiative(false);
             return;
           }
           try {
             await saveQueue.current;
-            if (ownerGeneration !== sessionGeneration.current || savedRef.current?.id !== owned.id) return;
+            if (ownerGeneration !== sessionGeneration.current || savedRef.current?.id !== owned.id) { createInFlight.current = false; setSavingInitiative(false); return; }
             await queueSave({ ...stateRef.current!, phase: "review",
               draft: extras.reviewDraft });
-            if (ownerGeneration !== sessionGeneration.current || savedRef.current?.id !== owned.id) return;
+            if (ownerGeneration !== sessionGeneration.current || savedRef.current?.id !== owned.id) { createInFlight.current = false; setSavingInitiative(false); return; }
           } catch {
+            createInFlight.current = false;
+            setSavingInitiative(false);
             toast({ title: "Interview not saved", description: "Please retry before saving your initiative.", variant: "destructive" });
             return;
           }
-          const initiativeInput = { ...fields, executiveSummary: extras.executiveSummary, interviewDraftId: owned.id,
+          const b = extras.reviewedBrief;
+          // The generated export contract exposes nested objects as JSON records.
+          // Copy each semantic object into a record without losing its reviewed shape.
+          const reviewedBrief: InitiativeInput["reviewedBrief"] = {
+            metadata: { ...b.metadata }, executiveSummary: { ...b.executiveSummary },
+            businessNeed: { ...b.businessNeed }, futureState: { ...b.futureState },
+            expectedValue: { ...b.expectedValue }, successMeasures: { ...b.successMeasures },
+            risks: { ...b.risks }, unknowns: b.unknowns.map(u => ({ ...u })),
+            nextSteps: { ...b.nextSteps }, assessment: { ...b.assessment },
+            supportingContext: { ...b.supportingContext },
+          };
+          const initiativeInput: InitiativeInput = { ...fields, ...scoring, executiveSummary: extras.executiveSummary, reviewedBrief, interviewDraftId: owned.id,
             ...(jira ? { jiraIssueId: jira.jiraIssueId } : {}) };
           createInitiative.mutate(
             { data: initiativeInput },
             {
               onSuccess: (created) => {
-                if (ownerGeneration !== sessionGeneration.current || savedRef.current?.id !== owned.id) return;
-                const completeOwned = async () => {
-                  if (ownerGeneration !== sessionGeneration.current || savedRef.current?.id !== owned.id) return;
-                  try {
-                    await saveQueue.current;
-                    await privateInterview.complete(owned.id, created.id);
-                    savedRef.current = null;
-                    setSavedInterview(null);
-                  } catch (error) {
-                     toast({ title: "Initiative saved, interview not archived",
-                       description: safeErrorMessage(error, "Please contact support."), variant: "destructive" });
-                  }
-                };
-                updateInitiative.mutate(
-                  { id: created.id, data: scoring },
-                  {
-                    onSuccess: async () => {
-                      if (ownerGeneration !== sessionGeneration.current) return;
-                      queryClient.invalidateQueries({
-                        queryKey: getListInitiativesQueryKey(),
-                      });
-                      queryClient.invalidateQueries({
-                        queryKey: getGetDashboardSummaryQueryKey(),
-                      });
-                      await completeOwned();
-                      if (ownerGeneration !== sessionGeneration.current) return;
-                      toast({
-                        title: "Initiative created",
-                        description: "Your initiative has been saved and scored.",
-                      });
-                      setLocation(`/initiatives/${created.id}`);
-                    },
-                     onError: async (error) => {
-                      if (ownerGeneration !== sessionGeneration.current) return;
-                       if (isContentBlocked(error)) {
-                         toast({ title: "Initiative created; scoring blocked", description: safeErrorMessage(error, "Could not score initiative."), variant: "destructive" });
-                         return;
-                       }
-                      queryClient.invalidateQueries({
-                        queryKey: getListInitiativesQueryKey(),
-                      });
-                      await completeOwned();
-                      if (ownerGeneration !== sessionGeneration.current) return;
-                      toast({
-                        title: "Saved without score",
-                        description:
-                          "Initiative created, but scoring failed. You can score it manually.",
-                        variant: "destructive",
-                      });
-                      setLocation(`/initiatives/${created.id}`);
-                    },
-                  },
-                );
+                if (ownerGeneration !== sessionGeneration.current || savedRef.current?.id !== owned.id) { createInFlight.current = false; setSavingInitiative(false); return; }
+                // Create atomically completes the private draft on the server.
+                // Clear the local reference before navigation/unmount autosave.
+                savedRef.current = null;
+                setSavedInterview(null);
+                 createInFlight.current = false;
+                 setSavingInitiative(false);
+                 queryClient.invalidateQueries({ queryKey: getListInitiativesQueryKey() });
+                 queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+                 toast({ title: "Initiative created", description: "Your initiative has been saved and scored." });
+                 setLocation(`/initiatives/${created.id}`);
               },
                onError: (error) => {
+                 createInFlight.current = false;
+                 setSavingInitiative(false);
                 if (ownerGeneration !== sessionGeneration.current) return;
                 toast({
                   title: "Error",

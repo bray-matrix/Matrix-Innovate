@@ -25,3 +25,9 @@ Do not use an auto-waiting locator click to prove that a disabled export button 
 **Why:** The browser test waited until the first request completed, then clicked the newly enabled button. The second legitimate request could be mistaken for a duplicate-lock failure.
 
 **How to apply:** Gate the response, inspect disabled state, and use immediate pointer coordinates or a controlled event test while the first request is pending. Record request timing and counts. If a browser context is lost, do not infer a pass from the interrupted probe.
+
+Correlate duplicated browser request events with server request IDs before diagnosing duplicate writes.
+
+**Why:** A capture reported two identical edit PATCH events, but the server received one PATCH and persisted one version change. Event counts alone were misleading.
+
+**How to apply:** Capture timestamps and request identity where practical; compare server logs and persisted history before changing application code.

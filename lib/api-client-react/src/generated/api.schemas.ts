@@ -176,6 +176,7 @@ export interface Error {
 
 export interface Initiative {
   id: number;
+  reviewedBrief: InitiativeBriefExportInput | null;
   title: string;
   jiraLinks: InitiativeJiraLink[];
   department: string;
@@ -230,6 +231,17 @@ export interface Initiative {
 export interface InitiativeInput {
   /** @minLength 1 */
   title: string;
+  interviewDraftId?: string;
+  reviewedBrief?: InitiativeBriefExportInput | null;
+  businessValue?: number;
+  revenuePotential?: number;
+  costSavingsScore?: number;
+  customerImpactScore?: number;
+  strategicAlignment?: number;
+  aiReadinessScore?: number;
+  prototypeConfidence?: number;
+  technicalComplexityPenalty?: number;
+  riskPenalty?: number;
   /**
      * Optional selected Jira issue ID; verified live before initiative creation.
      * @pattern ^\d{1,30}$
@@ -261,6 +273,7 @@ export interface InitiativeInput {
 }
 
 export interface InitiativeUpdate {
+  reviewedBrief?: InitiativeBriefExportInput | null;
   title?: string;
   department?: string;
   submitterName?: string;
@@ -302,7 +315,14 @@ export interface InitiativeUpdate {
   changeSummary?: string;
 }
 
+/**
+ * @nullable
+ */
+export type InitiativeVersionSnapshot = { [key: string]: unknown } | null;
+
 export interface InitiativeVersion {
+  /** @nullable */
+  snapshot: InitiativeVersionSnapshot;
   id: number;
   initiativeId: number;
   version: string;
@@ -601,7 +621,11 @@ export interface InitiativeRecommendations {
   expectedAnnualValue: number;
   /** Confidence in the recommendations from 0 to 100 */
   confidenceScore: number;
+  /** Explanation of the deterministic confidence heuristic; not a calibrated probability */
+  confidenceDescription?: string;
   nextAction: string;
+  /** Current-state governance suggestion, distinct from reviewed business next steps */
+  governanceNextAction?: string;
 }
 
 export type BacklogItemType = typeof BacklogItemType[keyof typeof BacklogItemType];

@@ -2352,6 +2352,7 @@ components:
       required:
         - id
         - title
+        - reviewedBrief
         - jiraLinks
         - department
         - submitterName
@@ -2393,6 +2394,10 @@ components:
       properties:
         id:
           type: integer
+        reviewedBrief:
+          anyOf:
+            - { $ref: "#/components/schemas/InitiativeBriefExportInput" }
+            - { type: "null" }
         title:
           type: string
         jiraLinks:
@@ -2493,6 +2498,22 @@ components:
         title:
           type: string
           minLength: 1
+        interviewDraftId:
+          type: string
+          format: uuid
+        reviewedBrief:
+          anyOf:
+            - { $ref: "#/components/schemas/InitiativeBriefExportInput" }
+            - { type: "null" }
+        businessValue: { type: integer }
+        revenuePotential: { type: integer }
+        costSavingsScore: { type: integer }
+        customerImpactScore: { type: integer }
+        strategicAlignment: { type: integer }
+        aiReadinessScore: { type: integer }
+        prototypeConfidence: { type: integer }
+        technicalComplexityPenalty: { type: integer }
+        riskPenalty: { type: integer }
         jiraIssueId:
           type: string
           pattern: '^\d{1,30}$'
@@ -2546,6 +2567,10 @@ components:
     InitiativeUpdate:
       type: object
       properties:
+        reviewedBrief:
+          anyOf:
+            - { $ref: "#/components/schemas/InitiativeBriefExportInput" }
+            - { type: "null" }
         title:
           type: string
         department:
@@ -2628,8 +2653,12 @@ components:
         - version
         - changedBy
         - summary
+        - snapshot
         - createdAt
       properties:
+        snapshot:
+          type: ["object", "null"]
+          additionalProperties: true
         id:
           type: integer
         initiativeId:
@@ -3206,8 +3235,14 @@ components:
         confidenceScore:
           type: integer
           description: Confidence in the recommendations from 0 to 100
+        confidenceDescription:
+          type: string
+          description: Explanation of the deterministic confidence heuristic; not a calibrated probability
         nextAction:
           type: string
+        governanceNextAction:
+          type: string
+          description: Current-state governance suggestion, distinct from reviewed business next steps
     BacklogItem:
       type: object
       required:

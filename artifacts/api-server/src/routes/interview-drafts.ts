@@ -143,6 +143,13 @@ router.post("/interview/drafts/:id/complete", async (req, res) => {
     .where(and(eq(draft.id, id), eq(draft.ownerSub, sub), eq(draft.status, "active"), eq(draft.savedInitiativeId, initiativeId)))
     .returning();
   if (!row) {
+    const [completed] = await db.select({ id: draft.id, savedInitiativeId: draft.savedInitiativeId })
+      .from(draft).where(and(eq(draft.id, id), eq(draft.ownerSub, sub),
+        eq(draft.status, "completed"), eq(draft.savedInitiativeId, initiativeId))).limit(1);
+    if (completed) {
+      res.json({ id: completed.id, initiativeId: completed.savedInitiativeId, status: "completed" });
+      return;
+    }
     res.status(404).json({ error: "Draft or matching saved initiative not found" });
     return;
   }

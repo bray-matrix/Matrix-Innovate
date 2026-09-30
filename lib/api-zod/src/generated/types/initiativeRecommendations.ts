@@ -26,5 +26,9 @@ export interface InitiativeRecommendations {
   expectedAnnualValue: number;
   /** Confidence in the recommendations from 0 to 100 */
   confidenceScore: number;
+  /** Explanation of the deterministic confidence heuristic; not a calibrated probability */
+  confidenceDescription?: string;
   nextAction: string;
+  /** Current-state governance suggestion, distinct from reviewed business next steps */
+  governanceNextAction?: string;
 }

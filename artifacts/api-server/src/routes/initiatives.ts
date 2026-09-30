@@ -1,4 +1,5 @@
 import { assertSafeContent } from "../lib/content-safety";
+import { parseInitiativeBrief, type InitiativeBrief } from "@workspace/initiative-brief";
 import { Router, type IRouter } from "express";
 import {
   db,
@@ -66,6 +67,7 @@ function serializeVersion(row: typeof initiativeVersionsTable.$inferSelect) {
     version: row.version,
     changedBy: row.changedBy,
     summary: row.summary,
+    snapshot: row.snapshot,
     createdAt: row.createdAt.toISOString(),
   };
 }
@@ -81,6 +83,7 @@ const SNAPSHOT_FIELDS = [
   "category",
   "status",
   "executiveSummary",
+  "reviewedBrief",
   "problemStatement",
   "currentProcess",
   "desiredOutcome",
@@ -94,6 +97,15 @@ const SNAPSHOT_FIELDS = [
   "complianceRisk",
   "technicalComplexity",
   "aiReadiness",
+  "businessValue",
+  "revenuePotential",
+  "costSavingsScore",
+  "customerImpactScore",
+  "strategicAlignment",
+  "aiReadinessScore",
+  "prototypeConfidence",
+  "technicalComplexityPenalty",
+  "riskPenalty",
   "score",
   "priority",
   "assignedTeam",
@@ -113,8 +125,62 @@ function buildSnapshot(
 
 function formatSnapshotValue(value: unknown): string {
   if (value === null || value === undefined) return "—";
-  const text = String(value).trim();
+  const text = (typeof value === "object" ? JSON.stringify(value) : String(value)).trim();
   return text === "" ? "—" : text;
+}
+
+// The shared export parser validates the semantic fields and their limits.
+// Its OpenAPI envelope permits extra properties for export compatibility; do
+// not persist arbitrary unbounded nested objects alongside the known model.
+const briefShape = {
+  metadata: ["title", "type", "department", "submitter", "businessOwner", "executiveSponsor", "generatedAt", "status", "jiraKey"],
+  executiveSummary: ["text", "source"],
+  businessNeed: ["problem", "currentState", "businessImpact"],
+  futureState: ["outcome", "approach", "prototype"],
+  expectedValue: ["qualitative", "quantified"],
+  successMeasures: ["drafted", "candidates"],
+  risks: ["text", "source"],
+  unknowns: ["text", "priority"],
+  nextSteps: ["text", "source"],
+  assessment: ["score", "priority", "readiness", "factors"],
+  supportingContext: ["facts", "jiraKey"],
+} as const;
+const textKeys = ["text", "source"];
+function validBriefKeys(value: unknown): boolean {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const brief = value as Record<string, unknown>;
+  if (Object.keys(brief).some(k => !(k in briefShape))) return false;
+  const check = (item: unknown, keys: readonly string[]) =>
+    !!item && typeof item === "object" && !Array.isArray(item) &&
+    Object.keys(item).every(k => keys.includes(k));
+  if (Object.entries(briefShape).some(([key, keys]) =>
+    key !== "unknowns" && !check(brief[key], keys))) return false;
+  const nested = [
+    ...["problem", "currentState", "businessImpact"].map(k => (brief.businessNeed as Record<string, unknown>)[k]),
+    ...["outcome", "approach", "prototype"].map(k => (brief.futureState as Record<string, unknown>)[k]),
+    (brief.expectedValue as Record<string, unknown>).qualitative,
+    ...((brief.expectedValue as Record<string, unknown>).quantified as unknown[] ?? []),
+    (brief.successMeasures as Record<string, unknown>).drafted,
+    ...((brief.successMeasures as Record<string, unknown>).candidates as unknown[] ?? []),
+  ];
+  if (nested.some(v => v !== undefined && !check(v, v && typeof v === "object" && "label" in v ? [...textKeys, "label", "status"] : textKeys))) return false;
+  const arrays = [
+    [(brief.expectedValue as Record<string, unknown>).quantified, [...textKeys, "label", "status"]],
+    [(brief.successMeasures as Record<string, unknown>).candidates, textKeys],
+    [brief.unknowns, ["text", "priority"]],
+    [(brief.assessment as Record<string, unknown>).factors, ["label", "value"]],
+    [(brief.supportingContext as Record<string, unknown>).facts, ["category", "value", "source"]],
+  ] as const;
+  return arrays.every(([items, keys]) => Array.isArray(items) && items.every(item => check(item, keys)));
+}
+
+function validatedBrief(input: unknown): InitiativeBrief {
+  if (Buffer.byteLength(JSON.stringify(input), "utf8") > 64 * 1024) {
+    throw new Error("Invalid or oversized Initiative Brief");
+  }
+  const brief = parseInitiativeBrief(input);
+  if (!validBriefKeys(brief)) throw new Error("Invalid Initiative Brief structure");
+  return brief;
 }
 
 router.get("/initiatives", async (_req, res) => {
@@ -147,14 +213,50 @@ router.post("/initiatives", async (req, res, next) => {
     }
   }
   const data = parsed.data;
+  let reviewedBrief: InitiativeBrief | null = null;
+  if (data.reviewedBrief !== undefined && data.reviewedBrief !== null) {
+    try {
+      reviewedBrief = validatedBrief(req.body.reviewedBrief);
+    } catch {
+      res.status(400).json({ error: "Invalid or oversized Initiative Brief" });
+      return;
+    }
+  }
+  // Jira I/O is bounded but should not hold a database row lock. A quick
+  // owner-scoped receipt check avoids it for normal retries; the locked
+  // recheck below remains authoritative if two saves race.
+  let alreadySaved = false;
+  if (draftId && draftOwner) {
+    const [draft] = await db.select({ savedInitiativeId: interviewDraftsTable.savedInitiativeId })
+      .from(interviewDraftsTable)
+      .where(and(eq(interviewDraftsTable.id, draftId), eq(interviewDraftsTable.ownerSub, draftOwner)))
+      .limit(1);
+    alreadySaved = !!draft?.savedInitiativeId;
+  }
   let issue: Awaited<ReturnType<JiraClient["issue"]>> | null = null;
   try {
-    if (data.jiraIssueId !== undefined) {
-      // Verify server-side before persisting; never trust a browser-supplied
-      // key, project, or issue type. Jira reads cannot be rolled into a DB tx.
+    if (!alreadySaved && data.jiraIssueId !== undefined) {
       issue = await new JiraClient().issue(data.jiraIssueId);
     }
   } catch (error) {
+    // If a concurrent save won while Jira was being checked, its receipt wins
+    // even when Jira has gone offline. Do not create a second initiative.
+    if (draftId && draftOwner) {
+      const receipt = await db.transaction(async tx => {
+        const [draft] = await tx.select({ savedInitiativeId: interviewDraftsTable.savedInitiativeId })
+          .from(interviewDraftsTable)
+          .where(and(eq(interviewDraftsTable.id, draftId), eq(interviewDraftsTable.ownerSub, draftOwner)))
+          .for("update").limit(1);
+        if (!draft?.savedInitiativeId) return null;
+        const [saved] = await tx.select().from(initiativesTable)
+          .where(eq(initiativesTable.id, draft.savedInitiativeId)).limit(1);
+        return saved ?? null;
+      });
+      if (receipt) {
+        res.status(201).json(await withLinks(receipt));
+        return;
+      }
+    }
     if (error instanceof JiraError) {
       res.status(error.status).json({ error: error.message });
       return;
@@ -175,11 +277,33 @@ router.post("/initiatives", async (req, res, next) => {
     // Lock the owner's active draft before saving. Start Over and competing
     // saves cannot produce a receipt for an absent or foreign draft.
     if (draftId && draftOwner) {
-      const [owned] = await tx.select({ id: interviewDraftsTable.id }).from(interviewDraftsTable)
-        .where(and(eq(interviewDraftsTable.id, draftId), eq(interviewDraftsTable.ownerSub, draftOwner), eq(interviewDraftsTable.status, "active")))
+       const [owned] = await tx.select().from(interviewDraftsTable)
+         .where(and(eq(interviewDraftsTable.id, draftId), eq(interviewDraftsTable.ownerSub, draftOwner)))
         .for("update").limit(1);
       if (!owned) throw new Error("INTERVIEW_DRAFT_NOT_FOUND");
+       if (owned.savedInitiativeId) {
+         const [saved] = await tx.select().from(initiativesTable).where(eq(initiativesTable.id, owned.savedInitiativeId)).limit(1);
+         if (saved) return saved;
+         throw new Error("INTERVIEW_DRAFT_NOT_FOUND");
+       }
+       if (owned.status !== "active") throw new Error("INTERVIEW_DRAFT_NOT_FOUND");
     }
+     // Always recheck receipt under the lock: the preflight is only an I/O
+     // optimization and does not decide whether the draft may create a row.
+     const components: ScoringComponents = {
+       businessValue: data.businessValue ?? 0,
+       revenuePotential: data.revenuePotential ?? 0,
+       costSavingsScore: data.costSavingsScore ?? 0,
+       customerImpactScore: data.customerImpactScore ?? 0,
+       strategicAlignment: data.strategicAlignment ?? 0,
+       aiReadinessScore: data.aiReadinessScore ?? 0,
+       prototypeConfidence: data.prototypeConfidence ?? 0,
+       technicalComplexityPenalty: data.technicalComplexityPenalty ?? 0,
+       riskPenalty: data.riskPenalty ?? 0,
+     };
+     const scoringSupplied = (Object.keys(components) as (keyof ScoringComponents)[])
+       .some(key => data[key] !== undefined);
+     const score = scoringSupplied ? calculateScore(components) : 0;
     const [created] = await tx
       .insert(initiativesTable)
       .values({
@@ -193,6 +317,8 @@ router.post("/initiatives", async (req, res, next) => {
           data.executiveSummary.trim() === ""
             ? null
             : data.executiveSummary,
+        reviewedBrief,
+        ...components,
         category: data.category,
         status,
         problemStatement: data.problemStatement,
@@ -213,8 +339,8 @@ router.post("/initiatives", async (req, res, next) => {
         prototypeDay: data.prototypeDay ?? null,
         nextReviewAt,
         version: DEFAULT_VERSION,
-        score: 0,
-        priority: "Low",
+        score,
+        priority: derivePriority(score),
       })
       .returning();
 
@@ -237,13 +363,17 @@ router.post("/initiatives", async (req, res, next) => {
 
     if (draftId && draftOwner) {
       await tx.update(interviewDraftsTable)
-        .set({ savedInitiativeId: created.id, updatedAt: new Date() })
+         .set({ savedInitiativeId: created.id, status: "completed", completedAt: new Date(), updatedAt: new Date() })
         .where(and(eq(interviewDraftsTable.id, draftId), eq(interviewDraftsTable.ownerSub, draftOwner), eq(interviewDraftsTable.status, "active")));
     }
 
     return created;
   });
   } catch (error) {
+    if (error instanceof JiraError) {
+      res.status(error.status).json({ error: error.message });
+      return;
+    }
     if (error instanceof Error && error.message === "INTERVIEW_DRAFT_NOT_FOUND") {
       res.status(404).json({ error: "Active interview draft not found" });
       return;
@@ -584,11 +714,24 @@ router.patch("/initiatives/:id", async (req, res) => {
   }
 
   const data = parsed.data;
+  let reviewedBrief: InitiativeBrief | null | undefined;
+  if (data.reviewedBrief !== undefined) {
+    try {
+      reviewedBrief = data.reviewedBrief === null ? null : validatedBrief(req.body.reviewedBrief);
+    } catch {
+      res.status(400).json({ error: "Invalid or oversized Initiative Brief" });
+      return;
+    }
+  }
   const now = new Date();
   const updates: Partial<typeof initiativesTable.$inferInsert> = {
     updatedAt: now,
   };
   const changed: string[] = [];
+  if (reviewedBrief !== undefined && JSON.stringify(reviewedBrief) !== JSON.stringify(existing.reviewedBrief)) {
+    updates.reviewedBrief = reviewedBrief;
+    changed.push("reviewedBrief");
+  }
 
   const stringFields = [
     "title",
@@ -761,6 +904,7 @@ const FIELD_LABELS: Record<string, string> = {
   category: "Category",
   status: "Status",
   executiveSummary: "Executive Summary",
+  reviewedBrief: "Reviewed Initiative Brief",
   problemStatement: "Problem Statement",
   currentProcess: "Current Process",
   desiredOutcome: "Desired Outcome",

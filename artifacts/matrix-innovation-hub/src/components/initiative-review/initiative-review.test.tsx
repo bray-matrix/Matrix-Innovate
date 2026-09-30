@@ -7,7 +7,7 @@ import { cleanBriefProse, synthesizeBriefNarrative, qualifyDraftBenefits } from 
 import { buildDraft, computeScore, derivePriority } from "@/services/aiInterviewService";
 import {
   prioritizeUnknowns, candidateMeasures, serializeForSave, initialNarrative,
-  mergeReviewIntoDraft, buildReviewBrief, SAVE_LABELS, type ReviewAIResult,
+  mergeReviewIntoDraft, buildReviewBrief, editReviewedSupplement, type ReviewAIResult,
   finalizeInterviewDraft,
 } from "./review-model";
 
@@ -523,11 +523,13 @@ test("all narrative edits persist through autosave draft and final save payload"
   const out = serializeForSave(draft.fields, n, { critical: ["Who is the sponsor?"] });
   const saved = out.fields;
   assert.equal(out.executiveSummary, "Edited summary");
-  assert.ok(!saved.desiredOutcome.includes("Edited summary"), "summary not duplicated");
-  for (const key of ["expectedValue", "risks", "nextSteps"] as const)
-    assert.ok(saved.desiredOutcome.includes(`${SAVE_LABELS[key]}: ${n[key]}`));
-  assert.ok(saved.desiredOutcome.includes("Critical unknowns:\n- Who is the sponsor?"));
-  assert.ok(saved.desiredOutcome.startsWith(draft.fields.desiredOutcome.trim()));
+  assert.equal(saved.desiredOutcome, draft.fields.desiredOutcome, "only the reviewed future state maps into the core desired outcome");
+  const brief = buildReviewBrief({ draft: merged, fields: saved, scoring: draft.scoring, narrative: n,
+    ai: { knownFacts: [], inferredSuggestions: [], unknowns: ["Who is the sponsor?"] }, score: 45, priority: "Low" });
+  assert.equal(brief.expectedValue.qualitative.text, n.expectedValue);
+  assert.equal(brief.risks.text, n.risks);
+  assert.equal(brief.nextSteps.text, n.nextSteps);
+  assert.ok(brief.unknowns.some(u => u.text === "Who is the sponsor?"));
 });
 
 test("semantic brief uses edited narrative and never invents quantified value", () => {
@@ -536,6 +538,41 @@ test("semantic brief uses edited narrative and never invents quantified value", 
   const brief = buildReviewBrief({ draft, fields: draft.fields, scoring: draft.scoring, narrative: n, ai, score: 45, priority: "Low" });
   assert.equal(brief.executiveSummary.text, "Edited");
   assert.ok(brief.expectedValue.quantified.every(q => q.status === "unknown"));
+});
+
+test("managed edit persists reviewed supplemental sections without downgrading core brief or synthesis", () => {
+  const { draft, ai } = fixture();
+  const original = buildReviewBrief({ draft, fields: draft.fields, scoring: draft.scoring,
+    narrative: initialNarrative(draft, ai), ai, score: 45, priority: "Low", readiness: "83% — Strong Business Context" });
+  const edited = editReviewedSupplement(original, {
+    expectedValue: "Less rework", risks: "Validate data quality", nextSteps: "Confirm owner",
+    candidateMeasures: "Share of owned apps\nReduction in duplicate records",
+    criticalUnknowns: "Who owns approval?", discoveryUnknowns: "Which team will migrate?",
+    supportingFacts: original.supportingContext.facts.map(f => f.value).join("\n"),
+  });
+  assert.equal(edited.expectedValue.qualitative.text, "Less rework");
+  assert.equal(edited.risks.text, "Validate data quality");
+  assert.equal(edited.nextSteps.text, "Confirm owner");
+  assert.deepEqual(edited.successMeasures.candidates.map(c => c.text), ["Share of owned apps", "Reduction in duplicate records"]);
+  assert.deepEqual(edited.unknowns.map(u => u.priority), ["critical", "discovery"]);
+  assert.deepEqual(edited.supportingContext.facts, original.supportingContext.facts);
+  assert.deepEqual(edited.futureState, original.futureState);
+  assert.deepEqual(edited.businessNeed, original.businessNeed);
+  assert.deepEqual(edited.assessment, original.assessment);
+  assert.equal(edited.assessment.readiness, "83% — Strong Business Context");
+});
+
+test("intelligence keeps reviewed business steps distinct from state-driven governance and omits duplicates", async () => {
+  const { nextActionPresentation } = await import("../initiative-intelligence");
+  assert.deepEqual(nextActionPresentation({
+    nextAction: "Confirm owner with stakeholders",
+    governanceNextAction: "Assign a business owner before decision review",
+  }), {
+    primary: "Confirm owner with stakeholders",
+    governance: "Assign a business owner before decision review",
+  });
+  assert.equal(nextActionPresentation({ nextAction: "Confirm owner", governanceNextAction: "Confirm owner" }).governance, null);
+  assert.equal(nextActionPresentation({ nextAction: "Confirm owner" }).governance, null);
 });
 
 test("review renders one document with auto-expanding narrative and hidden scoring controls", async () => {
@@ -597,10 +634,10 @@ test("parity: every non-input text shown equals the exported semantic brief", as
   assert.equal(factItems, brief.supportingContext.facts.length);
 });
 
-test("final save includes suggested measures labelled as suggestions", () => {
+test("suggested measures remain in the brief, never in the core desired outcome", () => {
   const { draft } = fixture();
   const out = serializeForSave(draft.fields, initialNarrative(draft), { candidates: ["Share of apps with an owner"] });
-  assert.ok(out.fields.desiredOutcome.includes(`${SAVE_LABELS.candidates}:\n- Share of apps with an owner`));
+  assert.equal(out.fields.desiredOutcome, draft.fields.desiredOutcome);
 });
 
 test("retrying a final save keeps the private draft unflattened and avoids repeated sections", () => {
@@ -611,5 +648,5 @@ test("retrying a final save keeps the private draft unflattened and avoids repea
   const retry = serializeForSave(privateDraft.fields, initialNarrative(privateDraft));
   assert.equal(privateDraft.fields.desiredOutcome, draft.fields.desiredOutcome);
   assert.deepEqual(first, retry);
-  assert.equal(retry.fields.desiredOutcome.split(SAVE_LABELS.nextSteps).length - 1, 1);
+  assert.equal(retry.fields.desiredOutcome, draft.fields.desiredOutcome);
 });

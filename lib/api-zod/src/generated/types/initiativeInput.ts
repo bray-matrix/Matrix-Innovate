@@ -5,10 +5,22 @@
  * API specification
  * OpenAPI spec version: 1.5.0
  */
+import type { InitiativeBriefExportInput } from './initiativeBriefExportInput';
 
 export interface InitiativeInput {
   /** @minLength 1 */
   title: string;
+  interviewDraftId?: string;
+  reviewedBrief?: InitiativeBriefExportInput | null;
+  businessValue?: number;
+  revenuePotential?: number;
+  costSavingsScore?: number;
+  customerImpactScore?: number;
+  strategicAlignment?: number;
+  aiReadinessScore?: number;
+  prototypeConfidence?: number;
+  technicalComplexityPenalty?: number;
+  riskPenalty?: number;
   /**
      * Optional selected Jira issue ID; verified live before initiative creation.
      * @pattern ^\d{1,30}$

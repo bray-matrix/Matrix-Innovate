@@ -1,6 +1,9 @@
 import type { initiativesTable } from "@workspace/db";
+import type { InitiativeBrief } from "@workspace/initiative-brief";
 
 export type InitiativeRecord = typeof initiativesTable.$inferSelect;
+/** The brief is nullable for legacy rows and optional for callers using older records. */
+export type InitiativeForRecommendations = InitiativeRecord & { reviewedBrief?: InitiativeBrief | null };
 
 export type ComplexityLevel = "Low" | "Medium" | "High";
 
@@ -38,12 +41,16 @@ export interface InitiativeRecommendationsResult {
   expectedBusinessValue: string;
   expectedAnnualValue: number;
   confidenceScore: number;
+  /** Existing deterministic scoring heuristic; not a calibrated probability. */
+  confidenceDescription: string;
   nextAction: string;
+  /** Current-state governance suggestion, separate from reviewed business next steps. */
+  governanceNextAction?: string;
 }
 
 export interface RecommendationContext {
-  initiative: InitiativeRecord;
-  allInitiatives: InitiativeRecord[];
+  initiative: InitiativeForRecommendations;
+  allInitiatives: InitiativeForRecommendations[];
 }
 
 /**

@@ -8,6 +8,7 @@ import type {
   InitiativeRecommendations,
   SimilarInitiative,
 } from "@workspace/api-client-react";
+import type { InitiativeBrief } from "@workspace/initiative-brief";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Collapsible,
@@ -87,9 +88,9 @@ function IntelligenceCard({
               <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 border-t pt-2 text-xs text-muted-foreground">
                 {confidence !== undefined && (
                   <span>
-                    Confidence:{" "}
+                    Recommendation support heuristic:{" "}
                     <span className="font-medium text-foreground">
-                      {confidence}%
+                      {confidence}/100
                     </span>
                   </span>
                 )}
@@ -152,7 +153,7 @@ function SimilarInitiativeRow({ similar }: { similar: SimilarInitiative }) {
   );
 }
 
-function ConfidenceMeter({ value }: { value: number }) {
+function ConfidenceMeter({ value, description }: { value: number; description?: string }) {
   const color =
     value >= 70 ? "bg-green-600" : value >= 45 ? "bg-[#FFC72C]" : "bg-red-500";
   return (
@@ -168,14 +169,22 @@ function ConfidenceMeter({ value }: { value: number }) {
         />
       </div>
       <p className="text-xs text-muted-foreground">
-        Confidence in these recommendations based on scoring completeness,
-        readiness, sponsorship, and complexity.
+        Unvalidated heuristic, not a calibrated probability. {description || "Based on available scoring and business context."} Distinct from the Initiative assessment score and interview intake completeness.
       </p>
     </div>
   );
 }
 
-export function InitiativeIntelligence({ initiativeId, hasPrototype = false }: { initiativeId: number; hasPrototype?: boolean }) {
+/** The reviewed business step is primary; governance guidance is a distinct state action. */
+export function nextActionPresentation(data: Pick<InitiativeRecommendations, "nextAction" | "governanceNextAction">) {
+  return {
+    primary: data.nextAction,
+    governance: data.governanceNextAction && data.governanceNextAction !== data.nextAction
+      ? data.governanceNextAction : null,
+  };
+}
+
+export function InitiativeIntelligence({ initiativeId, hasPrototype = false, reviewedBrief }: { initiativeId: number; hasPrototype?: boolean; reviewedBrief?: InitiativeBrief | null }) {
   const { data, isLoading, isError } = useGetInitiativeRecommendations(
     initiativeId,
     {
@@ -195,7 +204,7 @@ export function InitiativeIntelligence({ initiativeId, hasPrototype = false }: {
         </div>
         {data && (
           <Badge variant="outline" className="font-mono text-xs">
-            Source: {data.sourceLabel}
+            Generated: {data.sourceLabel}{reviewedBrief ? " · Reviewed brief sections labeled below" : ""}
           </Badge>
         )}
       </div>
@@ -217,12 +226,13 @@ export function InitiativeIntelligence({ initiativeId, hasPrototype = false }: {
         </div>
       )}
 
-      {data && <IntelligenceCards data={data} hasPrototype={hasPrototype} />}
+      {data && <IntelligenceCards data={data} hasPrototype={hasPrototype} reviewedBrief={reviewedBrief} />}
     </div>
   );
 }
 
-function IntelligenceCards({ data, hasPrototype }: { data: InitiativeRecommendations; hasPrototype: boolean }) {
+function IntelligenceCards({ data, hasPrototype, reviewedBrief }: { data: InitiativeRecommendations; hasPrototype: boolean; reviewedBrief?: InitiativeBrief | null }) {
+  const action = nextActionPresentation(data);
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       {/* Recommended Next Action — full width, most prominent */}
@@ -232,12 +242,18 @@ function IntelligenceCards({ data, hasPrototype }: { data: InitiativeRecommendat
           title="Recommended Next Action"
           accent="border-l-[#002D72]"
           iconColor="text-primary"
-        confidence={data.confidenceScore}
-        source={data.sourceLabel}
+        confidence={reviewedBrief?.nextSteps.text ? undefined : data.confidenceScore}
+        source={reviewedBrief?.nextSteps.text ? "Reviewed Initiative Brief" : data.sourceLabel}
         >
           <p className="text-lg font-semibold text-foreground">
-            {data.nextAction}
+            {action.primary}
           </p>
+          {action.governance && (
+            <p data-testid="text-governance-next-action" className="mt-3 border-t pt-3 text-sm text-muted-foreground">
+              <span className="font-semibold text-foreground">Governance next action:</span> {action.governance}
+              <span className="block text-xs">State-driven guidance · Source: {data.sourceLabel}</span>
+            </p>
+          )}
         </IntelligenceCard>
       </div>
 
@@ -337,16 +353,16 @@ function IntelligenceCards({ data, hasPrototype }: { data: InitiativeRecommendat
         title="Potential Risks"
         accent="border-l-red-500"
         iconColor="text-red-500"
-        confidence={data.confidenceScore}
-        source={data.sourceLabel}
+        confidence={reviewedBrief ? undefined : data.confidenceScore}
+        source={reviewedBrief ? "Reviewed Initiative Brief" : data.sourceLabel}
         badge={
           <Badge variant="secondary" className="font-mono">
-            {data.risks.length}
+            {reviewedBrief ? (reviewedBrief.risks.text ? 1 : 0) : data.risks.length}
           </Badge>
         }
       >
         <p className="mb-2 text-xs text-muted-foreground">Potential risks for review, not logged project risks.</p>
-        <BulletList items={data.risks} />
+        {reviewedBrief ? <p className="text-sm">{reviewedBrief.risks.text || "Not yet established."}</p> : <BulletList items={data.risks} />}
       </IntelligenceCard>
 
       <IntelligenceCard
@@ -354,11 +370,11 @@ function IntelligenceCards({ data, hasPrototype }: { data: InitiativeRecommendat
         title="Expected Business Value"
         accent="border-l-[#2E7D32]"
         iconColor="text-[#2E7D32]"
-        confidence={data.confidenceScore}
-        source={data.sourceLabel}
+        confidence={reviewedBrief ? undefined : data.confidenceScore}
+        source={reviewedBrief ? "Reviewed Initiative Brief" : data.sourceLabel}
       >
         <p className="text-sm font-medium leading-relaxed">
-          {data.expectedBusinessValue}
+          {reviewedBrief ? (reviewedBrief.expectedValue.qualitative.text || "Not yet established.") : data.expectedBusinessValue}
         </p>
       </IntelligenceCard>
 
@@ -370,7 +386,7 @@ function IntelligenceCards({ data, hasPrototype }: { data: InitiativeRecommendat
         confidence={data.confidenceScore}
         source={data.sourceLabel}
       >
-        <ConfidenceMeter value={data.confidenceScore} />
+        <ConfidenceMeter value={data.confidenceScore} description={data.confidenceDescription} />
       </IntelligenceCard>
     </div>
   );

@@ -5,8 +5,10 @@
  * API specification
  * OpenAPI spec version: 1.5.0
  */
+import type { InitiativeBriefExportInput } from './initiativeBriefExportInput';
 
 export interface InitiativeUpdate {
+  reviewedBrief?: InitiativeBriefExportInput | null;
   title?: string;
   department?: string;
   submitterName?: string;

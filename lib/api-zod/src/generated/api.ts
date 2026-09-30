@@ -331,8 +331,25 @@ export const HealthCheckResponse = zod.object({
 /**
  * @summary List all initiatives
  */
+export const listInitiativesResponseReviewedBriefOneUnknownsMax = 12;
+
+
+
 export const ListInitiativesResponseItem = zod.object({
   "id": zod.number(),
+  "reviewedBrief": zod.union([zod.object({
+  "metadata": zod.record(zod.string(), zod.unknown()),
+  "executiveSummary": zod.record(zod.string(), zod.unknown()),
+  "businessNeed": zod.record(zod.string(), zod.unknown()),
+  "futureState": zod.record(zod.string(), zod.unknown()),
+  "expectedValue": zod.record(zod.string(), zod.unknown()),
+  "successMeasures": zod.record(zod.string(), zod.unknown()),
+  "risks": zod.record(zod.string(), zod.unknown()),
+  "unknowns": zod.array(zod.record(zod.string(), zod.unknown())).max(listInitiativesResponseReviewedBriefOneUnknownsMax),
+  "nextSteps": zod.record(zod.string(), zod.unknown()),
+  "assessment": zod.record(zod.string(), zod.unknown()),
+  "supportingContext": zod.record(zod.string(), zod.unknown())
+}),zod.null()]),
   "title": zod.string(),
   "jiraLinks": zod.array(zod.object({
   "jiraIssueId": zod.string(),
@@ -386,11 +403,36 @@ export const ListInitiativesResponse = zod.array(ListInitiativesResponseItem)
  * @summary Create a new initiative
  */
 
+export const createInitiativeBodyReviewedBriefOneUnknownsMax = 12;
+
 export const createInitiativeBodyJiraIssueIdRegExp = new RegExp('^\\d{1,30}$');
 
 
 export const CreateInitiativeBody = zod.object({
   "title": zod.string().min(1),
+  "interviewDraftId": zod.string().uuid().optional(),
+  "reviewedBrief": zod.union([zod.object({
+  "metadata": zod.record(zod.string(), zod.unknown()),
+  "executiveSummary": zod.record(zod.string(), zod.unknown()),
+  "businessNeed": zod.record(zod.string(), zod.unknown()),
+  "futureState": zod.record(zod.string(), zod.unknown()),
+  "expectedValue": zod.record(zod.string(), zod.unknown()),
+  "successMeasures": zod.record(zod.string(), zod.unknown()),
+  "risks": zod.record(zod.string(), zod.unknown()),
+  "unknowns": zod.array(zod.record(zod.string(), zod.unknown())).max(createInitiativeBodyReviewedBriefOneUnknownsMax),
+  "nextSteps": zod.record(zod.string(), zod.unknown()),
+  "assessment": zod.record(zod.string(), zod.unknown()),
+  "supportingContext": zod.record(zod.string(), zod.unknown())
+}),zod.null()]).optional(),
+  "businessValue": zod.number().optional(),
+  "revenuePotential": zod.number().optional(),
+  "costSavingsScore": zod.number().optional(),
+  "customerImpactScore": zod.number().optional(),
+  "strategicAlignment": zod.number().optional(),
+  "aiReadinessScore": zod.number().optional(),
+  "prototypeConfidence": zod.number().optional(),
+  "technicalComplexityPenalty": zod.number().optional(),
+  "riskPenalty": zod.number().optional(),
   "jiraIssueId": zod.string().regex(createInitiativeBodyJiraIssueIdRegExp).optional().describe('Optional selected Jira issue ID; verified live before initiative creation.'),
   "department": zod.string(),
   "submitterName": zod.string(),
@@ -417,8 +459,25 @@ export const CreateInitiativeBody = zod.object({
   "prototypeDay": zod.number().optional()
 })
 
+export const createInitiativeResponseReviewedBriefOneUnknownsMax = 12;
+
+
+
 export const CreateInitiativeResponse = zod.object({
   "id": zod.number(),
+  "reviewedBrief": zod.union([zod.object({
+  "metadata": zod.record(zod.string(), zod.unknown()),
+  "executiveSummary": zod.record(zod.string(), zod.unknown()),
+  "businessNeed": zod.record(zod.string(), zod.unknown()),
+  "futureState": zod.record(zod.string(), zod.unknown()),
+  "expectedValue": zod.record(zod.string(), zod.unknown()),
+  "successMeasures": zod.record(zod.string(), zod.unknown()),
+  "risks": zod.record(zod.string(), zod.unknown()),
+  "unknowns": zod.array(zod.record(zod.string(), zod.unknown())).max(createInitiativeResponseReviewedBriefOneUnknownsMax),
+  "nextSteps": zod.record(zod.string(), zod.unknown()),
+  "assessment": zod.record(zod.string(), zod.unknown()),
+  "supportingContext": zod.record(zod.string(), zod.unknown())
+}),zod.null()]),
   "title": zod.string(),
   "jiraLinks": zod.array(zod.object({
   "jiraIssueId": zod.string(),
@@ -474,8 +533,25 @@ export const GetInitiativeParams = zod.object({
   "id": zod.coerce.number()
 })
 
+export const getInitiativeResponseReviewedBriefOneUnknownsMax = 12;
+
+
+
 export const GetInitiativeResponse = zod.object({
   "id": zod.number(),
+  "reviewedBrief": zod.union([zod.object({
+  "metadata": zod.record(zod.string(), zod.unknown()),
+  "executiveSummary": zod.record(zod.string(), zod.unknown()),
+  "businessNeed": zod.record(zod.string(), zod.unknown()),
+  "futureState": zod.record(zod.string(), zod.unknown()),
+  "expectedValue": zod.record(zod.string(), zod.unknown()),
+  "successMeasures": zod.record(zod.string(), zod.unknown()),
+  "risks": zod.record(zod.string(), zod.unknown()),
+  "unknowns": zod.array(zod.record(zod.string(), zod.unknown())).max(getInitiativeResponseReviewedBriefOneUnknownsMax),
+  "nextSteps": zod.record(zod.string(), zod.unknown()),
+  "assessment": zod.record(zod.string(), zod.unknown()),
+  "supportingContext": zod.record(zod.string(), zod.unknown())
+}),zod.null()]),
   "title": zod.string(),
   "jiraLinks": zod.array(zod.object({
   "jiraIssueId": zod.string(),
@@ -531,7 +607,24 @@ export const UpdateInitiativeParams = zod.object({
   "id": zod.coerce.number()
 })
 
+export const updateInitiativeBodyReviewedBriefOneUnknownsMax = 12;
+
+
+
 export const UpdateInitiativeBody = zod.object({
+  "reviewedBrief": zod.union([zod.object({
+  "metadata": zod.record(zod.string(), zod.unknown()),
+  "executiveSummary": zod.record(zod.string(), zod.unknown()),
+  "businessNeed": zod.record(zod.string(), zod.unknown()),
+  "futureState": zod.record(zod.string(), zod.unknown()),
+  "expectedValue": zod.record(zod.string(), zod.unknown()),
+  "successMeasures": zod.record(zod.string(), zod.unknown()),
+  "risks": zod.record(zod.string(), zod.unknown()),
+  "unknowns": zod.array(zod.record(zod.string(), zod.unknown())).max(updateInitiativeBodyReviewedBriefOneUnknownsMax),
+  "nextSteps": zod.record(zod.string(), zod.unknown()),
+  "assessment": zod.record(zod.string(), zod.unknown()),
+  "supportingContext": zod.record(zod.string(), zod.unknown())
+}),zod.null()]).optional(),
   "title": zod.string().optional(),
   "department": zod.string().optional(),
   "submitterName": zod.string().optional(),
@@ -571,8 +664,25 @@ export const UpdateInitiativeBody = zod.object({
   "changeSummary": zod.string().optional()
 })
 
+export const updateInitiativeResponseReviewedBriefOneUnknownsMax = 12;
+
+
+
 export const UpdateInitiativeResponse = zod.object({
   "id": zod.number(),
+  "reviewedBrief": zod.union([zod.object({
+  "metadata": zod.record(zod.string(), zod.unknown()),
+  "executiveSummary": zod.record(zod.string(), zod.unknown()),
+  "businessNeed": zod.record(zod.string(), zod.unknown()),
+  "futureState": zod.record(zod.string(), zod.unknown()),
+  "expectedValue": zod.record(zod.string(), zod.unknown()),
+  "successMeasures": zod.record(zod.string(), zod.unknown()),
+  "risks": zod.record(zod.string(), zod.unknown()),
+  "unknowns": zod.array(zod.record(zod.string(), zod.unknown())).max(updateInitiativeResponseReviewedBriefOneUnknownsMax),
+  "nextSteps": zod.record(zod.string(), zod.unknown()),
+  "assessment": zod.record(zod.string(), zod.unknown()),
+  "supportingContext": zod.record(zod.string(), zod.unknown())
+}),zod.null()]),
   "title": zod.string(),
   "jiraLinks": zod.array(zod.object({
   "jiraIssueId": zod.string(),
@@ -639,6 +749,7 @@ export const ListInitiativeVersionsParams = zod.object({
 })
 
 export const ListInitiativeVersionsResponseItem = zod.object({
+  "snapshot": zod.record(zod.string(), zod.unknown()).nullable(),
   "id": zod.number(),
   "initiativeId": zod.number(),
   "version": zod.string(),
@@ -681,7 +792,9 @@ export const GetInitiativeRecommendationsResponse = zod.object({
   "expectedBusinessValue": zod.string(),
   "expectedAnnualValue": zod.number(),
   "confidenceScore": zod.number().describe('Confidence in the recommendations from 0 to 100'),
-  "nextAction": zod.string()
+  "confidenceDescription": zod.string().optional().describe('Explanation of the deterministic confidence heuristic; not a calibrated probability'),
+  "nextAction": zod.string(),
+  "governanceNextAction": zod.string().optional().describe('Current-state governance suggestion, distinct from reviewed business next steps')
 })
 
 
@@ -692,9 +805,26 @@ export const RecalculateInitiativeParams = zod.object({
   "id": zod.coerce.number()
 })
 
+export const recalculateInitiativeResponseInitiativeReviewedBriefOneUnknownsMax = 12;
+
+
+
 export const RecalculateInitiativeResponse = zod.object({
   "initiative": zod.object({
   "id": zod.number(),
+  "reviewedBrief": zod.union([zod.object({
+  "metadata": zod.record(zod.string(), zod.unknown()),
+  "executiveSummary": zod.record(zod.string(), zod.unknown()),
+  "businessNeed": zod.record(zod.string(), zod.unknown()),
+  "futureState": zod.record(zod.string(), zod.unknown()),
+  "expectedValue": zod.record(zod.string(), zod.unknown()),
+  "successMeasures": zod.record(zod.string(), zod.unknown()),
+  "risks": zod.record(zod.string(), zod.unknown()),
+  "unknowns": zod.array(zod.record(zod.string(), zod.unknown())).max(recalculateInitiativeResponseInitiativeReviewedBriefOneUnknownsMax),
+  "nextSteps": zod.record(zod.string(), zod.unknown()),
+  "assessment": zod.record(zod.string(), zod.unknown()),
+  "supportingContext": zod.record(zod.string(), zod.unknown())
+}),zod.null()]),
   "title": zod.string(),
   "jiraLinks": zod.array(zod.object({
   "jiraIssueId": zod.string(),
@@ -811,6 +941,10 @@ export const CompareInitiativeVersionsResponse = zod.object({
 /**
  * @summary Get dashboard aggregate metrics
  */
+export const getDashboardSummaryResponseRecentInitiativesItemReviewedBriefOneUnknownsMax = 12;
+
+
+
 export const GetDashboardSummaryResponse = zod.object({
   "totalInitiatives": zod.number(),
   "awaitingReview": zod.number(),
@@ -824,6 +958,19 @@ export const GetDashboardSummaryResponse = zod.object({
 })),
   "recentInitiatives": zod.array(zod.object({
   "id": zod.number(),
+  "reviewedBrief": zod.union([zod.object({
+  "metadata": zod.record(zod.string(), zod.unknown()),
+  "executiveSummary": zod.record(zod.string(), zod.unknown()),
+  "businessNeed": zod.record(zod.string(), zod.unknown()),
+  "futureState": zod.record(zod.string(), zod.unknown()),
+  "expectedValue": zod.record(zod.string(), zod.unknown()),
+  "successMeasures": zod.record(zod.string(), zod.unknown()),
+  "risks": zod.record(zod.string(), zod.unknown()),
+  "unknowns": zod.array(zod.record(zod.string(), zod.unknown())).max(getDashboardSummaryResponseRecentInitiativesItemReviewedBriefOneUnknownsMax),
+  "nextSteps": zod.record(zod.string(), zod.unknown()),
+  "assessment": zod.record(zod.string(), zod.unknown()),
+  "supportingContext": zod.record(zod.string(), zod.unknown())
+}),zod.null()]),
   "title": zod.string(),
   "jiraLinks": zod.array(zod.object({
   "jiraIssueId": zod.string(),

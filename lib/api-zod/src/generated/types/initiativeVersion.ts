@@ -5,8 +5,11 @@
  * API specification
  * OpenAPI spec version: 1.5.0
  */
+import type { InitiativeVersionSnapshot } from './initiativeVersionSnapshot';
 
 export interface InitiativeVersion {
+  /** @nullable */
+  snapshot: InitiativeVersionSnapshot;
   id: number;
   initiativeId: number;
   version: string;

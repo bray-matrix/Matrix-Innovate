@@ -5,10 +5,12 @@
  * API specification
  * OpenAPI spec version: 1.5.0
  */
+import type { InitiativeBriefExportInput } from './initiativeBriefExportInput';
 import type { InitiativeJiraLink } from './initiativeJiraLink';
 
 export interface Initiative {
   id: number;
+  reviewedBrief: InitiativeBriefExportInput | null;
   title: string;
   jiraLinks: InitiativeJiraLink[];
   department: string;

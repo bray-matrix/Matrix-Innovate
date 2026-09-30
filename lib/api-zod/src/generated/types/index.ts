@@ -63,6 +63,7 @@ export * from './initiativeRecommendations';
 export * from './initiativeRecommendationsComplexity';
 export * from './initiativeUpdate';
 export * from './initiativeVersion';
+export * from './initiativeVersionSnapshot';
 export * from './jiraConnection';
 export * from './jiraField';
 export * from './jiraFieldMapping';

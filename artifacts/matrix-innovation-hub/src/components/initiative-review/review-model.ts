@@ -197,33 +197,37 @@ export function mergeReviewIntoDraft(
   };
 }
 
-/**
- * SAVE CONTRACT (no schema change):
- * - executiveSummary is sent separately (Initiative.executiveSummary column).
- * - Narrative without its own column is appended to `desiredOutcome` as
- *   labeled paragraphs ("Label: text"), blank-line separated, fixed order:
- *   expected value, risks, next steps, suggested measures, critical unknowns, discovery questions,
- *   supporting facts. Expected value / risks labels are unchanged from v1.6.3.
- */
+/** Core Initiative fields remain separate from the reviewed semantic brief. */
 export interface SaveExtras { critical?: string[]; discovery?: string[]; facts?: string[]; candidates?: string[] }
 export function serializeForSave(
-  fields: InitiativeDraftFields, n: ReviewNarrative, extras: SaveExtras = {},
+  fields: InitiativeDraftFields, n: ReviewNarrative, _extras: SaveExtras = {},
 ): { fields: InitiativeDraftFields; executiveSummary: string } {
-  const list = (items?: string[]) => (items ?? []).filter(Boolean).map(i => `- ${i}`).join("\n");
-  const blocks: [string, string][] = [
-    [SAVE_LABELS.expectedValue, n.expectedValue.trim()],
-    [SAVE_LABELS.risks, n.risks.trim()],
-    [SAVE_LABELS.nextSteps, n.nextSteps.trim()],
-    [SAVE_LABELS.candidates, list(extras.candidates)],
-    [SAVE_LABELS.criticalUnknowns, list(extras.critical)],
-    [SAVE_LABELS.discovery, list(extras.discovery)],
-    [SAVE_LABELS.facts, list(extras.facts)],
-  ];
-  const extra = blocks.filter(([, t]) => t && !isPlaceholder(t))
-    .map(([label, t]) => t.startsWith("- ") ? `${label}:\n${t}` : `${label}: ${t}`);
   return {
-    fields: { ...fields, desiredOutcome: [fields.desiredOutcome.trim(), ...extra].filter(Boolean).join("\n\n") },
+    fields: { ...fields, desiredOutcome: fields.desiredOutcome },
     executiveSummary: n.executiveSummary.trim(),
+  };
+}
+
+/** Patch the supplemental narrative only; never copy stale brief core fields into Initiative columns. */
+export function editReviewedSupplement(brief: InitiativeBrief, values: {
+  expectedValue: string; risks: string; nextSteps: string; candidateMeasures: string;
+  criticalUnknowns: string; discoveryUnknowns: string; supportingFacts: string;
+}): InitiativeBrief {
+  const split = (value: string) => value.split("\n").map(s => s.trim()).filter(Boolean);
+  return {
+    ...brief,
+    expectedValue: { ...brief.expectedValue, qualitative: { ...brief.expectedValue.qualitative, text: values.expectedValue, source: "reviewed" } },
+    risks: { text: values.risks, source: "reviewed" },
+    nextSteps: { text: values.nextSteps, source: "reviewed" },
+    successMeasures: { ...brief.successMeasures, candidates: split(values.candidateMeasures).map(text => ({ text, source: "reviewed" as const })) },
+    unknowns: [
+      ...split(values.criticalUnknowns).map(text => ({ text, priority: "critical" as const })),
+      ...split(values.discoveryUnknowns).map(text => ({ text, priority: "discovery" as const })),
+    ],
+    supportingContext: { ...brief.supportingContext,
+      facts: split(values.supportingFacts).map(value =>
+        brief.supportingContext.facts.find(f => f.value === value) ?? { category: "Supporting context", value, source: "user" as const }),
+    },
   };
 }
 

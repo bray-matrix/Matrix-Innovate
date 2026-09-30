@@ -638,6 +638,9 @@ importers:
 
   lib/db:
     dependencies:
+      '@workspace/initiative-brief':
+        specifier: workspace:*
+        version: link:../initiative-brief
       drizzle-orm:
         specifier: 'catalog:'
         version: 0.45.2(@types/pg@8.20.0)(pg@8.22.0)

@@ -1,6 +1,7 @@
 import type {
   ComplexityEstimate,
   ComplexityLevel,
+  InitiativeForRecommendations,
   InitiativeRecord,
   InitiativeRecommendationsResult,
   RecommendationContext,
@@ -13,6 +14,14 @@ const ENGINE_LABEL = "Rule Engine v1";
 const PROTOTYPE_SPRINT_DAYS = 14;
 const SIMILARITY_THRESHOLD = 30;
 const MAX_SIMILAR = 3;
+const CONFIDENCE_DESCRIPTION =
+  "Deterministic rule-of-thumb based on initiative score, stated AI readiness (for AI proposals), complexity, sponsor and success metric. Not a measured probability or validated prediction; it does not evaluate the quality of reviewed evidence or intake completeness.";
+
+function reviewedText(value: { text: string } | undefined): string | null {
+  const text = value?.text?.trim();
+  return text && !/^(?:not yet established|not yet known|unknown|tbd|n\/a|none)[.!]?$/i.test(text)
+    ? text : null;
+}
 
 function involvesAI(initiative: InitiativeRecord): boolean {
   // An intake channel or a readiness score alone is not evidence of an AI solution.
@@ -147,7 +156,7 @@ export class RuleBasedRecommendationProvider implements RecommendationProvider {
     const compliance = normalizeLevel(initiative.complianceRisk);
     points += compliance;
     if (compliance === 2) {
-      factors.push("High compliance risk requires review gates");
+      factors.push("High self-reported compliance risk merits early review");
     }
 
     const blob = textBlob(initiative);
@@ -222,7 +231,9 @@ export class RuleBasedRecommendationProvider implements RecommendationProvider {
     return Array.from(new Set(roles));
   }
 
-  private identifyRisks(initiative: InitiativeRecord): string[] {
+  private identifyRisks(initiative: InitiativeForRecommendations): string[] {
+    const reviewedRisks = reviewedText(initiative.reviewedBrief?.risks);
+    if (reviewedRisks) return [reviewedRisks];
     const risks: string[] = [];
 
     if (involvesAI(initiative) && normalizeLevel(initiative.aiReadiness) === 0) {
@@ -232,7 +243,7 @@ export class RuleBasedRecommendationProvider implements RecommendationProvider {
     if (compliance >= 1) {
       risks.push(
         compliance === 2
-          ? "High compliance risk — legal and security sign-off required"
+          ? "High self-reported compliance risk — discuss applicable requirements with the compliance team"
           : "Moderate compliance risk — early compliance review recommended",
       );
     }
@@ -246,7 +257,7 @@ export class RuleBasedRecommendationProvider implements RecommendationProvider {
     return risks;
   }
 
-  private summarizeBusinessValue(initiative: InitiativeRecord): {
+  private summarizeBusinessValue(initiative: InitiativeForRecommendations): {
     text: string;
     annualValue: number;
   } {
@@ -266,9 +277,14 @@ export class RuleBasedRecommendationProvider implements RecommendationProvider {
     if (annualValue >= 100000) band = "High";
     else if (annualValue >= 25000) band = "Medium";
 
-    const text =
+    const qualitative = reviewedText(initiative.reviewedBrief?.expectedValue.qualitative);
+    const quantified =
       parts.length > 0
         ? `${band} value potential: ${parts.join(", ")}.`
+        : "Financial value not yet quantified.";
+    const text = qualitative
+      ? `${qualitative} ${quantified}`
+      : parts.length > 0 ? quantified
         : "Value not yet quantified — confirm time, cost, revenue, or other business outcomes during planning.";
     return { text, annualValue };
   }
@@ -289,14 +305,31 @@ export class RuleBasedRecommendationProvider implements RecommendationProvider {
     return Math.max(5, Math.min(95, confidence));
   }
 
-  private recommendNextAction(initiative: InitiativeRecord): string {
+  private recommendNextAction(initiative: InitiativeForRecommendations): string {
+    // Current pipeline stage remains the primary governance context. Intake
+    // gaps inform the recommendation before approval, not mandatory policy gates.
+    if (initiative.status === "Idea" || initiative.status === "Review") {
+      const critical = initiative.reviewedBrief?.unknowns.find(item => item.priority === "critical" && item.text.trim());
+      if (critical) return `Consider resolving this decision-critical question to inform the next review: ${critical.text.trim()}`;
+      if (!initiative.businessOwner?.trim()) return "Confirm the accountable business owner to inform the next review";
+      if (!initiative.executiveSponsor?.trim()) return "Confirm executive sponsorship to inform the next review";
+      const readiness = initiative.reviewedBrief?.assessment.readiness?.trim();
+      // Persisted intake strings are "<score>% — <label>". Match only the
+      // existing qualitative labels; do not introduce another score threshold.
+      const intakeLabel = readiness?.replace(/^\d{1,3}%\s*—\s*/, "") ?? "";
+      if (/^(?:Building Context|Understanding the Opportunity|low|not ready|incomplete|needs (?:work|more context))$/i.test(intakeLabel)) {
+        return "Consider gathering more intake context to inform the next review";
+      }
+    }
     switch (initiative.status) {
       case "Idea":
         return initiative.score === 0
           ? "Complete the 100-point scoring model to qualify this initiative"
           : "Submit for review committee evaluation";
       case "Review":
-        return "Present at the next innovation review meeting";
+        return initiative.priority.toLowerCase() === "low"
+          ? "Review the assessment and decide whether to advance or defer"
+          : "Present at the next innovation review meeting";
       case "Approved":
         return hasPrototype(initiative) ? "Plan the proposed proof of concept and confirm its scope" : "Agree the delivery approach and next planning steps";
       case "Prototype":
@@ -323,6 +356,7 @@ export class RuleBasedRecommendationProvider implements RecommendationProvider {
     const { initiative } = context;
     const { level: complexity, factors } = this.estimateComplexity(initiative);
     const value = this.summarizeBusinessValue(initiative);
+    const governanceNextAction = this.recommendNextAction(initiative);
 
     return {
       initiativeId: initiative.id,
@@ -341,7 +375,9 @@ export class RuleBasedRecommendationProvider implements RecommendationProvider {
       expectedBusinessValue: value.text,
       expectedAnnualValue: value.annualValue,
       confidenceScore: this.computeConfidence(initiative, complexity),
-      nextAction: this.recommendNextAction(initiative),
+      confidenceDescription: CONFIDENCE_DESCRIPTION,
+      nextAction: reviewedText(initiative.reviewedBrief?.nextSteps) ?? governanceNextAction,
+      ...(reviewedText(initiative.reviewedBrief?.nextSteps) ? { governanceNextAction } : {}),
     };
   }
 }

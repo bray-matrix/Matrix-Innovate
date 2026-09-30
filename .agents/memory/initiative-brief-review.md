@@ -8,11 +8,11 @@ Use one semantic brief for the browser and document exporters; presentation chan
 
 **How to apply:** Show evidence limitations separately, retain existing score thresholds, and distinguish explicit zero from unknown in document wording.
 
-Keep the private review draft unflattened when preparing a final Initiative save.
+Keep the private review draft unflattened when preparing a final Initiative save. Do not concatenate supplemental sections into Desired Outcome.
 
-**Why:** Supplemental document content uses labelled paragraphs in existing Initiative narrative storage to avoid a schema migration. Writing that serialized payload back into the private draft can duplicate those paragraphs after a failed save and resume.
+**Why:** Avoiding a schema extension by appending labelled sections polluted saved Desired Outcome and could duplicate those paragraphs after failed-save/resume. The accepted direction is a minimal structured extension, not narrative flattening.
 
-**How to apply:** Flush current editable fields/canvas into the private draft, but serialize supplemental sections only for the final Initiative request. Test retry/resume and web/Word/PDF content parity.
+**How to apply:** Preserve reviewed supplemental content separately from core editable fields. Keep core fields authoritative after editing rather than restoring stale values from a saved Brief snapshot; this preserves existing project-promotion compatibility. Test retry/resume and web/Word/PDF content parity. Do not silently rewrite historical flattened records.
 
 Validate generated brief quality through the same baseline, grounded AI merge, and review initialization used by the browser—not by constructing a standalone brief from only the accepted AI fields.
 

@@ -79,6 +79,8 @@ import type {
   InitiativeVersion,
   RecalculationResult,
 } from "@workspace/api-client-react";
+import type { InitiativeBrief } from "@workspace/initiative-brief";
+import { editReviewedSupplement } from "@/components/initiative-review/review-model";
 
 const PROTOTYPE_SPRINT_DAYS = 14;
 const RISK_LEVELS = ["Low", "Medium", "High"] as const;
@@ -104,7 +106,7 @@ function generateOpportunityCanvas(initiative: Initiative) {
     executiveSummary:
       initiative.executiveSummary && initiative.executiveSummary.trim() !== ""
         ? initiative.executiveSummary
-        : `${initiative.title} is a ${initiative.category} initiative for the ${initiative.department} department led by ${initiative.submitterName}.`,
+         : "No executive summary recorded.",
     problem: initiative.problemStatement,
     currentProcess: initiative.currentProcess,
     desiredOutcome: initiative.desiredOutcome,
@@ -113,7 +115,7 @@ function generateOpportunityCanvas(initiative: Initiative) {
     prototypeGoal: initiative.prototypeGoal,
     successMetric: initiative.successMetric,
     risks: `Compliance: ${initiative.complianceRisk}. Technical complexity: ${initiative.technicalComplexity}.${isAiInitiative(initiative) ? ` AI/data readiness: ${initiative.aiReadiness}.` : ""}`,
-    recommendedNextStep: `Advance to next phase based on ${initiative.priority} priority and score of ${initiative.score}/100.`,
+    recommendedNextStep: "See Initiative Intelligence for a state-based recommended next action.",
   };
 }
 
@@ -132,6 +134,13 @@ function toDateInput(value: string | null | undefined): string {
 }
 
 interface EditDraft {
+  expectedValue: string;
+  risks: string;
+  nextSteps: string;
+  candidateMeasures: string;
+  criticalUnknowns: string;
+  discoveryUnknowns: string;
+  supportingFacts: string;
   executiveSummary: string;
   problemStatement: string;
   currentProcess: string;
@@ -149,8 +158,23 @@ interface EditDraft {
   executiveSponsor: string;
 }
 
+// The generated OpenAPI export schema exposes nested JSON as index signatures;
+// the shared brief module defines its concrete semantic shape.
+function getReviewedBrief(initiative: Initiative): InitiativeBrief | null {
+  return initiative.reviewedBrief as unknown as InitiativeBrief | null;
+}
+const lines = (values: string[]) => values.join("\n");
+
 function draftFromInitiative(initiative: Initiative): EditDraft {
+  const brief = getReviewedBrief(initiative);
   return {
+    expectedValue: brief?.expectedValue.qualitative.text ?? "",
+    risks: brief?.risks.text ?? "",
+    nextSteps: brief?.nextSteps.text ?? "",
+    candidateMeasures: lines(brief?.successMeasures.candidates.map(c => c.text) ?? []),
+    criticalUnknowns: lines(brief?.unknowns.filter(u => u.priority === "critical").map(u => u.text) ?? []),
+    discoveryUnknowns: lines(brief?.unknowns.filter(u => u.priority === "discovery").map(u => u.text) ?? []),
+    supportingFacts: lines(brief?.supportingContext.facts.map(f => f.value) ?? []),
     executiveSummary: initiative.executiveSummary ?? "",
     problemStatement: initiative.problemStatement,
     currentProcess: initiative.currentProcess,
@@ -698,6 +722,18 @@ export default function InitiativeDetail() {
         (data as Record<string, string>)[key] = value;
       }
     }
+    const brief = getReviewedBrief(initiative);
+    if (brief) {
+      const original = draftFromInitiative(initiative);
+      const supplemental = (["expectedValue", "risks", "nextSteps", "candidateMeasures", "criticalUnknowns", "discoveryUnknowns", "supportingFacts"] as const)
+        .some(key => draft[key] !== original[key]);
+      if (supplemental) {
+        // Only update supplemental reviewed fields. Core edits are carried by the
+        // normal patch, not copied back from an older brief snapshot.
+        const reviewedBrief = editReviewedSupplement(brief, draft);
+        data.reviewedBrief = reviewedBrief as unknown as NonNullable<InitiativeUpdate["reviewedBrief"]>;
+      }
+    }
 
     if (Object.keys(data).length === 0) {
       toast({
@@ -856,8 +892,15 @@ export default function InitiativeDetail() {
     }
   };
 
-  const canvas = generateOpportunityCanvas(initiative);
-  const generatedSummary = `${initiative.title} is a ${initiative.category} initiative for the ${initiative.department} department led by ${initiative.submitterName}.`;
+  const brief = getReviewedBrief(initiative);
+  const legacyCanvas = generateOpportunityCanvas(initiative);
+  const canvas = brief ? {
+    ...legacyCanvas,
+    expectedValue: brief.expectedValue.qualitative.text || "Not yet established.",
+    risks: brief.risks.text || "Not yet established.",
+    recommendedNextStep: brief.nextSteps.text || "Not yet established. See Initiative Intelligence for a state-based next action.",
+  } : legacyCanvas;
+  const generatedSummary = "Add an executive summary";
   const prototypeDayLabel =
     initiative.prototypeDay === null || initiative.prototypeDay === undefined
       ? "—"
@@ -1020,7 +1063,7 @@ export default function InitiativeDetail() {
                 Score
                 <InfoHint
                   title="Innovation Score"
-                  howCalculated="A 100-point model computed server-side: Business Value (max 25), Revenue Opportunity (max 15), Cost Savings (max 15), Customer Impact (max 15), Strategic Alignment (max 10), AI/Data Readiness (max 10), and Prototype Confidence (max 10), minus penalties for Technical Complexity (up to −8) and Compliance Risk (up to −8). The result is clamped to 0–100."
+                   howCalculated="The deterministic Initiative assessment/prioritization score (0–100), based on scoring components and penalties. It is not interview intake readiness or confidence in recommendations."
                   inputs={[
                     "Business value, customer impact, strategic alignment ratings",
                     "Estimated revenue opportunity and cost savings",
@@ -1062,7 +1105,7 @@ export default function InitiativeDetail() {
           <Target className="mr-2 h-5 w-5 text-primary" />
            <h2 className="text-xl font-bold">Innovation Canvas</h2>
           <span className="ml-3 text-xs text-muted-foreground">
-            Source: {RULE_ENGINE_SOURCE_LABEL}
+            Source: {brief ? "Core Initiative fields + reviewed Initiative Brief" : RULE_ENGINE_SOURCE_LABEL}
           </span>
           {isEditing && (
             <Badge variant="outline" className="ml-3 border-[#FFC72C] text-foreground">
@@ -1089,7 +1132,7 @@ export default function InitiativeDetail() {
                     }
                   />
                   <p className="text-xs text-muted-foreground">
-                    Leave blank to use the auto-generated summary.
+                     Leave blank to show that no executive summary is recorded.
                   </p>
                 </div>
               ) : (
@@ -1183,22 +1226,21 @@ export default function InitiativeDetail() {
                 Expected Value
                 <InfoHint
                   title="Expected Value"
-                  howCalculated="Composed automatically from the estimates entered on the initiative: monthly hours saved, revenue opportunity, and cost savings. The sentence itself is generated by the system; the numbers come from the submitter."
+                   howCalculated={brief ? "Reviewed qualitative value from the Initiative Brief; numeric estimates are separate." : "Based on numeric estimates entered on the initiative; qualitative value may not yet be recorded."}
                   inputs={[
                     "Estimated hours saved per month",
                     "Estimated revenue opportunity ($)",
                     "Estimated cost savings ($)",
                   ]}
-                  userEntered={[
-                    "All three estimates (hours, revenue, cost savings)",
-                  ]}
-                  systemGenerated={["The composed summary sentence"]}
+                   userEntered={brief ? ["Reviewed qualitative value", "Numeric estimates (hours, revenue, cost savings)"] : ["Numeric estimates (hours, revenue, cost savings)"]}
+                   systemGenerated={brief ? [] : ["The composed summary sentence"]}
                 />
               </CardTitle>
             </CardHeader>
             <CardContent>
               {isEditing ? (
                 <div className="space-y-2">
+                  {brief && <div className="space-y-1"><Label className="text-xs">Qualitative expected value</Label><Textarea data-testid="input-reviewed-value" value={draft.expectedValue} onChange={e => updateDraft({ expectedValue: e.target.value })} /></div>}
                   <div className="space-y-1">
                     <Label className="text-xs">Hours saved / month</Label>
                     <Input
@@ -1292,6 +1334,7 @@ export default function InitiativeDetail() {
             <CardContent>
               {isEditing ? (
                 <div className="space-y-2">
+                  {brief && <div className="space-y-1"><Label className="text-xs">Reviewed risks / considerations</Label><Textarea data-testid="input-reviewed-risks" value={draft.risks} onChange={e => updateDraft({ risks: e.target.value })} /></div>}
                   <RiskLevelSelect
                     label="Compliance Risk"
                     value={draft.complianceRisk}
@@ -1320,7 +1363,7 @@ export default function InitiativeDetail() {
                 Recommended Next Step
                 <InfoHint
                   title="Recommended Next Step"
-                  howCalculated="Generated by the system from the initiative's computed Priority and Innovation Score. It updates automatically whenever the score or priority changes."
+                   howCalculated={brief ? "Reviewed next steps from the Initiative Brief; separate from deterministic intelligence recommendations." : "Legacy canvas guidance; see Initiative Intelligence for state-driven next action."}
                   inputs={["Priority level", "Innovation Score (0–100)"]}
                   systemGenerated={[
                     "Priority level",
@@ -1331,14 +1374,29 @@ export default function InitiativeDetail() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm">{canvas.recommendedNextStep}</p>
+               {isEditing && brief ? <Textarea data-testid="input-reviewed-next-steps" value={draft.nextSteps} onChange={e => updateDraft({ nextSteps: e.target.value })} /> : <p className="text-sm">{canvas.recommendedNextStep}</p>}
             </CardContent>
           </Card>
         </div>
+        {brief && <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+          {([
+            ["candidateMeasures", "Suggested Success Measures", brief.successMeasures.candidates.map(c => c.text)],
+            ["criticalUnknowns", "Critical Unknowns", brief.unknowns.filter(u => u.priority === "critical").map(u => u.text)],
+            ["discoveryUnknowns", "For Project Discovery", brief.unknowns.filter(u => u.priority === "discovery").map(u => u.text)],
+            ["supportingFacts", "Supporting Context", brief.supportingContext.facts.map(f => f.value)],
+          ] as const).map(([key, label, items]) => (items.length > 0 || isEditing) && <Card key={key}>
+            <CardHeader className="pb-2"><CardTitle className="text-sm uppercase tracking-wider">{label}</CardTitle></CardHeader>
+            <CardContent>{isEditing ? <Textarea data-testid={`input-reviewed-${key}`} value={draft[key]} rows={4} onChange={e => updateDraft({ [key]: e.target.value })} /> :
+              <ul className="list-disc pl-5 space-y-1 text-sm">{items.map((item, index) => <li key={`${index}-${item}`}>{item}</li>)}</ul>}</CardContent>
+          </Card>)}
+        </div>}
+        {brief?.assessment.readiness && <p data-testid="text-intake-readiness" className="mt-3 text-sm text-muted-foreground">
+          Intake readiness: {brief.assessment.readiness}. This describes completeness and quality of business context gathered during the interview, not the scoring model’s AI/Data Readiness factor, Initiative assessment score, or recommendation confidence heuristic.
+        </p>}
       </div>
 
       {/* Initiative Intelligence */}
-      <InitiativeIntelligence initiativeId={id} hasPrototype={hasPrototypeGoal(initiative)} />
+      <InitiativeIntelligence initiativeId={id} hasPrototype={hasPrototypeGoal(initiative)} reviewedBrief={brief} />
 
       {/* Tracking & Governance */}
       <div className="space-y-4">
