@@ -26,7 +26,7 @@ import type { BriefText } from "@workspace/initiative-brief";
 type ZeroField = NonNullable<InitiativeReviewMetadata["confirmedZeroFields"]>[number];
 const NOT_ESTABLISHED = "Not yet established";
 const sourceKind = (t: BriefText): "ai" | "you" | "suggestion" | undefined =>
-  t.source === "ai-draft" ? "ai" : t.source === "user" || t.source === "jira" ? "you" : t.source === "suggestion" ? "suggestion" : undefined;
+  t.source === "user" || t.source === "jira" ? "you" : t.source === "suggestion" ? "suggestion" : undefined;
 
 export interface InitiativeReviewProps {
   draft: InterviewDraft;
@@ -71,7 +71,7 @@ function Section({ n, title, children, source, id }: { n: string; title: string;
       <header className="brief-section-head">
         <span className="brief-num">{n}</span>
         <h2 id={`h-${id}`}>{title}</h2>
-        {source && <Source kind={source} />}
+        {source && source !== "ai" && <Source kind={source} />}
       </header>
       {children}
     </section>
@@ -95,7 +95,7 @@ export function InitiativeReview({
   const { toast } = useToast();
   const [fields, setFields] = useState<InitiativeDraftFields>({ ...draft.fields, submitterName: draft.fields.submitterName || submitterName });
   const [scoring, setScoring] = useState<ScoringComponents>(draft.scoring);
-  const [narrative, setNarrative] = useState<ReviewNarrative>(() => initialNarrative(draft));
+  const [narrative, setNarrative] = useState<ReviewNarrative>(() => initialNarrative(draft, aiResult));
   const [errors, setErrors] = useState<Errors>({});
   const [assessmentOpen, setAssessmentOpen] = useState(false);
   const [exporting, setExporting] = useState<"docx" | "pdf" | null>(null);
@@ -292,8 +292,13 @@ export function InitiativeReview({
         </div>
 
         <p className="brief-note" data-print-hide>
-          Text marked <Source kind="ai" /> is drafted language for you to confirm, not verified fact. Click any paragraph to edit. Changes save to your private draft automatically.
+          Draft narrative was generated from interview responses and should be reviewed before approval. Source facts and potential measures are identified separately. Click any paragraph to edit. Changes save to your private draft automatically.
         </p>
+        {!departments.includes(fields.department) && (
+          <p className="brief-error" role="status" data-testid="required-department-notice">
+            Required before Save Initiative: select a Department. Business Owner and Executive Sponsor are optional.
+          </p>
+        )}
 
         <header className="brief-title-block">
           <label htmlFor="review-title" className="brief-kicker">Initiative Title<span className="brief-req"> *</span></label>
@@ -349,11 +354,12 @@ export function InitiativeReview({
         <Section n="05" id="success-measures" title="Success Measures">
           <div className="brief-sub">
             <h3>Success measure {sourceKind(brief.successMeasures.drafted) && <Source kind={sourceKind(brief.successMeasures.drafted)!} />}</h3>
-            {fieldInput("successMetric", NOT_ESTABLISHED)}
+            {!fields.successMetric.trim() && <p className="brief-muted">Success measures have not yet been finalized.</p>}
+            {fieldInput("successMetric", "Add an agreed success measure")}
           </div>
           {candidates.length > 0 && (
             <div className="brief-sub">
-              <h3>Potential measures <Source kind="suggestion" /></h3>
+              <h3>Potential Success Measures <Source kind="suggestion" /></h3>
               <ul className="brief-list" data-testid="list-candidate-measures">{candidates.map(m => <li key={m.text}>{m.text}</li>)}</ul>
               <p className="brief-muted brief-small">Suggestions to consider, not established targets.</p>
             </div>
@@ -382,7 +388,7 @@ export function InitiativeReview({
           {narrativeInput("nextSteps", "What should happen next?", "input-nextSteps")}
         </Section>
 
-        <Section n="08" id="assessment" title="Initiative Assessment">
+        <Section n="08" id="assessment" title="Current Assessment">
           <div className="brief-assess">
             <div className="brief-score">
               <span className="brief-score-num" data-testid="text-live-score">{brief.assessment.score}</span>

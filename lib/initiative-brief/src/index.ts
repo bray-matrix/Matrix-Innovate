@@ -44,7 +44,7 @@ export interface BriefAIResult {
   knownFacts?: { category: string; value: string; source: "user" | "jira"; evidence?: string }[];
   inferredSuggestions?: string[];
   unknowns?: string[];
-  draft?: { expectedValue?: string; risks?: string; successMetric?: string };
+  draft?: { expectedValue?: string; risks?: string; successMetric?: string; executiveSummary?: string };
 }
 export interface BriefReviewMetadata {
   /** For values where an explicit zero is known, list field names here. Otherwise zero from legacy drafts means unknown. */
@@ -61,9 +61,21 @@ export interface BuildInitiativeBriefInput {
   generatedAt?: string;
   review?: BriefReviewMetadata;
 }
-const clean = (value: string | undefined | null): string => (value ?? "").trim();
+/** Conservative editorial cleanup: never rewrite quantities or factual clauses. */
+export function cleanBriefProse(value: string | undefined | null): string {
+  const normalized = (value ?? "").trim().replace(/[ \t]+/g, " ")
+    .replace(/\.{2,}/g, ".").replace(/([!?])\1+/g, "$1").replace(/([.!?])\s*[.!?](?=\s|$)/g, "$1");
+  const seen = new Set<string>();
+  return normalized.split(/(?<=[.!?])\s+(?=[A-Z])|\n+/).filter(sentence => {
+    const key = sentence.toLowerCase().replace(/[.!?\s]+$/g, "");
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).join(" ");
+}
+const clean = cleanBriefProse;
 const notKnown = (text: string): boolean =>
-  !text || /^(?:not yet (?:known|established|quantified)|unknown|tbd|n\/a|none[.!]?)$/i.test(text);
+  !text || /^(?:not yet (?:known|established|quantified)|unknown|tbd|n\/a|none)[.!]?$/i.test(text);
 const text = (value: string | undefined, source: Provenance): BriefText => ({
   text: notKnown(clean(value)) ? "Not yet established" : clean(value), source,
 });
@@ -84,11 +96,128 @@ function validNarrative(value: string): boolean {
   const trimmed = clean(value);
   return !notKnown(trimmed) && !/^(?:risks not yet known|value not yet quantified)/i.test(trimmed);
 }
+
+export interface BriefSynthesisInput {
+  draft: Pick<BriefDraft, "fields" | "canvas" | "executiveSummary">;
+  aiResult?: BriefAIResult | null;
+  /** Answers only, not interviewer questions. Keep the full transcript in its original storage. */
+  evidence?: readonly { value: string; source: "user" | "jira" }[];
+}
+export interface SynthesizedBriefNarrative {
+  executiveSummary: string; expectedValue: string; risks: string; nextSteps: string;
+}
+const sentences = (value: string): string[] =>
+  clean(value).split(/(?<=[.!?])\s+(?=[A-Z])/).filter(validNarrative);
+const prose = (items: string[]): string => clean(unique(items, 4).map(item =>
+  /[.!?]$/.test(item) ? item : `${item}.`).join(" "));
+const impactSignal = /\b(?:wast(?:e|ed|ing)|slow(?:er|s)?|delay(?:s|ed)?|inefficien\w*|time.consuming|harder|difficult|burden|rework|depend(?:ence|ency)|bottleneck)\b/i;
+const benefitSignal = /\b(?:reduc(?:e|ed|ing|tion)|improv(?:e|ed|ing|ement)|faster|clearer|better|reliable|streamlin\w*|save|saving|avoid|enable)\b/i;
+const riskSignal = /\b(?:risk|exposure|unclear|unknown ownership|lack of|knowledge loss|dependence|dependent on|lost when|lose.*(?:leave|leaves)|security|compliance|credential)\b/i;
+const adverseSignal = /\b(?:risk|exposure|unclear|unknown ownership|lack|loss|lost|lose|limited|dependence|dependent|concern|gap|vulnerab\w*)\b/i;
+const unresolved = /^(?:(?:i|we) (?:am |are )?)?(?:not yet (?:known|established|quantified)|do not know|don't know|unsure|tbd)\b/i;
+/** Conservative word-set containment handles reordered/subsumed risk facts,
+ * while keeping the supplied wording. No rewritten facts or inferred risks. */
+function distinctRisks(items: string[]): string[] {
+  const tokens = (s: string) => new Set((s.toLowerCase().match(/[a-z]+/g) ?? [])
+    .filter(w => !/^(?:a|an|the|we|they|and|or|of|on|in|to|for|from|with|is|are|was|were|be|being|has|have|creates?|causes?|risk|risks|application|applications)$/.test(w))
+    .map(w => /^(?:depend|depends|dependent|dependence)$/.test(w) ? "depend"
+      : /^(?:loss|lose|loses|lost)$/.test(w) ? "loss"
+      : w.replace(/(?:ing|ed|s)$/, "")));
+  const selected: string[] = [];
+  const keys: Set<string>[] = [];
+  for (const item of unique(items, Number.MAX_SAFE_INTEGER)) {
+    const key = tokens(item);
+    if (keys.some(other => {
+      const smaller = key.size <= other.size ? key : other;
+      const larger = key.size <= other.size ? other : key;
+      return smaller.size >= 3 && [...smaller].every(word => larger.has(word));
+    })) continue;
+    selected.push(item); keys.push(key);
+    if (selected.length === 3) break;
+  }
+  return selected;
+}
+
+/** Measures remain suggestions, never accepted targets or promised outcomes. */
+export function potentialSuccessMeasures(items: readonly string[]): string[] {
+  return unique(items.map(clean).filter(s => !/\d|\$/.test(s)).flatMap(s => {
+    if (/^faster completion of /i.test(s)) {
+      return [`Time to complete ${s.replace(/^faster completion of /i, "").split(/\s+through\s+/i)[0]}`];
+    }
+    if (/\b(?:measure|metric|track|rate|percentage|reduction|reduce|increase|time to|number of|share of)\b/i.test(s)) return [s];
+    return [];
+  }), 4);
+}
+
+/**
+ * Completion-only synthesis. Reviewed/cleared edits must not be passed here.
+ * Platform prose is preferred; evidence extraction is an explicit deterministic
+ * fallback, not a substitute for semantic AI. No scenario-specific vocabulary.
+ */
+export function synthesizeBriefNarrative({ draft, aiResult, evidence = [] }: BriefSynthesisInput): SynthesizedBriefNarrative {
+  const f = draft.fields;
+  const facts = aiResult?.knownFacts ?? [];
+  const evidenceSentences = unique([
+    ...facts.flatMap(fact => sentences(fact.value)),
+    ...evidence.flatMap(item => sentences(item.value)),
+    ...[f.problemStatement, f.currentProcess, f.desiredOutcome].flatMap(sentences),
+  ], Number.MAX_SAFE_INTEGER).filter(s => !unresolved.test(s) && !s.endsWith("?"));
+  const valueFacts = facts.filter(fact => /\b(?:value|benefit|impact)\b/i.test(fact.category))
+    .flatMap(fact => sentences(fact.value));
+  const benefits = evidenceSentences.filter(s => benefitSignal.test(s) && !impactSignal.test(s));
+  const impacts = unique([...valueFacts.filter(s => impactSignal.test(s)), ...evidenceSentences.filter(s => impactSignal.test(s))], 2);
+  const suppliedValue = validNarrative(draft.canvas.expectedValue) ? draft.canvas.expectedValue : aiResult?.draft?.expectedValue ?? "";
+  // Numbers alone are not qualitative value.
+  const qualitativeValue = validNarrative(suppliedValue) && !/^(?:estimated )?(?:~?\d|\$)/i.test(suppliedValue)
+    ? clean(suppliedValue)
+    : prose([
+      ...valueFacts.filter(s => !impactSignal.test(s)).slice(0, 2),
+      ...(impacts.length ? [`The business case rests on addressing these reported impacts: ${impacts.map(s => s.replace(/[.!?]$/, "")).join("; ")}`] : benefits.slice(0, 2)),
+    ]);
+  const suppliedRisks = draft.canvas.risks;
+  const knownRisks = facts.filter(fact => /\b(?:risk|constraint|consideration)\b/i.test(fact.category))
+    .flatMap(fact => sentences(fact.value)).filter(s => !unresolved.test(s));
+  const risks = prose(distinctRisks([
+    ...(validNarrative(suppliedRisks) && !/^Compliance:.*Complexity:/i.test(suppliedRisks) ? sentences(suppliedRisks) : []),
+    ...knownRisks, ...evidenceSentences.filter(s => riskSignal.test(s) && adverseSignal.test(s) && !benefitSignal.test(s)),
+  ]));
+  const suppliedSummary = aiResult?.draft?.executiveSummary || draft.executiveSummary;
+  const mechanical = /\b(?:addresses:|Desired outcome:|Classified as|Value not yet quantified|scores \d+\/100)/i;
+  const problem = sentences(f.problemStatement)[0];
+  const outcome = sentences(f.desiredOutcome)[0];
+  const summary = validNarrative(suppliedSummary) && !mechanical.test(suppliedSummary)
+    ? clean(suppliedSummary)
+    : prose([problem, outcome,
+      ...sentences(qualitativeValue).filter(s => s !== outcome && s !== problem).slice(0, 1)].filter(Boolean));
+  const existingNext = draft.canvas.recommendedNextStep;
+  const nextSteps = validNarrative(existingNext) && !/\b(?:refine scoring|priority|score \d|fast-track)\b/i.test(existingNext)
+    ? clean(existingNext)
+    : prose([
+      !f.department || !f.businessOwner ? "Confirm the accountable business owner and department" : "Review the proposal with the business owner and affected stakeholders",
+      aiResult?.unknowns?.length ? "Resolve the critical unknowns that affect the decision to advance" : "",
+      [f.estimatedHoursSavedMonthly, f.estimatedRevenueOpportunity, f.estimatedCostSavings].every(n => !n)
+        ? "Validate the qualitative benefits and develop value estimates where useful" : "Validate the value estimates with the affected teams",
+      "Decide whether to advance to Project evaluation",
+    ].filter(Boolean));
+  return { executiveSummary: summary, expectedValue: qualitativeValue, risks, nextSteps };
+}
+
+/** Implementation details are not promoted to decision blockers merely to fill a quota. */
+export function classifyBriefUnknowns(items: readonly string[]): { critical: string[]; discovery: string[] } {
+  const discoveryPattern = /\b(?:cadence|phase\s*(?:2|two)|exact|specific (?:compliance|audit)|detailed|total number|source systems?|implementation|integration|rollout|deployment|technical design|vendor|project plan|resource plan|timeline)\b/i;
+  const criticalPattern = /\b(?:owner|sponsor|budget|cost|saving|revenue|value|metric|measure|success|scope|deadline|compliance|risk|security|decision|approval|baseline)\b/i;
+  const all = unique(items.map(shortUnknown), Number.MAX_SAFE_INTEGER);
+  return {
+    critical: all.filter(s => !discoveryPattern.test(s) && criticalPattern.test(s)).slice(0, 4),
+    discovery: all.filter(s => discoveryPattern.test(s) || !criticalPattern.test(s)).slice(0, 3),
+  };
+}
 export function buildInitiativeBrief({
   draft, aiResult, jira, generatedAt, review,
 }: BuildInitiativeBriefInput): InitiativeBrief {
   const f = draft.fields;
-  const narrative = [f.problemStatement, f.currentProcess, f.desiredOutcome, f.successMetric]
+  const narrative = [draft.executiveSummary, f.problemStatement, f.currentProcess, f.desiredOutcome, f.successMetric,
+    draft.canvas.expectedValue, draft.canvas.risks].flatMap(sentences)
     .map(value => clean(value).toLowerCase());
   const impactFact = (aiResult?.knownFacts ?? []).find(fact =>
     /^(business )?impact$/i.test(clean(fact.category)) && validNarrative(fact.value) &&
@@ -113,12 +242,15 @@ export function buildInitiativeBrief({
       source: known ? "user" : "reviewed", status: known ? "estimated" : "unknown",
     };
   });
-  const rawUnknowns = (aiResult?.unknowns ?? []).map(shortUnknown);
-  const discoveryPattern = /\b(?:implementation|integration|rollout|deployment|technical design|vendor|project plan)\b/i;
+  const rawUnknowns = (aiResult?.unknowns ?? []).filter(item =>
+    !(validNarrative(draft.canvas.risks) && /^(?:risks need confirmation|risks (?:unknown|not (?:yet )?known))\.?$/i.test(item)) &&
+    !(validNarrative(qualitative) && /^(?:qualitative )?value (?:unknown|not (?:yet )?established)\.?$/i.test(item))
+  ).map(shortUnknown);
+  const classified = classifyBriefUnknowns(rawUnknowns);
   const unknowns: BriefUnknown[] = [
-    ...unique(review?.criticalUnknowns ?? rawUnknowns.filter(v => !discoveryPattern.test(v)), 4)
+    ...unique(review?.criticalUnknowns ?? classified.critical, 4)
       .map(item => ({ text: item, priority: "critical" as const })),
-    ...unique(review?.discoveryUnknowns ?? rawUnknowns.filter(v => discoveryPattern.test(v)), 3)
+    ...unique(review?.discoveryUnknowns ?? classified.discovery, 3)
       .map(item => ({ text: item, priority: "discovery" as const })),
   ].filter((item, index, all) =>
     all.findIndex(other => other.text.toLowerCase() === item.text.toLowerCase()) === index);

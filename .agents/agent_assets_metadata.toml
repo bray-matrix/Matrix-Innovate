@@ -28,3 +28,31 @@ mtime_ms = 1790732399183
 storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:40451992-c03c-4e01-8515-2c896d8b22c5/f8fc53c1-72dd-4738-8362-e23160907d79/579374af-ff40-42b4-9e62-28f28337ef5e"
 storage_version_token = "1790732516951577"
 content_type = "application/pdf"
+
+[[outputs]]
+id = "XffNcrEBFY4UYJjOoKG4P"
+uri = "file://attached_assets/generated/application-inventory-brief-revised.docx"
+type = "word_document"
+title = "Revised Application Inventory Brief — Word"
+description = "Synthetic representative interview, revised shared synthesis. Editable DOCX; three pages rendered and inspected in LibreOffice."
+logical_id = "5b39edd5-8e08-4552-ac60-8963b1f76b77"
+content_hash = "sha256:9c5fdbc6571d82d526f6dd5d4937d6313d722162d05c81e6a90b2aa39391c1e5"
+size = 19122
+mtime_ms = 1790776441464
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:40451992-c03c-4e01-8515-2c896d8b22c5/5b39edd5-8e08-4552-ac60-8963b1f76b77/3bb48e56-e48b-4ecb-956e-cef6b6bbc0bd"
+storage_version_token = "1790776503562891"
+content_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+
+[[outputs]]
+id = "psIGpYCuU132A4NQ9nabW"
+uri = "file://attached_assets/generated/application-inventory-brief-revised.pdf"
+type = "pdf"
+title = "Revised Application Inventory Brief — PDF"
+description = "Same semantic brief as Word and web; selectable-text PDF, two pages visually checked."
+logical_id = "845da5dc-f659-4712-a9ed-dd5b592f71d3"
+content_hash = "sha256:28a23b464eed7ebade36a4e0228d4ae2c5683fa04cd4ea341f559996e33c0ef9"
+size = 19484
+mtime_ms = 1790776441464
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:40451992-c03c-4e01-8515-2c896d8b22c5/845da5dc-f659-4712-a9ed-dd5b592f71d3/421c8308-c82d-4118-822e-af069069092c"
+storage_version_token = "1790776504096276"
+content_type = "application/pdf"

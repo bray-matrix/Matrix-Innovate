@@ -34,10 +34,10 @@ async function brandImage(): Promise<Buffer> {
   throw new Error("Approved Matrix wordmark asset is missing from Innovation Hub public assets");
 }
 
-interface Row { heading: string; body: string; source?: string; bullet?: boolean }
+interface Row { heading: string; body: string; bullet?: boolean }
 interface Section { title: string; rows: Row[] }
 function row(heading: string, value: BriefText): Row {
-  return { heading, body: value.text, source: value.source };
+  return { heading, body: value.text };
 }
 /** Shared semantic section order for both renderers. */
 export function briefSections(b: InitiativeBrief): Section[] {
@@ -52,6 +52,7 @@ export function briefSections(b: InitiativeBrief): Section[] {
     row("Desired Outcome", b.futureState.outcome), row("High-level Approach", b.futureState.approach),
   ];
   if (b.futureState.prototype) future.push(row("Initial Prototype", b.futureState.prototype));
+  const finalizedMeasure = b.successMeasures.drafted.text !== "Not yet established";
   return [
     { title: "Executive Summary", rows: [row("", b.executiveSummary)] },
     { title: "Business Need", rows: need },
@@ -59,31 +60,40 @@ export function briefSections(b: InitiativeBrief): Section[] {
     { title: "Expected Business Value", rows: [
       row("Qualitative Value", b.expectedValue.qualitative),
       ...b.expectedValue.quantified.map(v => ({ heading: v.label,
-        body: `${v.text}${v.status === "unknown" ? "" : ` (${v.status})`}`, source: v.source })),
+        body: `${v.text}${v.status === "unknown" ? "" : " (user estimate, unverified)"}` })),
     ] },
     { title: "Success Measures", rows: [
-      row("Drafted measure (review before accepting)", b.successMeasures.drafted),
-      ...b.successMeasures.candidates.map(v => ({ ...row("Potential measure (suggestion)", v), bullet: true })),
+      finalizedMeasure
+        ? row("Drafted measure (review before accepting)", b.successMeasures.drafted)
+        : { heading: "", body: "Success measures have not yet been finalized." },
+      ...(b.successMeasures.candidates.length
+        ? [{ heading: "", body: "Potential Success Measures (suggestions, not accepted):" }] : []),
+      ...b.successMeasures.candidates.map(v => ({ ...row("Suggested measure", v), bullet: true })),
     ] },
     { title: "Risks, Constraints & Unknowns", rows: [
       row("Risks / Considerations", b.risks),
-      ...b.unknowns.map(u => ({ heading: u.priority === "critical" ? "Critical unknown" : "Future discovery",
-        body: u.text, bullet: true })),
+      ...b.unknowns.filter(u => u.priority === "critical")
+        .map(u => ({ heading: "Critical unknown", body: u.text, bullet: true })),
+      ...b.unknowns.filter(u => u.priority === "discovery")
+        .map(u => ({ heading: "Future discovery", body: u.text, bullet: true })),
     ] },
     { title: "Recommended Next Steps", rows: [row("", b.nextSteps)] },
-    { title: "Initiative Assessment", rows: [
-      { heading: "Overall Score", body: `${b.assessment.score}/100 · ${b.assessment.priority}` },
+    { title: "Current Assessment", rows: [
+      { heading: "Overall Score", body: `${b.assessment.score}/100 · ${b.assessment.priority} (current assessment, not a decision)` },
       { heading: "Readiness", body: b.assessment.readiness },
+      ...(b.expectedValue.quantified.some(v => v.status === "unknown")
+        ? [{ heading: "", body: "Some scoring dimensions remain unquantified; unknown values are not confirmed zero." }] : []),
       ...b.assessment.factors.map(f => ({ heading: f.label, body: f.value })),
     ] },
     { title: "Supporting Context", rows: [
       ...(b.supportingContext.jiraKey ? [{ heading: "Linked Jira", body: b.supportingContext.jiraKey }] : []),
-      ...b.supportingContext.facts.map(f => ({ heading: `${f.category} (${f.source} fact)`, body: f.value })),
+      ...b.supportingContext.facts.map(f => ({ heading: `${f.category} (${f.source === "jira" ? "Jira" : "interview"} fact)`, body: f.value })),
     ] },
-  ];
+  ].filter(section => section.rows.length > 0);
 }
 const blue = "164B85";
 const display = (value: string) => value || "Not yet provided";
+const provenanceNote = "Draft narrative was generated from interview responses and should be reviewed before approval. Supporting facts are attributed to interview or Jira; potential success measures are suggestions, not accepted targets.";
 function metaRows(b: InitiativeBrief): Row[] {
   const m = b.metadata;
   return [
@@ -97,19 +107,19 @@ function metaRows(b: InitiativeBrief): Row[] {
 }
 export async function renderInitiativeBriefDocx(b: InitiativeBrief): Promise<Buffer> {
   const logo = await brandImage();
-  const paragraph = (r: Row) => new Paragraph({
-    spacing: { after: 150, line: 330 },
+  const paragraph = (r: Row, keepNext = false) => new Paragraph({
+    keepNext,
+    spacing: { after: 105, line: 300 },
     bullet: r.bullet ? { level: 0 } : undefined,
     children: [
       ...(r.heading ? [new TextRun({ text: `${r.heading}: `, bold: true, color: blue })] : []),
       new TextRun({ text: r.body }),
-      ...(r.source ? [new TextRun({ text: `  [${r.source}]`, italics: true, color: "64748B", size: 17 })] : []),
     ],
   });
   const doc = new Document({
     creator: "Matrix Innovation Hub", title: b.metadata.title,
     sections: [{
-      properties: { page: { margin: { top: 1050, bottom: 960, left: 1100, right: 1100 } } },
+      properties: { page: { margin: { top: 1400, bottom: 960, left: 1100, right: 1100 } } },
       headers: { default: new Header({ children: [new Table({
         width: { size: 2250, type: WidthType.DXA }, columnWidths: [2250],
         borders: { top: { style: "none" }, bottom: { style: "none" },
@@ -130,12 +140,20 @@ export async function renderInitiativeBriefDocx(b: InitiativeBrief): Promise<Buf
       })] }) },
       children: [
         new Paragraph({ text: "INITIATIVE BRIEF", heading: HeadingLevel.HEADING_2, spacing: { after: 160 } }),
-        new Paragraph({ text: b.metadata.title, heading: HeadingLevel.TITLE, spacing: { after: 240 } }),
-        ...metaRows(b).map(paragraph),
+        new Paragraph({ text: b.metadata.title, heading: HeadingLevel.TITLE, spacing: { after: 160 } }),
+        new Paragraph({ spacing: { after: 145 }, children: [
+          new TextRun({ text: provenanceNote, italics: true, color: "64748B", size: 18 }),
+        ] }),
+        ...metaRows(b).map(r => new Paragraph({
+          spacing: { after: 65, line: 280 },
+          children: [new TextRun({ text: `${r.heading}: `, bold: true, color: blue }), new TextRun(r.body)],
+        })),
         ...briefSections(b).flatMap(section => [
           new Paragraph({ text: section.title, heading: HeadingLevel.HEADING_2,
-            keepNext: true, spacing: { before: 320, after: 150 } }),
-          ...section.rows.map(paragraph),
+            keepNext: section.rows.length > 0, spacing: { before: 235, after: 95 } }),
+          ...section.rows.map((r, index) =>
+            paragraph(r, (section.title === "Supporting Context" && index < section.rows.length - 1) ||
+              (section.title === "Current Assessment" && index < 2))),
         ]),
       ],
     }],
@@ -151,20 +169,21 @@ export async function renderInitiativeBriefDocx(b: InitiativeBrief): Promise<Buf
 export async function renderInitiativeBriefPdf(b: InitiativeBrief): Promise<Buffer> {
   const logo = await brandImage();
   const sections: Content[] = briefSections(b).flatMap(section => [
-    { text: section.title, style: "sectionTitle", margin: [0, 16, 0, 7] },
+    { text: section.title, style: "sectionTitle", headlineLevel: 2, margin: [0, 11, 0, 5] },
     ...section.rows.map(r => ({
       text: [
         ...(r.heading ? [{ text: `${r.heading}: `, bold: true, color: "#164B85" }] : []),
         { text: r.body },
-        ...(r.source ? [{ text: `  [${r.source}]`, italics: true, color: "#64748B" }] : []),
       ],
-      margin: [r.bullet ? 12 : 0, 0, 0, 8] as [number, number, number, number],
+      margin: [r.bullet ? 12 : 0, 0, 0, 5] as [number, number, number, number],
     })),
   ]);
   const doc: TDocumentDefinitions = {
     pageSize: "A4",
     pageMargins: [48, 78, 48, 53],
-    defaultStyle: { font: "Helvetica", fontSize: 9, color: "#25354B", lineHeight: 1.35 },
+    pageBreakBefore: (node, queries) => node.headlineLevel === 2 &&
+      queries.getFollowingNodesOnPage().length === 0 && queries.getNodesOnNextPage().length > 0,
+    defaultStyle: { font: "Helvetica", fontSize: 9, color: "#25354B", lineHeight: 1.28 },
     info: { title: b.metadata.title, author: "Matrix Innovation Hub" },
     header: {
       table: { widths: [150], body: [[{
@@ -182,6 +201,8 @@ export async function renderInitiativeBriefPdf(b: InitiativeBrief): Promise<Buff
     content: [
       { text: "INITIATIVE BRIEF", fontSize: 9, bold: true, color: "#164B85", margin: [0, 0, 0, 8] },
       { text: b.metadata.title, style: "title", margin: [0, 0, 0, 14] },
+      { text: provenanceNote, italics: true, color: "#64748B", fontSize: 8,
+        margin: [0, 0, 0, 10] },
       ...metaRows(b).map(r => ({
         text: [{ text: `${r.heading}: `, bold: true, color: "#164B85" }, r.body],
         margin: [0, 0, 0, 4] as [number, number, number, number],

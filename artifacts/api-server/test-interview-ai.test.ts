@@ -30,6 +30,40 @@ const draft = (input: Input) => ({
 });
 const success = (data: unknown) => async () => ({ data });
 
+test("completion requests whole-evidence prose and accepts supported summary without changing source-backed risk protection", async () => {
+  const input = make([
+    "Application information is fragmented and depends on institutional knowledge.",
+    "Time is wasted rediscovering information. Troubleshooting and onboarding are slower.",
+    "We want a reliable application inventory with ownership and business purpose.",
+    "Unclear ownership and dependencies create security and compliance exposure.",
+  ]);
+  const summary = "Fragmented application information slows troubleshooting and onboarding. A reliable inventory with ownership and business purpose would reduce the need to rediscover information.";
+  const result = await generateInterviewDraft(input, async request => {
+    const messages = JSON.stringify(request.messages);
+    assert.match(request.instruction, /QUALITATIVE business benefits/);
+    assert.match(request.instruction, /not blockers to Initiative intake/);
+    for (const turn of input.turns) assert.ok(messages.includes(turn.answer));
+    return { data: { ...draft(input), draft: { ...draft(input).draft,
+      executiveSummary: summary,
+      expectedValue: "Less time spent rediscovering information would support faster troubleshooting and onboarding.",
+      risks: input.turns[3].answer,
+    } } };
+  });
+  assert.equal(result.draft.executiveSummary, summary);
+  assert.match(result.draft.expectedValue, /faster troubleshooting/);
+  assert.equal(result.draft.risks, input.turns[3].answer);
+});
+
+test("summary is optional for legacy completion responses and unsupported new quantities are rejected", async () => {
+  const input = make(["Missed items delay dispatch.", "Group picks by location to reduce unnecessary walking."]);
+  const legacy = await generateInterviewDraft(input, success(draft(input)));
+  assert.equal(legacy.draft.problemStatement, input.turns[0].answer);
+  const result = await generateInterviewDraft(input, success({ ...draft(input), draft: {
+    ...draft(input).draft, executiveSummary: "Grouping picks will save $900000 and require 70 staff.",
+  } }));
+  assert.equal(result.draft.executiveSummary, "");
+});
+
 test("quality beats populated fields: generic answers do not inflate readiness", () => {
   const vague = calculateInterviewReadiness(make(["Something needs improvement", "I don't know", "skip"],
     ["Describe the idea.", "What business impact?", "What is the priority?"]));

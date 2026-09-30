@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { inflateRawSync, inflateSync } from "node:zlib";
-import { mkdir, writeFile } from "node:fs/promises";
-import { buildInitiativeBrief, parseInitiativeBrief, type BriefDraft } from "@workspace/initiative-brief";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { buildInitiativeBrief, parseInitiativeBrief, synthesizeBriefNarrative, type BriefDraft } from "@workspace/initiative-brief";
 import { briefSections, renderInitiativeBriefDocx, renderInitiativeBriefPdf } from "./initiative-brief-export";
 
 const draft: BriefDraft = {
@@ -30,7 +30,7 @@ const draft: BriefDraft = {
 };
 const aiResult = {
   knownFacts: [{ category: "Context", value: "Applications are tracked in multiple repositories", source: "user" as const }],
-  unknowns: ["Who owns the application inventory?", "Who owns the application inventory?",
+  unknowns: ["Who is the business owner of the application inventory?", "Who is the business owner of the application inventory?",
     "What is the integration architecture?", "How will technical deployment be phased?"],
 };
 const brief = buildInitiativeBrief({
@@ -88,10 +88,10 @@ test("normalizes unknowns and provenance without inventing financial value", () 
 test("generates editable OOXML Word and text-selectable PDF with matching brief sections", async () => {
   const docx = await renderInitiativeBriefDocx(brief);
   const pdf = await renderInitiativeBriefPdf(brief);
-  if (process.env["WRITE_BRIEF_SAMPLES"] === "1") {
+  if (process.env["WRITE_REVISED_BRIEF_SAMPLES"] === "1") {
     await mkdir("attached_assets/generated", { recursive: true });
-    await writeFile("attached_assets/generated/application-inventory-brief.docx", docx);
-    await writeFile("attached_assets/generated/application-inventory-brief.pdf", pdf);
+    await writeFile("attached_assets/generated/application-inventory-small-fixture-revised.docx", docx);
+    await writeFile("attached_assets/generated/application-inventory-small-fixture-revised.pdf", pdf);
   }
   assert.equal(docx.subarray(0, 2).toString(), "PK");
   assert.equal(pdf.subarray(0, 5).toString(), "%PDF-");
@@ -121,7 +121,14 @@ test("generates editable OOXML Word and text-selectable PDF with matching brief 
   assert.match(xml, /Centralized Application Inventory and Ownership System/);
   assert.match(xml, /Percentage of applications with a validated owner/);
   assert.match(xml, /Validate a pilot inventory with two business units/);
-  assert.match(xml, /Drafted measure \(review before accepting\)/);
+  assert.match(xml, /Success measures have not yet been finalized/);
+  assert.match(xml, /Potential Success Measures \(suggestions, not accepted\)/);
+  assert.doesNotMatch(xml, /Drafted measure \(review before accepting\)|\[ai-draft\]/);
+  assert.equal(xml.split("Draft narrative was generated from interview responses").length - 1, 1);
+  assert.match(xml, /<w:keepNext\/>/);
+  assert.doesNotMatch(xml, /<w:pageBreakBefore\/>|<w:br w:type="page"/);
+  assert.match(xml, /Current Assessment/);
+  assert.match(xml, /Some scoring dimensions remain unquantified/);
   assert.match(xml, /Not yet established/);
   const decodedStreams: string[] = [];
   for (const match of pdf.toString("latin1").matchAll(/stream\r?\n([\s\S]*?)endstream/g)) {
@@ -139,7 +146,11 @@ test("generates editable OOXML Word and text-selectable PDF with matching brief 
   assert.match(extractedText, /Centralized Application Inventory/);
   assert.match(extractedText, /Executive Summary/);
   assert.match(extractedText, /Validate a pilot inventory with two business units/);
-  assert.match(extractedText, /Drafted measure \(review before accepting\)/);
+  assert.match(extractedText, /Success measures have not yet been finalized/);
+  assert.match(extractedText, /Potential Success Measures \(suggestions, not accepted\)/);
+  assert.doesNotMatch(extractedText, /Drafted measure \(review before accepting\)|\[ai-draft\]/);
+  assert.equal(extractedText.split("Draft narrative was generated from interview responses").length - 1, 1);
+  assert.match(extractedText, /Some scoring dimensions remain unquantified/);
   assert.match(extractedText, /Not yet established/);
   let previousPdfSection = -1;
   let previousWordSection = -1;
@@ -150,10 +161,85 @@ test("generates editable OOXML Word and text-selectable PDF with matching brief 
     assert.ok(wordIndex > previousWordSection, `Word section missing or out of order: ${section.title}`);
     previousPdfSection = pdfIndex;
     previousWordSection = wordIndex;
+    for (const r of section.rows) {
+      // Both exports are projections of the same semantic rows, not separate synthesis.
+      assert.ok(extractedText.includes(r.body), `PDF missing row: ${r.heading}`);
+      assert.ok(xml.includes(r.body.replace(/&/g, "&amp;")), `Word missing row: ${r.heading}`);
+    }
   }
   assert.equal(extractedText.split(brief.expectedValue.qualitative.text).length - 1, 1);
   assert.equal(xml.split(brief.expectedValue.qualitative.text).length - 1, 1);
 });
+
+test("full application-inventory evidence fixture exports the synthesized narrative", async () => {
+  // Match the complete evidence fixture in initiative-review.test.tsx, not the
+  // intentionally small DOCX mechanics fixture above. No production scenario logic.
+  const evidence = [
+    "Time is wasted rediscovering information; troubleshooting and onboarding are slower, and renewals and changes are harder.",
+    "Unclear ownership and dependencies create security and compliance exposure.",
+    "Credential-management visibility is limited and knowledge is lost when people leave.",
+  ].map(value => ({ value, source: "user" as const }));
+  const representative: BriefDraft = {
+    ...draft,
+    fields: { ...draft.fields, department: "", businessOwner: "",
+      problemStatement: "Application information is fragmented and depends on institutional knowledge.",
+      currentProcess: "Teams consult spreadsheets and colleagues.",
+      desiredOutcome: "A reliable application inventory would begin with ownership and business purpose, administered by IT and validated by business owners.",
+      aiConcept: "Begin with a reliable system of record for ownership and business purpose; extend later to integrations, dependencies, licensing, cost and credential-management visibility.",
+      prototypeGoal: "", successMetric: "" },
+    executiveSummary: `${draft.fields.title} addresses: Application information is fragmented and depends on institutional knowledge.. Desired outcome: A reliable application inventory.`,
+    canvas: { expectedValue: "Value not yet quantified.", risks: "Risks not yet known.",
+      recommendedNextStep: "Advance to review and refine scoring — currently Low priority (score 45/100)." },
+  };
+  const ai = {
+    knownFacts: [
+      { category: "Impact", value: evidence[0].value, source: "user" as const },
+      { category: "Security risk", value: evidence[1].value, source: "user" as const },
+      { category: "Continuity risk", value: evidence[2].value, source: "user" as const },
+    ],
+    unknowns: ["Who is the accountable business owner?", "Which department should sponsor this work?",
+      "What baseline should validate the expected value?", "What is the validation cadence?",
+      "Which source systems should be integrated?", "What is the implementation timeline?"],
+  };
+  const narrative = synthesizeBriefNarrative({ draft: representative, aiResult: ai, evidence });
+  const representativeBrief = buildInitiativeBrief({
+    draft: { ...representative, executiveSummary: narrative.executiveSummary,
+      canvas: { expectedValue: narrative.expectedValue, risks: narrative.risks,
+        recommendedNextStep: narrative.nextSteps } },
+    aiResult: ai, generatedAt: "2026-09-30T12:00:00.000Z",
+    review: { candidateSuccessMeasures: ["Share of applications with validated ownership",
+      "Time required to locate application ownership and configuration information"] },
+  });
+  assert.match(representativeBrief.expectedValue.qualitative.text, /troubleshooting and onboarding/);
+  assert.match(representativeBrief.risks.text, /security and compliance exposure/);
+  assert.ok(representativeBrief.expectedValue.quantified.every(v => v.status === "unknown"));
+  assert.doesNotMatch(representativeBrief.executiveSummary.text, /addresses:|Desired outcome:|\.\./);
+  const docx = await renderInitiativeBriefDocx(representativeBrief);
+  const pdf = await renderInitiativeBriefPdf(representativeBrief);
+  assert.equal(docx.subarray(0, 2).toString(), "PK");
+  assert.equal(pdf.subarray(0, 5).toString(), "%PDF-");
+  if (process.env["WRITE_REVISED_BRIEF_SAMPLES"] === "1") {
+    await mkdir("attached_assets/generated", { recursive: true });
+    await writeFile("attached_assets/generated/application-inventory-test-fixture-revised.docx", docx);
+    await writeFile("attached_assets/generated/application-inventory-test-fixture-revised.pdf", pdf);
+  }
+});
+
+// The one-request live final-generation replay is recorded separately from the
+// deterministic frontend fixture. Export its corrected semantic brief verbatim.
+if (process.env["WRITE_LIVE_BRIEF_SAMPLE"] === "1") {
+  test("export captured live synthetic Initiative Brief without reconstructing facts", async () => {
+    const capture = JSON.parse(await readFile("attached_assets/generated/application-inventory-live-synthesis.json", "utf8"));
+    const actual = parseInitiativeBrief(capture.brief);
+    assert.equal(capture.operation, "final-only");
+    assert.equal(capture.requests, 1);
+    assert.notEqual(actual.futureState.outcome.text, "Not yet established");
+    const docx = await renderInitiativeBriefDocx(actual);
+    const pdf = await renderInitiativeBriefPdf(actual);
+    await writeFile("attached_assets/generated/application-inventory-brief-revised.docx", docx);
+    await writeFile("attached_assets/generated/application-inventory-brief-revised.pdf", pdf);
+  });
+}
 
 test("long narrative remains editable and can span Word/PDF pages", async () => {
   const longText = Array.from({ length: 240 }, (_, i) => `Inventory item ${i + 1} needs ownership validation.`).join(" ");
@@ -179,9 +265,30 @@ test("long narrative remains editable and can span Word/PDF pages", async () => 
     .map(match => Buffer.from(match[1], "hex").toString("latin1")).join("");
   assert.match(text, /Inventory item 1 needs ownership validation/);
   assert.match(text, /Inventory item 240 needs ownership validation/);
-  if (process.env["WRITE_BRIEF_SAMPLES"] === "1") {
+  if (process.env["WRITE_LONG_BRIEF_SAMPLE"] === "1") {
     await mkdir("attached_assets/generated", { recursive: true });
-    await writeFile("attached_assets/generated/application-inventory-long.pdf", pdf);
-    await writeFile("attached_assets/generated/application-inventory-long.docx", docx);
+    await writeFile("attached_assets/generated/application-inventory-long-revised.pdf", pdf);
+    await writeFile("attached_assets/generated/application-inventory-long-revised.docx", docx);
   }
+});
+
+test("accepted metric is not presented as absent; discovery remains separate from critical questions", () => {
+  const reviewed = {
+    ...brief,
+    successMeasures: { ...brief.successMeasures,
+      drafted: { text: "Validated ownership coverage", source: "reviewed" as const } },
+  };
+  const rows = briefSections(reviewed);
+  const measures = rows.find(s => s.title === "Success Measures")!.rows;
+  assert.ok(measures.some(r => r.body === "Validated ownership coverage"));
+  assert.ok(!measures.some(r => r.body === "Success measures have not yet been finalized."));
+  const questions = rows.find(s => s.title === "Risks, Constraints & Unknowns")!.rows;
+  assert.equal(questions.filter(r => r.heading === "Critical unknown").length,
+    brief.unknowns.filter(u => u.priority === "critical").length);
+  assert.equal(questions.filter(r => r.heading === "Future discovery").length,
+    brief.unknowns.filter(u => u.priority === "discovery").length);
+  assert.ok(questions.findIndex(r => r.heading === "Future discovery") >
+    questions.findIndex(r => r.heading === "Critical unknown"));
+  assert.ok(!briefSections({ ...reviewed, supportingContext: { facts: [], jiraKey: "" } })
+    .some(s => s.title === "Supporting Context"), "do not render an empty last section");
 });

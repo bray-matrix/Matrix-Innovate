@@ -1,0 +1,463 @@
+{
+  "synthetic": true,
+  "operation": "final-only",
+  "requests": 1,
+  "offlineRegeneration": true,
+  "scoringSource": "Existing representative 45/100 fixture, not live Initiative data or AI scoring",
+  "metadata": {
+    "requestId": "f999cbc8-e32c-4cc4-afe9-6ade04b5a78b",
+    "inputTokens": 1712,
+    "outputTokens": 1056,
+    "durationMs": 16646
+  },
+  "input": {
+    "turns": [
+      {
+        "question": "What business problem should this idea address?",
+        "answer": "We do not have a reliable application inventory. Application information is fragmented across spreadsheets, email, team wikis and individual knowledge. Ownership and dependencies are unclear."
+      },
+      {
+        "question": "Who is affected and what is the impact?",
+        "answer": "IT and business teams waste time rediscovering application information and finding the right people. Troubleshooting and onboarding are slower. Renewals and changes are harder because information is incomplete. We depend on institutional knowledge and lose knowledge when people leave."
+      },
+      {
+        "question": "What outcome do you want?",
+        "answer": "A reliable system of record for applications would make ownership and business purpose clear. We want faster troubleshooting and onboarding, less rediscovery, better renewal and change support, reduced dependence on specific individuals, and better visibility for security reviews, audits and employee transitions."
+      },
+      {
+        "question": "What scope and governance have been agreed?",
+        "answer": "Phase 1 should start with application ownership and business purpose. IT would administer the inventory and business owners would validate their records. Later it could extend to integrations, dependencies, licensing, cost and credential-management visibility. Detailed Phase 2 scope and validation cadence are not yet known."
+      },
+      {
+        "question": "What risks or constraints matter?",
+        "answer": "Unclear ownership and dependencies create security and compliance exposure. Credential-management visibility is limited. Dependence on institutional knowledge creates a risk of knowledge loss when people leave. The exact compliance requirements need later discovery."
+      },
+      {
+        "question": "What value or success measures are established?",
+        "answer": "The qualitative benefits described earlier matter, but dollars, hours saved, savings and revenue are not yet quantified. We have not agreed on success measures or targets. The number of applications and exact source systems are unknown."
+      },
+      {
+        "question": "What is still needed before advancing?",
+        "answer": "We need to confirm the accountable business owner and department and agree on the initial scope boundary with stakeholders. No executive sponsor is assigned. The budget, implementation timeline and resource plan have not been established."
+      }
+    ],
+    "jira": null,
+    "knownFacts": []
+  },
+  "final": {
+    "knownFacts": [
+      {
+        "category": "problem",
+        "value": "Application information is fragmented across spreadsheets, email, team wikis and individual knowledge. Ownership and dependencies are unclear.",
+        "evidence": "Application information is fragmented across spreadsheets, email, team wikis and individual knowledge. Ownership and dependencies are unclear.",
+        "source": "user"
+      },
+      {
+        "category": "impact",
+        "value": "IT and business teams waste time rediscovering application information and finding the right people. Troubleshooting and onboarding are slower.",
+        "evidence": "IT and business teams waste time rediscovering application information and finding the right people. Troubleshooting and onboarding are slower.",
+        "source": "user"
+      },
+      {
+        "category": "impact",
+        "value": "Renewals and changes are harder because information is incomplete.",
+        "evidence": "Renewals and changes are harder because information is incomplete.",
+        "source": "user"
+      },
+      {
+        "category": "risk",
+        "value": "Unclear ownership and dependencies create security and compliance exposure.",
+        "evidence": "Unclear ownership and dependencies create security and compliance exposure.",
+        "source": "user"
+      },
+      {
+        "category": "risk",
+        "value": "Dependence on institutional knowledge creates a risk of knowledge loss when people leave.",
+        "evidence": "Dependence on institutional knowledge creates a risk of knowledge loss when people leave.",
+        "source": "user"
+      },
+      {
+        "category": "scope",
+        "value": "Phase 1 should start with application ownership and business purpose. IT would administer the inventory and business owners would validate their records.",
+        "evidence": "Phase 1 should start with application ownership and business purpose. IT would administer the inventory and business owners would validate their records.",
+        "source": "user"
+      },
+      {
+        "category": "desiredOutcome",
+        "value": "A reliable system of record for applications would make ownership and business purpose clear.",
+        "evidence": "A reliable system of record for applications would make ownership and business purpose clear.",
+        "source": "user"
+      }
+    ],
+    "inferredSuggestions": [
+      "Reduction in time spent by IT and business teams rediscovering application information and locating owners",
+      "Faster completion of troubleshooting, onboarding, renewal and change-management activities through centralized, validated ownership and business-purpose data",
+      "Improved security and compliance posture through clearer visibility of application ownership, dependencies and credential management"
+    ],
+    "unknowns": [
+      "Who is the accountable business owner and which department will own the application inventory?",
+      "What are the specific compliance and audit requirements that must be addressed?",
+      "What is the total number of applications to be inventoried and which source systems will be the primary data sources?",
+      "What budget and resource allocation is required for Phase 1 implementation?",
+      "Success metric not established"
+    ],
+    "suggestedInitiativeType": "Process Improvement / Data Governance",
+    "suggestedTitle": "Establish Reliable Application Inventory and Ownership System of Record",
+    "draft": {
+      "problemStatement": "Application information is fragmented across spreadsheets, email, team wikis and individual knowledge, with unclear ownership and dependencies. This fragmentation causes IT and business teams to waste time rediscovering information, slows troubleshooting and onboarding, complicates renewals and changes, and creates security and compliance exposure.",
+      "currentProcess": "Application information is maintained in multiple disconnected sources including spreadsheets, email, team wikis and individual knowledge. Ownership and business purpose are unclear or known only to specific individuals. Teams rediscover information repeatedly and lack reliable visibility into dependencies and relationships.",
+      "desiredOutcome": "",
+      "expectedValue": "Centralized application ownership and business-purpose data reduces time spent by IT and business teams rediscovering information and locating the right people. Faster troubleshooting, onboarding, renewal and change support improve operational efficiency. Clearer visibility of ownership and dependencies strengthens security and compliance posture. Reduced dependence on institutional knowledge mitigates risk of knowledge loss during employee transitions and supports audit and security review activities.",
+      "successMetric": "",
+      "risks": "",
+      "executiveSummary": "IT and business teams currently waste time rediscovering fragmented application information scattered across spreadsheets, email, wikis and individual knowledge, slowing troubleshooting, onboarding, renewals and changes while creating security and compliance exposure. Establishing a reliable system of record with clear application ownership and business purpose, administered by IT with business owner validation, will centralize critical information, accelerate operational activities, strengthen security visibility and reduce dangerous dependence on institutional knowledge during transitions and departures."
+    },
+    "readiness": {
+      "score": 90,
+      "label": "Strong Business Context",
+      "dimensions": [
+        {
+          "key": "problem",
+          "label": "Problem / Opportunity",
+          "weight": 20,
+          "status": "known",
+          "points": 20
+        },
+        {
+          "key": "affected",
+          "label": "Who is Affected",
+          "weight": 12,
+          "status": "known",
+          "points": 12
+        },
+        {
+          "key": "current",
+          "label": "Current State / Process",
+          "weight": 12,
+          "status": "known",
+          "points": 12
+        },
+        {
+          "key": "impact",
+          "label": "Business Impact",
+          "weight": 18,
+          "status": "known",
+          "points": 18
+        },
+        {
+          "key": "outcome",
+          "label": "Desired Outcome",
+          "weight": 16,
+          "status": "known",
+          "points": 16
+        },
+        {
+          "key": "urgency",
+          "label": "Importance / Urgency",
+          "weight": 10,
+          "status": "missing",
+          "points": 0
+        },
+        {
+          "key": "constraints",
+          "label": "Constraints / Important Unknowns",
+          "weight": 12,
+          "status": "known",
+          "points": 12
+        }
+      ]
+    }
+  },
+  "baseline": {
+    "fields": {
+      "title": "Centralized Application Inventory and Ownership System",
+      "department": "",
+      "category": "Internal Productivity",
+      "submitterName": "",
+      "businessOwner": "",
+      "executiveSponsor": "",
+      "problemStatement": "We do not have a reliable application inventory. Application information is fragmented across spreadsheets, email, team wikis and individual knowledge. Ownership and dependencies are unclear.",
+      "currentProcess": "We do not have a reliable application inventory. Application information is fragmented across spreadsheets, email, team wikis and individual knowledge. Ownership and dependencies are unclear.",
+      "desiredOutcome": "A reliable system of record for applications would make ownership and business purpose clear. We want faster troubleshooting and onboarding, less rediscovery, better renewal and change support, reduced dependence on specific individuals, and better visibility for security reviews, audits and employee transitions.",
+      "aiConcept": "",
+      "prototypeGoal": "",
+      "successMetric": "A reliable system of record for applications would make ownership and business purpose clear.",
+      "estimatedHoursSavedMonthly": 0,
+      "estimatedRevenueOpportunity": 0,
+      "estimatedCostSavings": 0,
+      "customerImpact": "Medium",
+      "complianceRisk": "High",
+      "technicalComplexity": "Medium",
+      "aiReadiness": "High"
+    },
+    "scoring": {
+      "businessValue": 25,
+      "revenuePotential": 0,
+      "costSavingsScore": 0,
+      "customerImpactScore": 6,
+      "strategicAlignment": 8,
+      "aiReadinessScore": 10,
+      "prototypeConfidence": 7,
+      "technicalComplexityPenalty": -6,
+      "riskPenalty": -5
+    },
+    "canvas": {
+      "executiveSummary": "Classified as a Internal Productivity initiative. Centralized Application Inventory and Ownership System addresses: We do not have a reliable application inventory.. Desired outcome: A reliable system of record for applications would make ownership and business purpose clear..  Value not yet quantified. Based on the interview, this initiative scores 51/100 (Medium priority).",
+      "problem": "We do not have a reliable application inventory. Application information is fragmented across spreadsheets, email, team wikis and individual knowledge. Ownership and dependencies are unclear.",
+      "currentProcess": "We do not have a reliable application inventory. Application information is fragmented across spreadsheets, email, team wikis and individual knowledge. Ownership and dependencies are unclear.",
+      "desiredOutcome": "A reliable system of record for applications would make ownership and business purpose clear. We want faster troubleshooting and onboarding, less rediscovery, better renewal and change support, reduced dependence on specific individuals, and better visibility for security reviews, audits and employee transitions.",
+      "aiOpportunity": "",
+      "expectedValue": "Value not yet quantified.",
+      "prototypeGoal": "",
+      "successMetric": "A reliable system of record for applications would make ownership and business purpose clear.",
+      "risks": "Compliance: High. Complexity: Medium.",
+      "recommendedNextStep": "Advance to review and refine scoring — currently Medium priority (score 51/100)."
+    },
+    "executiveSummary": "Classified as a Internal Productivity initiative. Centralized Application Inventory and Ownership System addresses: We do not have a reliable application inventory.. Desired outcome: A reliable system of record for applications would make ownership and business purpose clear..  Value not yet quantified. Based on the interview, this initiative scores 51/100 (Medium priority).",
+    "score": 45,
+    "priority": "Low",
+    "detectedCategory": "Internal Productivity",
+    "detectedCategoryLabel": "Internal Productivity"
+  },
+  "draft": {
+    "fields": {
+      "title": "Establish Reliable Application Inventory and Ownership System of Record",
+      "department": "",
+      "category": "Internal Productivity",
+      "submitterName": "",
+      "businessOwner": "",
+      "executiveSponsor": "",
+      "problemStatement": "Application information is fragmented across spreadsheets, email, team wikis and individual knowledge, with unclear ownership and dependencies. This fragmentation causes IT and business teams to waste time rediscovering information, slows troubleshooting and onboarding, complicates renewals and changes, and creates security and compliance exposure.",
+      "currentProcess": "Application information is maintained in multiple disconnected sources including spreadsheets, email, team wikis and individual knowledge. Ownership and business purpose are unclear or known only to specific individuals. Teams rediscover information repeatedly and lack reliable visibility into dependencies and relationships.",
+      "desiredOutcome": "Phase 1 should start with application ownership and business purpose. IT would administer the inventory and business owners would validate their records. A reliable system of record for applications would make ownership and business purpose clear.",
+      "aiConcept": "",
+      "prototypeGoal": "",
+      "successMetric": "",
+      "estimatedHoursSavedMonthly": 0,
+      "estimatedRevenueOpportunity": 0,
+      "estimatedCostSavings": 0,
+      "customerImpact": "Medium",
+      "complianceRisk": "High",
+      "technicalComplexity": "Medium",
+      "aiReadiness": "High"
+    },
+    "scoring": {
+      "businessValue": 25,
+      "revenuePotential": 0,
+      "costSavingsScore": 0,
+      "customerImpactScore": 6,
+      "strategicAlignment": 8,
+      "aiReadinessScore": 10,
+      "prototypeConfidence": 7,
+      "technicalComplexityPenalty": -6,
+      "riskPenalty": -5
+    },
+    "canvas": {
+      "executiveSummary": "IT and business teams currently waste time rediscovering fragmented application information scattered across spreadsheets, email, wikis and individual knowledge, slowing troubleshooting, onboarding, renewals and changes while creating security and compliance exposure. Establishing a reliable system of record with clear application ownership and business purpose, administered by IT with business owner validation, will centralize critical information, accelerate operational activities, strengthen security visibility and reduce dangerous dependence on institutional knowledge during transitions and departures.",
+      "problem": "Application information is fragmented across spreadsheets, email, team wikis and individual knowledge, with unclear ownership and dependencies. This fragmentation causes IT and business teams to waste time rediscovering information, slows troubleshooting and onboarding, complicates renewals and changes, and creates security and compliance exposure.",
+      "currentProcess": "Application information is maintained in multiple disconnected sources including spreadsheets, email, team wikis and individual knowledge. Ownership and business purpose are unclear or known only to specific individuals. Teams rediscover information repeatedly and lack reliable visibility into dependencies and relationships.",
+      "desiredOutcome": "Phase 1 should start with application ownership and business purpose. IT would administer the inventory and business owners would validate their records. A reliable system of record for applications would make ownership and business purpose clear.",
+      "aiOpportunity": "",
+      "expectedValue": "Centralized application ownership and business-purpose data reduces time spent by IT and business teams rediscovering information and locating the right people. Faster troubleshooting, onboarding, renewal and change support improve operational efficiency. Clearer visibility of ownership and dependencies strengthens security and compliance posture. Reduced dependence on institutional knowledge mitigates risk of knowledge loss during employee transitions and supports audit and security review activities.",
+      "prototypeGoal": "",
+      "successMetric": "",
+      "risks": "Unclear ownership and dependencies create security and compliance exposure. Dependence on institutional knowledge creates a risk of knowledge loss when people leave. Credential-management visibility is limited.",
+      "recommendedNextStep": "Confirm the accountable business owner and department. Resolve the critical unknowns that affect the decision to advance. Validate the qualitative benefits and develop value estimates where useful. Decide whether to advance to Project evaluation."
+    },
+    "executiveSummary": "IT and business teams currently waste time rediscovering fragmented application information scattered across spreadsheets, email, wikis and individual knowledge, slowing troubleshooting, onboarding, renewals and changes while creating security and compliance exposure. Establishing a reliable system of record with clear application ownership and business purpose, administered by IT with business owner validation, will centralize critical information, accelerate operational activities, strengthen security visibility and reduce dangerous dependence on institutional knowledge during transitions and departures.",
+    "score": 45,
+    "priority": "Low",
+    "detectedCategory": "Internal Productivity",
+    "detectedCategoryLabel": "Internal Productivity"
+  },
+  "narrative": {
+    "executiveSummary": "IT and business teams currently waste time rediscovering fragmented application information scattered across spreadsheets, email, wikis and individual knowledge, slowing troubleshooting, onboarding, renewals and changes while creating security and compliance exposure. Establishing a reliable system of record with clear application ownership and business purpose, administered by IT with business owner validation, will centralize critical information, accelerate operational activities, strengthen security visibility and reduce dangerous dependence on institutional knowledge during transitions and departures.",
+    "expectedValue": "Centralized application ownership and business-purpose data reduces time spent by IT and business teams rediscovering information and locating the right people. Faster troubleshooting, onboarding, renewal and change support improve operational efficiency. Clearer visibility of ownership and dependencies strengthens security and compliance posture. Reduced dependence on institutional knowledge mitigates risk of knowledge loss during employee transitions and supports audit and security review activities.",
+    "risks": "Unclear ownership and dependencies create security and compliance exposure. Dependence on institutional knowledge creates a risk of knowledge loss when people leave. Credential-management visibility is limited.",
+    "nextSteps": "Confirm the accountable business owner and department. Resolve the critical unknowns that affect the decision to advance. Validate the qualitative benefits and develop value estimates where useful. Decide whether to advance to Project evaluation."
+  },
+  "brief": {
+    "metadata": {
+      "title": "Establish Reliable Application Inventory and Ownership System of Record",
+      "type": "Internal Productivity",
+      "department": "",
+      "submitter": "",
+      "businessOwner": "",
+      "executiveSponsor": "",
+      "generatedAt": "2026-09-30T13:45:24.785Z",
+      "status": "Draft",
+      "jiraKey": ""
+    },
+    "executiveSummary": {
+      "text": "IT and business teams currently waste time rediscovering fragmented application information scattered across spreadsheets, email, wikis and individual knowledge, slowing troubleshooting, onboarding, renewals and changes while creating security and compliance exposure. Establishing a reliable system of record with clear application ownership and business purpose, administered by IT with business owner validation, will centralize critical information, accelerate operational activities, strengthen security visibility and reduce dangerous dependence on institutional knowledge during transitions and departures.",
+      "source": "ai-draft"
+    },
+    "businessNeed": {
+      "problem": {
+        "text": "Application information is fragmented across spreadsheets, email, team wikis and individual knowledge, with unclear ownership and dependencies. This fragmentation causes IT and business teams to waste time rediscovering information, slows troubleshooting and onboarding, complicates renewals and changes, and creates security and compliance exposure.",
+        "source": "ai-draft"
+      },
+      "currentState": {
+        "text": "Application information is maintained in multiple disconnected sources including spreadsheets, email, team wikis and individual knowledge. Ownership and business purpose are unclear or known only to specific individuals. Teams rediscover information repeatedly and lack reliable visibility into dependencies and relationships.",
+        "source": "ai-draft"
+      },
+      "businessImpact": {
+        "text": "IT and business teams waste time rediscovering application information and finding the right people. Troubleshooting and onboarding are slower.",
+        "source": "user"
+      }
+    },
+    "futureState": {
+      "outcome": {
+        "text": "Phase 1 should start with application ownership and business purpose. IT would administer the inventory and business owners would validate their records. A reliable system of record for applications would make ownership and business purpose clear.",
+        "source": "ai-draft"
+      },
+      "approach": {
+        "text": "Not yet established",
+        "source": "ai-draft"
+      }
+    },
+    "expectedValue": {
+      "qualitative": {
+        "text": "Centralized application ownership and business-purpose data reduces time spent by IT and business teams rediscovering information and locating the right people. Faster troubleshooting, onboarding, renewal and change support improve operational efficiency. Clearer visibility of ownership and dependencies strengthens security and compliance posture. Reduced dependence on institutional knowledge mitigates risk of knowledge loss during employee transitions and supports audit and security review activities.",
+        "source": "ai-draft"
+      },
+      "quantified": [
+        {
+          "label": "Monthly hours saved",
+          "text": "Not yet established",
+          "source": "reviewed",
+          "status": "unknown"
+        },
+        {
+          "label": "Revenue opportunity",
+          "text": "Not yet established",
+          "source": "reviewed",
+          "status": "unknown"
+        },
+        {
+          "label": "Cost savings",
+          "text": "Not yet established",
+          "source": "reviewed",
+          "status": "unknown"
+        }
+      ]
+    },
+    "successMeasures": {
+      "drafted": {
+        "text": "Not yet established",
+        "source": "ai-draft"
+      },
+      "candidates": [
+        {
+          "text": "Reduction in time spent by IT and business teams rediscovering application information and locating owners",
+          "source": "suggestion"
+        },
+        {
+          "text": "Time to complete troubleshooting, onboarding, renewal and change-management activities",
+          "source": "suggestion"
+        }
+      ]
+    },
+    "risks": {
+      "text": "Unclear ownership and dependencies create security and compliance exposure. Dependence on institutional knowledge creates a risk of knowledge loss when people leave. Credential-management visibility is limited.",
+      "source": "ai-draft"
+    },
+    "unknowns": [
+      {
+        "text": "Who is the accountable business owner and which department will own the application inventory?",
+        "priority": "critical"
+      },
+      {
+        "text": "Success metric not established",
+        "priority": "critical"
+      },
+      {
+        "text": "What are the specific compliance and audit requirements that must be addressed?",
+        "priority": "discovery"
+      },
+      {
+        "text": "What is the total number of applications to be inventoried and which source systems will be the primary data sources?",
+        "priority": "discovery"
+      },
+      {
+        "text": "What budget and resource allocation is required for Phase 1 implementation?",
+        "priority": "discovery"
+      }
+    ],
+    "nextSteps": {
+      "text": "Confirm the accountable business owner and department. Resolve the critical unknowns that affect the decision to advance. Validate the qualitative benefits and develop value estimates where useful. Decide whether to advance to Project evaluation.",
+      "source": "ai-draft"
+    },
+    "assessment": {
+      "score": 45,
+      "priority": "Low",
+      "readiness": "Strong Business Context",
+      "factors": [
+        {
+          "label": "Business value",
+          "value": "25/25"
+        },
+        {
+          "label": "Strategic alignment",
+          "value": "8/10"
+        },
+        {
+          "label": "Readiness score",
+          "value": "10/10"
+        },
+        {
+          "label": "Delivery confidence",
+          "value": "7/10"
+        },
+        {
+          "label": "Risk / complexity",
+          "value": "-11 (complexity -6, risk -5)"
+        },
+        {
+          "label": "Customer impact score",
+          "value": "6/15"
+        },
+        {
+          "label": "Revenue potential score",
+          "value": "0/15"
+        },
+        {
+          "label": "Cost savings score",
+          "value": "0/15"
+        },
+        {
+          "label": "AI readiness category",
+          "value": "High"
+        },
+        {
+          "label": "Technical complexity",
+          "value": "Medium"
+        },
+        {
+          "label": "Compliance risk",
+          "value": "High"
+        }
+      ]
+    },
+    "supportingContext": {
+      "facts": [
+        {
+          "category": "problem",
+          "value": "Application information is fragmented across spreadsheets, email, team wikis and individual knowledge. Ownership and dependencies are unclear.",
+          "source": "user"
+        },
+        {
+          "category": "impact",
+          "value": "Renewals and changes are harder because information is incomplete.",
+          "source": "user"
+        },
+        {
+          "category": "scope",
+          "value": "Phase 1 should start with application ownership and business purpose. IT would administer the inventory and business owners would validate their records.",
+          "source": "user"
+        }
+      ],
+      "jiraKey": ""
+    }
+  }
+}

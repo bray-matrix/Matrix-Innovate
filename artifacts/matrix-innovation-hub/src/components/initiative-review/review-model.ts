@@ -2,6 +2,7 @@
 // No network, no scoring changes. Safe to unit test in node.
 import {
   buildInitiativeBrief,
+  classifyBriefUnknowns, synthesizeBriefNarrative, cleanBriefProse, potentialSuccessMeasures,
   type InitiativeBrief,
 } from "@workspace/initiative-brief";
 import type {
@@ -15,7 +16,7 @@ export interface ReviewAIResult {
   knownFacts: { category: string; value: string; evidence: string; source: "user" | "jira" }[];
   inferredSuggestions: string[];
   unknowns: string[];
-  draft?: { expectedValue?: string; risks?: string; successMetric?: string };
+  draft?: { expectedValue?: string; risks?: string; successMetric?: string; executiveSummary?: string };
 }
 
 /** Document narrative that lives outside InitiativeDraftFields. */
@@ -59,8 +60,6 @@ function concise(text: string): string {
   return `${cut.slice(0, cut.lastIndexOf(" "))}...`;
 }
 
-const CRITICAL = /\b(owner|sponsor|budget|cost|saving|revenue|value|metric|measure|success|scope|deadline|compliance|risk|security|decision|approval|volume|baseline)\b/i;
-
 /**
  * Deduplicates and prioritizes unknowns. Business-case gaps first (critical,
  * max 4); implementation-level questions become discovery (max 3).
@@ -76,11 +75,7 @@ export function prioritizeUnknowns(items: readonly string[]): { critical: string
     seen.add(key);
     unique.push(text);
   }
-  const critical = unique.filter(u => CRITICAL.test(u));
-  const discovery = unique.filter(u => !CRITICAL.test(u));
-  // Keep a meaningful critical list even without keyword matches.
-  while (critical.length < 2 && discovery.length) critical.push(discovery.shift()!);
-  return { critical: critical.slice(0, 4), discovery: discovery.slice(0, 3) };
+  return classifyBriefUnknowns(unique);
 }
 
 /**
@@ -89,7 +84,7 @@ export function prioritizeUnknowns(items: readonly string[]): { critical: string
  */
 export function candidateMeasures(draft: InterviewDraft, ai: ReviewAIResult | null): string[] {
   const source = draft.review?.candidateSuccessMeasures
-    ?? (ai?.inferredSuggestions ?? []).filter(s => /\b(measure|metric|track|rate|percentage|reduction|reduce|increase|time to|number of|share of)\b/i.test(s));
+    ?? potentialSuccessMeasures(ai?.inferredSuggestions ?? []);
   const seen = new Set<string>();
   return source.map(concise).filter(s => {
     const key = s.toLowerCase();
@@ -99,13 +94,57 @@ export function candidateMeasures(draft: InterviewDraft, ai: ReviewAIResult | nu
   }).slice(0, 4);
 }
 
-export function initialNarrative(draft: InterviewDraft): ReviewNarrative {
-  return {
+/** One completion merge used by the interview and offline replay. Never call
+ * on resumed/edited review drafts; those are already authoritative. */
+export function finalizeInterviewDraft(
+  baseline: InterviewDraft,
+  completed: (ReviewAIResult & { suggestedTitle?: string; draft: {
+    problemStatement: string; currentProcess: string; desiredOutcome: string;
+    successMetric: string; expectedValue: string; risks: string; executiveSummary?: string;
+  } }) | null,
+  reviewResult: ReviewAIResult,
+  evidence: readonly { value: string; source: "user" | "jira" }[],
+): InterviewDraft {
+  const result = { ...baseline, fields: { ...baseline.fields }, canvas: { ...baseline.canvas } };
+  if (completed) {
+    const business = completed.draft;
+    result.fields.title = completed.suggestedTitle?.trim() || result.fields.title;
+    result.fields.problemStatement = business.problemStatement.trim() || result.fields.problemStatement;
+    result.fields.currentProcess = business.currentProcess.trim() || result.fields.currentProcess;
+    const sourceOutcome = completed.knownFacts.filter(fact => /^(?:desiredOutcome|outcome|scope|governance)$/i.test(fact.category))
+      .map(fact => fact.value).join(" ");
+    result.fields.desiredOutcome = business.desiredOutcome.trim() || sourceOutcome || result.fields.desiredOutcome;
+    // A baseline aspiration is not a grounded, user-established measure.
+    result.fields.successMetric = business.successMetric.trim();
+    result.canvas.expectedValue = business.expectedValue.trim() || "Value not yet quantified";
+    result.canvas.risks = business.risks.trim() || "Risks not yet known.";
+    result.executiveSummary = business.executiveSummary?.trim() || "";
+  } else {
+    result.canvas.risks = "Risks not yet known; review and add known considerations.";
+  }
+  const narrative = synthesizeBriefNarrative({ draft: result, aiResult: reviewResult, evidence });
+  for (const key of ["problemStatement", "currentProcess", "desiredOutcome", "successMetric", "aiConcept", "prototypeGoal"] as const)
+    result.fields[key] = cleanBriefProse(result.fields[key]);
+  Object.assign(result.canvas, {
+    problem: result.fields.problemStatement, currentProcess: result.fields.currentProcess,
+    desiredOutcome: result.fields.desiredOutcome, successMetric: result.fields.successMetric,
+    executiveSummary: narrative.executiveSummary, expectedValue: narrative.expectedValue,
+    risks: narrative.risks, recommendedNextStep: narrative.nextSteps,
+  });
+  result.executiveSummary = narrative.executiveSummary;
+  return result;
+}
+
+export function initialNarrative(draft: InterviewDraft, ai?: ReviewAIResult | null): ReviewNarrative {
+  const stored = {
     executiveSummary: draft.executiveSummary ?? draft.canvas.executiveSummary ?? "",
-    expectedValue: isPlaceholder(draft.canvas.expectedValue) ? "" : draft.canvas.expectedValue,
-    risks: isPlaceholder(draft.canvas.risks) ? "" : draft.canvas.risks,
+    expectedValue: draft.canvas.expectedValue,
+    risks: draft.canvas.risks,
     nextSteps: draft.canvas.recommendedNextStep ?? "",
   };
+  // Never regenerate an edited private draft, including deliberately cleared fields.
+  if (draft.review?.editedAt) return stored;
+  return synthesizeBriefNarrative({ draft, aiResult: ai });
 }
 
 /** Merges review edits back into the private-draft shape used by autosave/resume. */
@@ -163,7 +202,9 @@ export function buildReviewBrief(args: {
   confirmedZeroFields?: InitiativeReviewMetadata["confirmedZeroFields"]; generatedAt?: string;
 }): InitiativeBrief {
   const { draft, fields, scoring, narrative, ai } = args;
-  const unknowns = prioritizeUnknowns(ai?.unknowns ?? []);
+  const unknowns = prioritizeUnknowns((ai?.unknowns ?? []).filter(item =>
+    !(narrative.risks && /^(?:risks need confirmation|risks (?:unknown|not (?:yet )?known))\.?$/i.test(item)) &&
+    !(narrative.expectedValue && /^(?:qualitative )?value (?:unknown|not (?:yet )?established)\.?$/i.test(item))));
   return buildInitiativeBrief({
     draft: {
       fields, executiveSummary: narrative.executiveSummary,

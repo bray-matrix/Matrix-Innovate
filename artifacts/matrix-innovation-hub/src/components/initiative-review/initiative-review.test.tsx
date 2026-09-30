@@ -2,10 +2,12 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { cleanBriefProse, synthesizeBriefNarrative } from "@workspace/initiative-brief";
 import { buildDraft, computeScore, derivePriority } from "@/services/aiInterviewService";
 import {
   prioritizeUnknowns, candidateMeasures, serializeForSave, initialNarrative,
   mergeReviewIntoDraft, buildReviewBrief, SAVE_LABELS, type ReviewAIResult,
+  finalizeInterviewDraft,
 } from "./review-model";
 
 const LONG = "Applications are tracked across spreadsheets, email threads and team wikis. ".repeat(20);
@@ -23,6 +25,156 @@ function fixture() {
   };
   return { draft, ai };
 }
+
+test("whole interview establishes qualitative value and risks outside named fields, without inventing quantities", () => {
+  const { draft } = fixture();
+  draft.fields.problemStatement = "Application information is fragmented and depends on institutional knowledge.";
+  draft.fields.currentProcess = "Teams consult spreadsheets and colleagues.";
+  draft.fields.desiredOutcome = "A reliable application inventory would begin with ownership and business purpose, administered by IT and validated by business owners.";
+  draft.executiveSummary = `${draft.fields.title} addresses: ${draft.fields.problemStatement}.. Desired outcome: ${draft.fields.desiredOutcome}.`;
+  draft.canvas.expectedValue = "Value not yet quantified.";
+  draft.canvas.risks = "Risks not yet known.";
+  const evidence = [
+    "Time is wasted rediscovering information; troubleshooting and onboarding are slower, and renewals and changes are harder.",
+    "Unclear ownership and dependencies create security and compliance exposure.",
+    "Credential-management visibility is limited and knowledge is lost when people leave.",
+  ].map(value => ({ value, source: "user" as const }));
+  const n = synthesizeBriefNarrative({ draft, evidence });
+  assert.match(n.expectedValue, /troubleshooting and onboarding/);
+  assert.match(n.risks, /security and compliance exposure/);
+  assert.match(n.risks, /knowledge is lost/);
+  assert.doesNotMatch(n.executiveSummary, /addresses:|Desired outcome:|\.\./);
+  assert.doesNotMatch(n.nextSteps, /scor|priority/i);
+  const brief = buildReviewBrief({ draft, fields: draft.fields, scoring: draft.scoring, narrative: n, ai: null, score: 45, priority: "Low" });
+  assert.equal(brief.assessment.score, 45);
+  assert.equal(brief.assessment.priority, "Low");
+  assert.ok(brief.expectedValue.quantified.every(q => q.status === "unknown"));
+  assert.notEqual(brief.expectedValue.qualitative.text, "Not yet established");
+});
+
+test("unrelated warehouse scenario uses its own evidence and retains natural Platform prose", () => {
+  const { draft } = fixture();
+  draft.fields.title = "Improve warehouse picking";
+  draft.fields.problemStatement = "Pickers repeatedly walk back to collect missed items.";
+  draft.fields.currentProcess = "Pick lists are printed in order-entry sequence.";
+  draft.fields.desiredOutcome = "Group picks by location to reduce unnecessary walking.";
+  draft.canvas.expectedValue = "Value not yet quantified.";
+  draft.canvas.risks = "";
+  draft.executiveSummary = "";
+  const summary = "Repeated trips for missed items delay dispatch. Grouping picks by location would reduce unnecessary walking and make orders easier to complete.";
+  const n = synthesizeBriefNarrative({ draft, aiResult: {
+    draft: { executiveSummary: summary, expectedValue: "Less unnecessary walking would help pickers complete orders with fewer interruptions." },
+    knownFacts: [{ category: "risk", value: "Missed items delay dispatch.", source: "user" }],
+  }, evidence: [{ value: "Missed items delay dispatch.", source: "user" }] });
+  assert.equal(n.executiveSummary, summary);
+  assert.match(n.expectedValue, /pickers/);
+  assert.equal(n.risks, "Missed items delay dispatch.");
+  assert.doesNotMatch(JSON.stringify(n), /application|inventory|credential|compliance/i);
+});
+
+test("editorial cleanup removes duplicate sentences and punctuation without changing decimals or facts", () => {
+  assert.equal(cleanBriefProse("Savings are 12.5 hours.. Savings are 12.5 hours.  Owner is unknown!!"),
+    "Savings are 12.5 hours. Owner is unknown!");
+});
+
+test("unquantified amounts in the same answer do not erase established qualitative impacts", () => {
+  const { draft } = fixture();
+  draft.canvas.expectedValue = "Value not yet quantified.";
+  const n = synthesizeBriefNarrative({ draft, evidence: [{
+    value: "Repeated rework wastes time, but the hours are not yet quantified.", source: "user",
+  }] });
+  assert.match(n.expectedValue, /Repeated rework wastes time/);
+});
+
+test("completion merge restores source-backed future state when final grounding leaves outcome blank", () => {
+  const { draft } = fixture();
+  draft.fields.desiredOutcome = "Baseline future state";
+  draft.fields.successMetric = "Baseline aspiration, not an agreed measure";
+  const completed = {
+    suggestedTitle: "Reliable system of record", inferredSuggestions: [], unknowns: [],
+    knownFacts: [
+      { category: "scope", value: "Start with ownership and business purpose. IT administers and business owners validate.", evidence: "", source: "user" as const },
+      { category: "desiredOutcome", value: "A reliable system of record would clarify accountability.", evidence: "", source: "user" as const },
+    ],
+    draft: { problemStatement: "Fragmented information delays work.", currentProcess: "", desiredOutcome: "",
+      expectedValue: "Less rediscovery.", successMetric: "", risks: "", executiveSummary: "A shared record would clarify accountability." },
+  };
+  const result = finalizeInterviewDraft(draft, completed, completed, []);
+  assert.match(result.fields.desiredOutcome, /IT administers/);
+  assert.match(result.fields.desiredOutcome, /reliable system of record/);
+  assert.equal(result.fields.successMetric, "");
+  assert.equal(draft.fields.desiredOutcome, "Baseline future state", "baseline not mutated");
+  const withoutFacts = { ...completed, knownFacts: [] };
+  assert.equal(finalizeInterviewDraft(draft, withoutFacts, withoutFacts, []).fields.desiredOutcome, "Baseline future state");
+});
+
+test("risk containment deduplication retains supplied prose and leaves room for distinct credential evidence", () => {
+  const { draft } = fixture();
+  draft.canvas.risks = "Unclear application ownership and dependencies create security and compliance exposure. Dependence on institutional knowledge creates a risk of knowledge loss when people leave.";
+  const n = synthesizeBriefNarrative({ draft, evidence: [
+    "Ownership and dependencies are unclear.",
+    "We depend on institutional knowledge and lose knowledge when people leave.",
+    "Later it could extend to integrations, dependencies, licensing, cost and credential-management visibility.",
+    "Credential-management visibility is limited.",
+  ].map(value => ({ value, source: "user" as const })) });
+  assert.match(n.risks, /Credential-management visibility is limited/);
+  assert.doesNotMatch(n.risks, /Ownership and dependencies are unclear/);
+  assert.doesNotMatch(n.risks, /We depend on institutional knowledge/);
+  assert.doesNotMatch(n.risks, /Later it could extend/);
+  assert.ok(n.risks.startsWith(draft.canvas.risks));
+});
+
+test("live-style compliance details stay discovery and completion benefits become suggested measurable indicators", () => {
+  const classified = prioritizeUnknowns(["What are the specific compliance and audit requirements that must be addressed?"]);
+  assert.equal(classified.critical.length, 0);
+  assert.equal(classified.discovery.length, 1);
+  const { draft, ai } = fixture();
+  ai.inferredSuggestions = [
+    "Faster completion of troubleshooting and onboarding through validated ownership data",
+    "Improved security and compliance posture",
+    "Reduce processing time by 50%",
+  ];
+  assert.deepEqual(candidateMeasures(draft, ai), ["Time to complete troubleshooting and onboarding"]);
+});
+
+test("discovery questions are not promoted to critical unknowns to fill a quota", () => {
+  const result = prioritizeUnknowns([
+    "Who is the business owner?", "What budget is available?", "What baseline should validate value?",
+    "What is the exact compliance requirement?", "What is the validation cadence?",
+    "What is detailed Phase 2 scope?", "Which source systems are used?", "What is the implementation timeline?",
+  ]);
+  assert.equal(result.critical.length, 3);
+  assert.ok(result.critical.every(s => !/exact|cadence|Phase 2|timeline/i.test(s)));
+  assert.ok(result.discovery.some(s => /cadence/.test(s)));
+  assert.deepEqual(prioritizeUnknowns(["What is the validation cadence?"]).critical, []);
+});
+
+test("cleared review edits stay cleared on resume and final save retry despite older AI evidence", () => {
+  const { draft, ai } = fixture();
+  const n = { executiveSummary: "", expectedValue: "", risks: "", nextSteps: "" };
+  const reviewed = mergeReviewIntoDraft(draft, draft.fields, draft.scoring, n);
+  assert.deepEqual(initialNarrative(reviewed, ai), n);
+  const brief = buildReviewBrief({ draft: reviewed, fields: reviewed.fields, scoring: reviewed.scoring,
+    narrative: initialNarrative(reviewed, ai), ai, score: 45, priority: "Low" });
+  assert.equal(brief.expectedValue.qualitative.text, "Not yet established");
+  assert.equal(brief.risks.text, "Not yet established");
+  assert.deepEqual(serializeForSave(reviewed.fields, n), serializeForSave(reviewed.fields, initialNarrative(reviewed, ai)));
+});
+
+test("required Department and unfinalized success measures are visible before Save", async () => {
+  (globalThis as { React?: typeof React }).React = React;
+  const { InitiativeReview } = await import("./initiative-review");
+  const { draft, ai } = fixture();
+  draft.fields.department = "";
+  draft.fields.successMetric = "";
+  const html = renderToStaticMarkup(<InitiativeReview draft={draft} aiResult={ai} jira={null}
+    submitterName="Reviewer" departments={["IT"]} categories={["Operations"]} levels={["Low", "Medium", "High"]}
+    saving={false} onBack={() => {}} onSave={() => {}} onDraftChange={() => {}} />);
+  assert.match(html, /Required before Save Initiative: select a Department/);
+  assert.match(html, /Success measures have not yet been finalized/);
+  assert.match(html, /Potential Success Measures/);
+  assert.doesNotMatch(html, /\[ai-draft\]/);
+});
 
 test("unknowns are deduped, concise and split into critical vs discovery", () => {
   const { critical, discovery } = prioritizeUnknowns(fixture().ai.unknowns);

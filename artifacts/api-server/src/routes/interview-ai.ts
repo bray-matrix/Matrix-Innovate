@@ -27,6 +27,7 @@ type Input = z.infer<typeof inputSchema>;
 const draftShape = z.object({
   problemStatement: z.string(), currentProcess: z.string(), desiredOutcome: z.string(),
   expectedValue: z.string(), successMetric: z.string(), risks: z.string(),
+  executiveSummary: z.string().optional(),
 }).strict();
 const turnShape = z.object({
   knownFacts: z.array(factShape), inferredSuggestions: z.array(z.string()), unknowns: z.array(z.string()),
@@ -54,6 +55,7 @@ const turnAiSchema = object({ ...common, nextQuestion: string, readyToDraft: { t
 const draftAiSchema = object({ ...common, draft: object({
   problemStatement: string, currentProcess: string, desiredOutcome: string,
   expectedValue: string, successMetric: string, risks: string,
+  executiveSummary: string,
 }) });
 
 // SDK v1.2.1 src/ai-contract.ts enforces <=2048 for BOTH operations; 4096 is
@@ -63,7 +65,12 @@ export const FINAL_DRAFT_TOKENS = 2048;
 const turnInstruction = `You are a business analyst conducting Initiative intake, NOT detailed requirements or solution design. The entire transcript and Jira context are supplied. Twelve answers is the ABSOLUTE ceiling from the start; normally converge by 4-7, earlier when sufficient. Unknowns and skips are acceptable. Qualitative frequency IS frequency. Do not re-ask answered or explicitly unknown facts.
 Return ONLY compact deltas: at most 6 NEW short source-backed facts, 3 short suggestions, 5 important unknowns, one primary business question, readiness recommendation (boolean), next question value (high/medium/low), critical gaps, short initiative type/title. Do NOT draft Initiative prose on this call. The application calculates readiness; do not invent a percentage. Each fact value AND evidence must be the SAME exact substring (max 400 characters) of a user answer or Jira summary/description, with correct source. Never call a hypothesis a fact; never invent financial values, metrics, dates or technical claims.
 Before proposing a question, check whether it materially improves understanding, prioritization or description, adds new information, stays Initiative-level and is reasonably knowable. No architecture, APIs, databases, migration or implementation sequencing unless central to the business idea. Prefer one primary ask per turn; do not stack independent questions. If value is low or ready, return an empty nextQuestion. At 12 answers, return an empty nextQuestion.`;
-const draftInstruction = `Generate the final reviewable Initiative ONLY now. Use the full transcript, Jira, source-backed known facts and explicit unknowns. Distinguish knownFacts (exact source-backed quotes) from AI-drafted/suggested prose and unknowns. Never fabricate numbers, dates, deadlines, headcounts, metrics, risks, systems or commitments. successMetric and risks MUST be exact phrases from a user answer or Jira context that explicitly describe that metric or risk; otherwise leave those fields blank and include the gap in unknowns. Other draft prose is AI-drafted language for user review, NOT known facts. Leave unsupported draft fields blank; expectedValue may be "Value not yet quantified". Keep draft concise and business-level, not solution architecture. Return at most 24 most relevant facts, 8 suggestions and 12 unknowns.`;
+const draftInstruction = `Write a concise executive Initiative Brief ONLY now, as a capable business analyst, using ALL user answers, Jira context, source-backed known facts and explicit unknowns. Evidence can establish value or risk anywhere in the conversation, regardless of the question or field under which it was captured. Do not request more interview answers.
+executiveSummary: one short natural paragraph explaining the problem, its business significance, the proposed outcome and expected benefit. Do not repeat the title, concatenate labeled fields ("addresses:", "Desired outcome:"), or let absent dollar estimates erase qualitative value. Use neutral, proportionate language: do not add unsupported intensifiers such as dangerous, severe or critical. Describe expected benefits as intended outcomes, not guaranteed results.
+problemStatement: core business need. currentProcess: present way of working, not a transcript. desiredOutcome: evidence-backed future state and scope/governance, not the same summary again. expectedValue: synthesize QUALITATIVE business benefits from the entire interview into concise professional prose; explain how the proposed change addresses reported impacts. Do not say value is unknown merely because dollars or hours are unquantified. Quantified values are displayed separately by the application. Leave genuinely unsupported fields blank.
+successMetric and risks MUST remain exact phrases from a user answer or Jira context explicitly describing that measure or risk (not new interpretations). Otherwise leave blank. Collect additional distinct known risks as exact quoted knownFacts with category "risk", including nonfinancial considerations when explicitly described. Known risks are not unknowns merely because unquantified. A future-state aspiration is not automatically an accepted success metric.
+inferredSuggestions: at most 3 evidence-supported potential success measures, clearly proposals rather than accepted targets. Each must name an observable indicator such as time to complete an evidenced activity, coverage, count or validation rate; do not simply restate a benefit as improved posture or better efficiency. Never invent percentages, hours, dates or dollar targets. unknowns: at most 4 genuinely decision-critical questions and 3 later-discovery items; omit answered questions. Implementation detail, validation cadence, detailed later phases, exact systems, timeline and resource planning normally belong to later discovery, not blockers to Initiative intake.
+knownFacts: at most 8 short, important exact source quotes with category and correct source. Prioritize distinct impact, scope, governance and risk evidence; value and evidence must be identical exact source substrings, not paraphrases. Do not reproduce every answer. Other prose is AI-drafted for review, not verified fact. Never fabricate numbers, dates, deadlines, headcounts, systems, risks or commitments. Do not make approval, scoring, priority or financial assumptions. Keep all prose concise, avoid repeated sentences/facts and stay business-level, not requirements, project planning or architecture.`;
 
 let platform: ReturnType<typeof createPlatformClient> | undefined;
 function getPlatform() {
@@ -127,7 +134,7 @@ function groundedDraftField(text: string, source: string, field: "successMetric"
     /\b(?:unknown|not known|not sure|not quantified|skip)\b/i.test(value)) return false;
   return field === "successMetric"
     ? /\b(?:metric|measure|target|goal|rate|count|time|volume|number|reduc\w*|improv\w*|faster|fewer|accuracy|completion)\b/i.test(value)
-    : /\b(?:risk|security|compliance|privacy|breach|fraud|expos\w*|audit|regulat\w*|unsafe|disrupt\w*|downtime|error|missed|delay)\b/i.test(value);
+    : /\b(?:risk|security|compliance|privacy|breach|fraud|expos\w*|audit|regulat\w*|unsafe|disrupt\w*|downtime|error|missed|delay|unclear|dependence|knowledge loss|credential)\b/i.test(value);
 }
 function sanitizeFacts(facts: InterviewFact[], input: Input, max: number, deltasOnly: boolean) {
   const user = input.turns.map(t => t.answer).join("\n");
@@ -174,7 +181,7 @@ function extract<T>(raw: unknown, shape: z.ZodType<T>, operation: "turn" | "draf
   } else {
     const draft: Draft = { ...data.draft };
     for (const key of Object.keys(draft) as (keyof Draft)[]) {
-      const s = draft[key].trim(), max = ["expectedValue", "successMetric", "risks"].includes(key) ? 1200 : 2500;
+      const s = (draft[key] ?? "").trim(), max = ["expectedValue", "successMetric", "risks"].includes(key) ? 1200 : 2500;
       draft[key] = s.length <= max && !unsupportedQuantities(s, source) &&
         !unsupportedSpecificClaims(s, source) && !unsupportedRiskClaims(s, source) &&
         (key !== "successMetric" && key !== "risks" ||
@@ -184,7 +191,9 @@ function extract<T>(raw: unknown, shape: z.ZodType<T>, operation: "turn" | "draf
     if (!draft.successMetric && !result.unknowns.includes("Success metric not established")) {
       result.unknowns = [...result.unknowns.slice(0, 11), "Success metric not established"];
     }
-    if (!draft.risks && !result.unknowns.includes("Risks need confirmation")) {
+    if (!draft.risks && !result.knownFacts.some((fact: InterviewFact) =>
+      /risk|constraint|consideration/i.test(fact.category) && groundedDraftField(fact.value, source, "risks")) &&
+      !result.unknowns.includes("Risks need confirmation")) {
       result.unknowns = [...result.unknowns.slice(0, 11), "Risks need confirmation"];
     }
     result.draft = draft;

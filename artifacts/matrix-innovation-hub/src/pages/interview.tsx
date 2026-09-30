@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { finalizeInterviewDraft } from "@/components/initiative-review/review-model";
 import { useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -75,7 +76,7 @@ interface FinalDraftResult {
   suggestedTitle: string;
   draft: {
     problemStatement: string; currentProcess: string; desiredOutcome: string;
-    expectedValue: string; successMetric: string; risks: string;
+    expectedValue: string; successMetric: string; risks: string; executiveSummary?: string;
   };
   knownFacts: AIInterviewResult["knownFacts"];
   inferredSuggestions: string[];
@@ -595,9 +596,8 @@ export default function AIInnovationInterview() {
     setPhase("processing");
     const answerMap = { ...finalAnswers, ...buildAnswerMap(finalPlan, finalAnswers) };
     const turns = transcriptTurns(finalMessages);
-    const context = turns.map(t => `${t.question}: ${t.answer || "Not yet known"}`).join("\n");
     if (finalAnswers.aiContext) answerMap.notes = [answerMap.notes, finalAnswers.aiContext].filter(Boolean).join("\n");
-    const result = await interviewEngine.generateDraft(answerMap, finalPlan);
+    let result = await interviewEngine.generateDraft(answerMap, finalPlan);
     if (interviewGeneration.current !== generation) return;
     if (!result.fields.problemStatement.trim()) result.fields.problemStatement = finalAnswers.idea?.trim() || jira?.summary || "";
     let completed: FinalDraftResult | null = null;
@@ -624,35 +624,16 @@ export default function AIInnovationInterview() {
       }
     }
     if (interviewGeneration.current !== generation) return;
-    if (completed) {
-      const business = completed.draft;
-      result.fields.title = completed.suggestedTitle?.trim() || result.fields.title;
-      result.fields.problemStatement = business.problemStatement.trim() || result.fields.problemStatement;
-      result.fields.currentProcess = business.currentProcess.trim() || result.fields.currentProcess;
-      result.fields.desiredOutcome = business.desiredOutcome.trim() || result.fields.desiredOutcome;
-      result.fields.successMetric = business.successMetric.trim() || result.fields.successMetric;
-      result.canvas.problem = result.fields.problemStatement;
-      result.canvas.currentProcess = result.fields.currentProcess;
-      result.canvas.desiredOutcome = result.fields.desiredOutcome;
-      result.canvas.successMetric = result.fields.successMetric;
-      result.canvas.expectedValue = business.expectedValue.trim() || "Value not yet quantified";
-      result.canvas.risks = business.risks.trim() || "Risks not yet known.";
-      result.executiveSummary = `${result.fields.title} addresses: ${result.fields.problemStatement}. ${result.fields.desiredOutcome ? `Desired outcome: ${result.fields.desiredOutcome}.` : ""} ${result.canvas.expectedValue}.`;
-      result.canvas.executiveSummary = result.executiveSummary;
-    }
-    if (!completed) {
-      // Keep the verbatim transcript in the reviewable deterministic draft,
-      // including answers that have no matching rule-engine field.
-      result.fields.currentProcess = [result.fields.currentProcess, context].filter(Boolean).join("\n\n");
-      result.canvas.problem = result.fields.problemStatement;
-      result.canvas.currentProcess = result.fields.currentProcess;
-      result.canvas.risks = "Risks not yet known; review and add known considerations.";
-    }
     const reviewResult = completed ?? {
       knownFacts: aiResult?.knownFacts ?? [], inferredSuggestions: aiResult?.inferredSuggestions ?? [],
       unknowns: [...new Set([...(aiResult?.unknowns ?? []), ...missingCriticalContext(fallbackReadiness(finalAnswers, turns, jira ? { summary: jira.summary, description: jira.description ?? "" } : null))])],
       suggestedTitle: "", draft: { problemStatement: "", currentProcess: "", desiredOutcome: "", expectedValue: "", successMetric: "", risks: "" },
     };
+    result = finalizeInterviewDraft(result, completed, reviewResult, [
+        ...turns.map(t => ({ value: t.answer, source: "user" as const })),
+        ...Object.values(finalAnswers).map(value => ({ value, source: "user" as const })),
+        ...(jira ? [{ value: [jira.summary, jira.description].filter(Boolean).join("\n"), source: "jira" as const }] : []),
+    ]);
     setFinalResult(reviewResult);
     setDraft(result);
     setPhase("review");
