@@ -14,7 +14,7 @@ import {
 
 const router: IRouter = Router();
 
-export const APPLICATION_VERSION = "v1.6.11";
+export const APPLICATION_VERSION = "v1.6.12";
 
 const SETTINGS = {
   categories: [
@@ -136,7 +136,8 @@ router.get("/settings", async (_req, res) => {
 });
 
 function canManageDepartments(req: AuthenticatedRequest): boolean {
-  return req.matrixIdentity?.roles.some(role => ["admin", "superadmin", "super_admin", "super admin"].includes(role.toLowerCase())) ?? false;
+  // platform_administrator is the authoritative role confirmed by a real Platform launch.
+  return req.matrixIdentity?.roles.some(role => ["platform_administrator", "admin", "superadmin", "super_admin", "super admin"].includes(role.toLowerCase())) ?? false;
 }
 
 function isDuplicateName(error: unknown): boolean {

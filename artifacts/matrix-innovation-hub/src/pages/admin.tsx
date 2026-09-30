@@ -289,7 +289,8 @@ function ProviderTestHistory() {
 export default function Admin() {
   const { data: settings, isLoading } = useGetSettings();
   const { user } = useMatrixAuth();
-  const canManage = user.roles?.some(role => ["admin", "superadmin", "super_admin", "super admin"].includes(role.toLowerCase())) ?? false;
+  // Match the server allowlist, including the role confirmed by a real Platform launch.
+  const canManage = user.roles?.some(role => ["platform_administrator", "admin", "superadmin", "super_admin", "super admin"].includes(role.toLowerCase())) ?? false;
   const { toast } = useToast();
   const [departmentName, setDepartmentName] = useState("");
   const [editingId, setEditingId] = useState<number | null>(null);

@@ -121,17 +121,52 @@ await expectStatus("contradictory app_id claim rejected", exchange(await mint({ 
 await expectStatus("ES256-signed launch token accepted", exchange(await mint({ alg: "ES256", key: ecPrivateKey })), 200);
 
 // Valid launch
-const good = await expectStatus("valid launch token accepted", exchange(await mint()), 200);
+const adminRoles = ["platform_administrator"];
+const good = await expectStatus("valid platform_administrator launch token accepted", exchange(await mint({ claims: { roles: adminRoles } })), 200);
 const setCookie = good.headers.get("set-cookie") ?? "";
 const cookieOk = /matrix_session=/.test(setCookie) && /HttpOnly/i.test(setCookie) && /SameSite=Lax/i.test(setCookie);
 results.push(`${cookieOk ? "PASS" : "FAIL"} — session cookie is HttpOnly SameSite=Lax`);
 const body = await good.json();
 results.push(`${body?.user?.name === "Test User" ? "PASS" : "FAIL"} — authenticated user identity returned`);
+results.push(`${JSON.stringify(body?.user?.roles) === JSON.stringify(adminRoles) ? "PASS" : "FAIL"} — exact platform_administrator role survives signed launch exchange`);
 const cookie = setCookie.split(";")[0];
 
 // Session works
-await expectStatus("GET /matrix/session with cookie returns user", fetch(`${BASE}/matrix/session`, { headers: { cookie } }), 200);
+const session = await expectStatus("GET /matrix/session with cookie returns user", fetch(`${BASE}/matrix/session`, { headers: { cookie } }), 200);
+const sessionBody = await session.json();
+results.push(`${JSON.stringify(sessionBody?.user?.roles) === JSON.stringify(adminRoles) ? "PASS" : "FAIL"} — GET session retains exact platform_administrator role`);
 await expectStatus("read API with session returns 200", fetch(`${BASE}/api/initiatives`, { headers: { cookie } }), 200);
+
+// Invalid bodies exercise the authorization boundary without creating production data.
+await expectStatus("signed platform_administrator passes department add authorization", fetch(`${BASE}/api/settings/departments`, {
+  method: "POST", headers: { cookie, "content-type": "application/json" }, body: "{}",
+}), 400);
+await expectStatus("signed platform_administrator passes department update authorization", fetch(`${BASE}/api/settings/departments/invalid`, {
+  method: "PATCH", headers: { cookie, "content-type": "application/json" }, body: JSON.stringify({ active: true }),
+}), 400);
+
+for (const roles of [[], ["User"], ["unknown_platform_role"], ["platform_administrator_extra"]]) {
+  const label = JSON.stringify(roles);
+  const deniedLaunch = await expectStatus(`${label} signed launch accepted without elevating privileges`,
+    exchange(await mint({ claims: { roles } })), 200);
+  const deniedCookie = (deniedLaunch.headers.get("set-cookie") ?? "").split(";")[0];
+  const deniedSession = await expectStatus(`${label} session readable`, fetch(`${BASE}/matrix/session`, {
+    headers: { cookie: deniedCookie },
+  }), 200);
+  const deniedSessionBody = await deniedSession.json();
+  results.push(`${JSON.stringify(deniedSessionBody?.user?.roles) === JSON.stringify(roles) ? "PASS" : "FAIL"} — ${label} roles remain unmodified in session`);
+  for (const [method, path, body] of [
+    ["POST", "/api/settings/departments/initialize", {}],
+    ["POST", "/api/settings/departments", { name: "Denied launch-guard department" }],
+    ["PATCH", "/api/settings/departments/1", { name: "Denied launch-guard rename" }],
+    ["PATCH", "/api/settings/departments/1", { active: false }],
+    ["PATCH", "/api/settings/departments/1", { active: true }],
+  ]) {
+    await expectStatus(`${label} denied ${method} ${path} ${JSON.stringify(body)}`, fetch(`${BASE}${path}`, {
+      method, headers: { cookie: deniedCookie, "content-type": "application/json" }, body: JSON.stringify(body),
+    }), 403);
+  }
+}
 
 // Logout
 const lo = await fetch(`${BASE}/matrix/logout`, { method: "POST", headers: { cookie } });
