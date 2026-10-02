@@ -1,0 +1,256 @@
+TARGET REPLIT PROJECT: INNOVATION HUB
+
+DO NOT RUN IN:
+- Matrix Platform
+- Finance Hub
+- Workforce Hub
+- Infrastructure Hub
+- legacy Matrix Compass
+
+CURRENT ACCEPTED PRODUCTION BASELINE:
+Innovation Hub v1.6.13
+
+OBJECTIVE:
+Make the Innovation Hub DEVELOPMENT environment usable for authenticated preview without requiring a production publish for every meaningful UI/functional review.
+
+Architecture must continue to use Matrix Platform for identity, authentication, authorization, Microsoft Graph access, and shared credentials.
+
+DO NOT create a separate Microsoft Entra application registration, Graph credential set, client secret, API key, or independent Microsoft authentication architecture inside Innovation Hub.
+
+============================================================
+1. REQUIRED ARCHITECTURE
+============================================================
+
+Innovation Hub remains a Matrix Platform child application.
+
+Target development authentication flow:
+
+Innovation Hub Development
+→ Matrix Platform development/authentication capability
+→ authenticated Matrix identity
+→ Innovation Hub development session
+
+The authenticated identity should use the same stable Platform identity concepts used in production wherever practical, including:
+
+- stable user subject/ID
+- name
+- email
+- Platform roles/capabilities
+- authorization context
+
+The verified production administrative role contract remains:
+
+platform_administrator
+
+Do not invent replacement roles such as:
+
+admin
+superadmin
+super_admin
+
+Authorization must remain server-side.
+
+============================================================
+2. MICROSOFT / GRAPH CREDENTIAL RULE
+============================================================
+
+Innovation Hub must NOT directly own Microsoft Graph credentials.
+
+Where Innovation Hub needs Matrix user/directory information, the intended architecture is:
+
+Innovation Hub
+→ Matrix Platform shared user/directory capability
+→ Microsoft Graph
+
+Platform owns the Microsoft credentials.
+
+Innovation Hub consumes a bounded Platform service/API/SDK contract.
+
+Do not duplicate secrets into Innovation Hub Replit Secrets.
+
+Do not create a second Graph connection simply because it would be faster.
+
+============================================================
+3. FIRST TASK — INSPECT EXISTING ARCHITECTURE
+============================================================
+
+Before adding new authentication code, inspect the existing Innovation Hub and Matrix Platform integration already present in this project.
+
+Identify:
+
+- current production launch-token/session flow
+- existing Matrix Platform SDK usage
+- current environment detection/configuration
+- current production callback/launch URLs
+- how production session identity is established
+- whether Platform already supports any development/preview launch flow
+- whether an existing Platform endpoint or SDK function can be reused for development authentication
+- whether current development failures are caused by redirect URL, audience, issuer, cookie/domain, launch-token, or environment assumptions
+
+Reuse existing architecture wherever possible.
+
+Do not replace a working production authentication design.
+
+============================================================
+4. DEVELOPMENT AUTHENTICATION REQUIREMENT
+============================================================
+
+Implement a supported development authentication approach that lets Brian open the Replit development preview and authenticate as his real Matrix identity.
+
+Preferred order:
+
+A. Reuse/extend an existing Matrix Platform development launch capability if one already exists.
+
+B. If Platform needs a small addition to support development child-app launches, document exactly what is required in Matrix Platform. DO NOT modify Matrix Platform from this Replit project.
+
+C. Only if A/B are not currently possible, implement a tightly controlled DEVELOPMENT-ONLY fallback inside Innovation Hub.
+
+Any fallback must:
+
+- be impossible to activate in production
+- fail closed if environment cannot be positively identified as development
+- never use a generic shared admin password
+- never create unrestricted anonymous access
+- clearly identify the simulated/authenticated subject
+- preserve server-side authorization checks
+- be easy to remove once Platform development launch is available
+
+Do not build a casual "skip auth" switch.
+
+============================================================
+5. PREPARE FOR PLATFORM USER DIRECTORY
+============================================================
+
+As part of this work, inspect how Innovation Hub currently represents people/resources/owners/sponsors.
+
+Do NOT redesign these screens yet.
+
+Document what will be needed to allow Innovation Hub to use real Matrix users supplied by Matrix Platform for fields such as:
+
+- Primary Owner
+- Sponsor
+- Project Resource
+- Assignment
+- Reviewer/Approver where applicable
+
+The future source of truth should be Platform-backed Matrix users, not manually duplicated identity records.
+
+Preserve historical display/reference data if a user later becomes inactive.
+
+Do not automatically implement all resource-screen changes in this release unless they are required to prove the authentication architecture.
+
+============================================================
+6. DEVELOPMENT / PRODUCTION SAFETY
+============================================================
+
+Production v1.6.13 must remain unaffected.
+
+Do not:
+
+- publish
+- deploy
+- push to production
+- change production authentication
+- change production secrets
+- alter the production Platform audience
+- weaken production authorization
+- change scoring
+- change Guided Idea Interview behavior
+- change Jira behavior
+- add unrelated pilot features
+
+This is a bounded development-environment/authentication release.
+
+============================================================
+7. TESTING
+============================================================
+
+Validate at minimum:
+
+1. Innovation Hub production authentication code path remains unchanged.
+2. Development environment can identify itself correctly.
+3. Development authentication works through the selected architecture.
+4. Authenticated identity is available server-side.
+5. User name/email/stable subject are correctly available.
+6. platform_administrator is recognized when supplied.
+7. Non-admin users do not receive admin authorization merely because they are in development.
+8. Private interview ownership still uses authenticated stable identity.
+9. Direct unauthorized requests remain rejected.
+10. Jira connection/configuration is unaffected.
+11. Matrix Platform Shared AI integration is unaffected.
+12. No Microsoft/Graph secrets were added to Innovation Hub.
+13. Production environment cannot activate any development-only fallback.
+
+============================================================
+8. VERSIONING
+============================================================
+
+Do NOT automatically call this v1.6.14.
+
+This work is part of the post-v1.6.13 development stabilization branch.
+
+If a development version label is required, use a clearly non-production identifier such as:
+
+v1.6.14-dev.1
+
+Do not imply that v1.6.14 is production-ready.
+
+============================================================
+9. REQUIRED COMPLETION REPORT
+============================================================
+
+When complete, report:
+
+BEFORE VERSION:
+AFTER DEVELOPMENT VERSION:
+
+AUTHENTICATION APPROACH CHOSEN:
+- describe the implemented development flow
+
+WHY THIS APPROACH:
+- explain what existing Platform/Innovation Hub architecture was reused
+
+MATRIX PLATFORM CHANGE REQUIRED:
+- YES / NO
+- if YES, provide the exact bounded Platform requirement but do not implement it here
+
+MICROSOFT GRAPH / CREDENTIAL IMPACT:
+- confirm whether any credentials were added
+- expected answer should be NONE in Innovation Hub
+
+IDENTITY VERIFIED:
+- stable subject:
+- name:
+- email:
+- roles/capabilities:
+
+SECURITY VALIDATION:
+- server-side authorization preserved
+- production cannot activate development fallback
+- private draft ownership preserved
+
+REGRESSION CHECKS:
+- production auth
+- Jira
+- Shared AI
+- Admin authorization
+- interview drafts
+
+FUTURE USER DIRECTORY READINESS:
+- identify current people/resource data model
+- identify recommended Platform user-directory integration points
+- do not implement unrelated resource redesign yet
+
+GIT READINESS:
+- READY / NOT READY
+
+PUBLISHED:
+NO
+
+DEPLOYED:
+NO
+
+PUSHED:
+NO
+
+Do not publish or deploy. Stop after development implementation, validation, and the completion report so Brian can review the Replit development preview first.

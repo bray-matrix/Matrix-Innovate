@@ -13,3 +13,14 @@ The Platform source repository is `bray-matrix/Matrix-Platform`. Use the existin
 **Why:** Platform source paths under `exports/` and `docs/` are not necessarily published download routes: the public site can return HTTP 200 with SPA HTML for those paths. This does not mean the SDK is inaccessible through GitHub.
 
 **How to apply:** Inspect the repository tree through authenticated read-only GitHub access, retrieve the actual package and matching contract, and check response content types when probing published downloads. Keep GitHub retrieval separate from runtime application trust.
+
+Development authentication must remain Platform-backed, with no separate
+Microsoft/Graph registration or duplicated vendor credentials inside Hub.
+
+**Why:** The development stabilization scope explicitly preserves production
+authentication/audience and requires real Matrix identity; simulation is only
+a last resort after supported Platform options are unavailable.
+
+**How to apply:** Inspect current Platform launch contracts before adding child
+navigation. Preview URL metadata alone is not proof of a preview launch capability.
+Do not repoint the existing production launch destination to make preview work.
