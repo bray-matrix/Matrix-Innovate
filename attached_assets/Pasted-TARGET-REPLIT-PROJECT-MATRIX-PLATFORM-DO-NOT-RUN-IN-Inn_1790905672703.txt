@@ -1,0 +1,310 @@
+TARGET REPLIT PROJECT: MATRIX PLATFORM
+
+DO NOT RUN IN:
+- Innovation Hub
+- Finance Hub
+- Workforce Hub
+- Infrastructure Hub
+- legacy Matrix Compass
+
+OBJECTIVE:
+Add a bounded, reusable DEVELOPMENT LAUNCH capability to Matrix Platform so an authorized user can launch a registered child application into its registered preview/development URL while preserving the existing Matrix Platform signed identity/authentication flow.
+
+This work is specifically required to unblock authenticated Innovation Hub development preview, but the implementation should be generic and reusable for other Matrix Platform child applications.
+
+DO NOT redesign Platform authentication.
+DO NOT create a new identity system.
+DO NOT create a new Microsoft Entra application.
+DO NOT add child-app-specific secrets.
+DO NOT change the existing production/default launch behavior.
+
+============================================================
+1. CURRENT VERIFIED STATE
+============================================================
+
+Innovation Hub investigation confirmed:
+
+- Child applications already support:
+  Platform-signed launch token
+  → child-app verification
+  → local authenticated session
+
+- Matrix Platform application registration already includes:
+  - launchUrl
+  - previewUrl
+
+- previewUrl currently exists as metadata but is not selectable as a launch destination.
+
+- /matrix/launch currently accepts applicationId but has no supported development-target selector.
+
+- Repointing launchUrl is NOT acceptable because it would affect normal production launches.
+
+The required Platform enhancement is therefore destination selection, not a new authentication architecture.
+
+============================================================
+2. REQUIRED FUNCTIONAL BEHAVIOR
+============================================================
+
+Add an explicit development/preview launch option for a registered Platform application.
+
+Target behavior:
+
+NORMAL LAUNCH:
+Matrix Platform
+→ validate application/user authorization
+→ use registered launchUrl
+→ mint existing signed launch token
+→ existing fragment handoff
+→ child application production
+
+DEVELOPMENT/PREVIEW LAUNCH:
+Matrix Platform
+→ validate application/user authorization
+→ use registered previewUrl
+→ mint existing signed launch token
+→ existing fragment handoff
+→ child application development/preview
+
+The identity/token contract should remain the SAME unless there is a documented technical reason otherwise.
+
+Preserve:
+
+- existing token signing
+- existing issuer
+- existing application audience
+- stable subject/user identity
+- actual Platform roles/capabilities
+- existing token lifetime
+- existing fragment handoff
+- current application authorization checks
+
+The development launch must differ only in the validated destination.
+
+============================================================
+3. DESTINATION SAFETY
+============================================================
+
+Development launch must NEVER accept an arbitrary redirect URL from the browser/request.
+
+The destination must come from the application's existing registered previewUrl.
+
+Requirements:
+
+- previewUrl must exist
+- previewUrl must pass the same appropriate URL safety/validation rules used for registered application destinations
+- require HTTPS except where an existing explicit local-development rule already exists
+- do not allow query/body parameters to override the registered destination
+- do not allow open redirects
+- do not dynamically trust a supplied hostname
+
+If previewUrl is absent or invalid, fail clearly and safely.
+
+============================================================
+4. AUTHORIZATION
+============================================================
+
+Development launch must NOT weaken authorization.
+
+Before issuing the launch token, apply the same:
+
+- authenticated-user requirement
+- Authorized Platform User logic
+- application access/capability checks
+- disabled/inactive application checks
+- other existing launch authorization rules
+
+that normal production launches use.
+
+A user who cannot launch an application in production should not gain access merely by choosing Preview/Development.
+
+Do not substitute generic admin access for normal application authorization.
+
+============================================================
+5. USER EXPERIENCE
+============================================================
+
+Add a clear way for an appropriately authorized Platform user to choose:
+
+- Launch
+- Development Preview
+
+Do not replace or alter the existing primary Launch action.
+
+The normal Launch action must continue to use launchUrl exactly as it does today.
+
+Development Preview should only appear where:
+
+- the application has a valid registered previewUrl
+- the current user is permitted to use the application
+
+If Platform already has a suitable application detail/admin screen, add the option there rather than redesigning navigation.
+
+Keep this UI change small and obvious.
+
+============================================================
+6. ROUTE / API DESIGN
+============================================================
+
+Prefer extending the existing launch architecture rather than creating a parallel launch subsystem.
+
+Acceptable approaches include:
+
+- adding a validated target/environment selector to the existing launch service
+- adding a dedicated preview launch route that internally calls the same shared launch-token generation logic
+
+Whichever is cleaner in the current codebase.
+
+Do not duplicate token-generation logic.
+
+Production and preview launches should converge on the same shared authorization/signing implementation after destination resolution.
+
+============================================================
+7. AUDIT / LOGGING
+============================================================
+
+Where Platform already records application launch activity, distinguish:
+
+- production launch
+- development/preview launch
+
+Do not log launch tokens or sensitive token contents.
+
+If there is existing correlation/request logging, preserve it.
+
+============================================================
+8. INNOVATION HUB REQUIREMENT
+============================================================
+
+Innovation Hub currently uses technical identity:
+
+matrix-innovation-hub
+
+Do not rename its technical application identity.
+
+Once the Platform development launch capability is complete, verify that the existing Innovation Hub application registration has a usable previewUrl.
+
+If previewUrl is missing, stale, malformed, or not the current Replit preview destination:
+
+- report that fact
+- update application metadata only if the existing Platform admin/data model supports doing so safely within this project
+- do not modify Innovation Hub code
+
+Do not change Innovation Hub's production launchUrl.
+
+============================================================
+9. REGRESSION REQUIREMENTS
+============================================================
+
+Validate at minimum:
+
+1. Existing normal application Launch still resolves launchUrl.
+2. Existing production launch-token contract is unchanged.
+3. Development Preview resolves previewUrl only.
+4. Arbitrary redirect URLs are rejected/not supported.
+5. Unauthorized users cannot use preview launch.
+6. Missing previewUrl fails safely.
+7. Invalid previewUrl fails safely.
+8. Token audience remains the registered child application audience.
+9. Stable identity remains unchanged between production and preview launch.
+10. Real roles/capabilities are preserved.
+11. Disabled/inaccessible applications remain inaccessible.
+12. Existing child applications without previewUrl continue to work normally.
+13. No new Microsoft/Graph credentials or identity configuration were added.
+14. No regressions to:
+   - Matrix Platform login
+   - normal child-app launches
+   - application registration
+   - Authorized Platform Users
+   - Shared AI Service
+   - existing gateway/application metadata
+
+============================================================
+10. SCOPE CONTROL
+============================================================
+
+DO NOT in this release:
+
+- redesign application registration
+- redesign Platform authorization
+- create new role models
+- modify Shared AI
+- modify Microsoft Graph integration
+- modify Innovation Hub
+- modify Finance Hub
+- modify Workforce Hub
+- modify Infrastructure Hub
+- change existing production launch URLs unless correcting a clearly invalid metadata value
+- add broad development tooling unrelated to application preview launch
+
+This is a bounded Platform infrastructure improvement.
+
+============================================================
+11. VERSIONING
+============================================================
+
+Use the next appropriate Matrix Platform development version based on the current Platform versioning scheme.
+
+Do not invent a major version jump.
+
+This is a Platform enhancement that should be independently testable before Innovation Hub work resumes.
+
+============================================================
+12. REQUIRED COMPLETION REPORT
+============================================================
+
+When complete, report:
+
+TARGET PROJECT:
+Matrix Platform
+
+BEFORE VERSION:
+
+AFTER VERSION:
+
+IMPLEMENTATION:
+- route/service changed
+- destination-selection logic
+- UI location for Development Preview
+- reuse of existing authorization/token-generation logic
+
+SECURITY:
+- arbitrary redirects prevented
+- registered previewUrl only
+- existing authorization preserved
+- token contract preserved
+
+INNOVATION HUB REGISTRATION:
+- application ID/name
+- production launchUrl status
+- previewUrl status
+- whether any metadata correction was required
+
+VALIDATION:
+- normal production launch
+- development preview launch
+- identity/stable subject
+- actual roles/capabilities
+- audience
+- unauthorized-user behavior
+- missing/invalid previewUrl behavior
+- regression checks
+
+CREDENTIAL IMPACT:
+- confirm no new Microsoft/Graph credentials
+- confirm no new child-app secrets
+
+GIT READINESS:
+READY / NOT READY
+
+PUBLISHED:
+NO
+
+DEPLOYED:
+NO
+
+PUSHED:
+NO
+
+Do not publish or deploy automatically.
+
+Stop after implementation and validation so Brian can review the Platform development changes before any production publish.
