@@ -376,12 +376,12 @@ function PromoteDialog({
         queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
         toast({ title: "Project Created", description: `Project "${proj.name}" successfully created.` });
         onOpenChange(false);
-        setLocation(`/projects/${proj.id}`);
+        setLocation(`/projects/${proj.id}?created=1`);
       },
       onError: (err) => {
         promoteInFlight.current = false;
         setSubmitting(false);
-        toast({ title: "Promotion Failed", description: err instanceof Error ? err.message : "Please retry.", variant: "destructive" });
+        toast({ title: "Linked project not created", description: err instanceof Error ? err.message : "Please retry.", variant: "destructive" });
       },
       onSettled: () => {
         promoteInFlight.current = false;
@@ -418,11 +418,17 @@ function PromoteDialog({
     <Dialog open={open} onOpenChange={(next) => { if (!promoteInFlight.current) onOpenChange(next); }}>
       <DialogContent className="w-[calc(100vw-2rem)] max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Promote to Execution Project</DialogTitle>
+          <DialogTitle>Create linked project</DialogTitle>
           <DialogDescription>
-            Create an execution project linked to {initiative.title} (INI-{String(initiative.id).padStart(4, "0")}). Its name comes from the initiative title.
+            Create a separate project linked to {initiative.title} (INI-{String(initiative.id).padStart(4, "0")}). Its name comes from the initiative title and can be changed later with Edit project details.
           </DialogDescription>
         </DialogHeader>
+        <ul className="list-disc pl-5 text-sm text-muted-foreground space-y-1" data-testid="text-linked-project-explanation">
+          <li>This initiative stays as it is, with its score, status and history.</li>
+          <li>A separate project record is created and keeps its link back to this initiative.</li>
+          <li>Jira issues already linked to this initiative are also linked to the new project.</li>
+          <li>Creating a project is not a formal approval. It does not authorize funding, implementation or production deployment.</li>
+        </ul>
 
         {linkedProjects.length > 0 && (
           <div className="bg-amber-50 border border-amber-200 text-amber-800 p-3 rounded-md text-sm mb-4">
@@ -462,18 +468,18 @@ function PromoteDialog({
               </Select>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="promotion-owner">Primary Owner <span className="text-destructive">(Required)</span></Label>
+              <Label htmlFor="promotion-owner">Project owner <span className="text-destructive">(Required)</span></Label>
               <Input id="promotion-owner" ref={ownerInputRef} required aria-required="true" aria-invalid={ownerError}
                 aria-describedby={ownerError ? "promotion-owner-error" : undefined}
                 data-testid="input-promotion-owner" value={form.primaryOwner}
                 onChange={(e) => { setForm(f => ({...f, primaryOwner: e.target.value})); if (e.target.value.trim()) setOwnerError(false); }} />
-              {ownerError && <p id="promotion-owner-error" role="alert" className="text-sm text-destructive">Primary Owner is required to create a project.</p>}
+              {ownerError && <p id="promotion-owner-error" role="alert" className="text-sm text-destructive">Enter the project owner, the person accountable for delivery.</p>}
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="grid gap-2">
-              <Label>Organization (Optional)</Label>
+              <Label>Organization (Optional parent company)</Label>
               <Select value={form.organizationId ? String(form.organizationId) : "none"} onValueChange={(v) => setForm(f => ({...f, organizationId: v === "none" ? null : Number(v)}))}>
                 <SelectTrigger><SelectValue placeholder="Internal" /></SelectTrigger>
                 <SelectContent>
@@ -483,7 +489,7 @@ function PromoteDialog({
               </Select>
             </div>
             <div className="grid gap-2">
-              <Label>Client (Optional)</Label>
+              <Label>Client (Optional Matrix customer)</Label>
               <Select value={form.clientId ? String(form.clientId) : "none"} onValueChange={(v) => setForm(f => ({...f, clientId: v === "none" ? null : Number(v)}))}>
                 <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
                 <SelectContent>
@@ -493,7 +499,7 @@ function PromoteDialog({
               </Select>
             </div>
             <div className="grid gap-2">
-              <Label>Program (Optional)</Label>
+              <Label>Program (Optional group of related projects)</Label>
               <Select value={form.programId ? String(form.programId) : "none"} onValueChange={(v) => setForm(f => ({...f, programId: v === "none" ? null : Number(v)}))}>
                 <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
                 <SelectContent>
@@ -518,11 +524,11 @@ function PromoteDialog({
           <div className="flex gap-2">
             {linkedProjects.length > 0 ? (
               <Button variant="secondary" data-testid="button-create-additional-project" onClick={() => submit(true)} disabled={submitting || promoteMutation.isPending}>
-                {submitting ? "Creating..." : "Create Additional Project"}
+                {submitting ? "Creating..." : "Create additional linked project"}
               </Button>
             ) : (
               <Button data-testid="button-confirm-create-project" onClick={() => submit(false)} disabled={submitting || promoteMutation.isPending}>
-                {submitting ? "Creating..." : "Create Project"}
+                {submitting ? "Creating..." : "Create linked project"}
               </Button>
             )}
           </div>
@@ -1049,16 +1055,17 @@ export default function InitiativeDetail() {
               disabled={editMode}
             >
               <PlusCircle className="mr-2 h-4 w-4" />
-              Create Project
+              Create linked project
             </Button>
           </div>
           <div className="flex items-center gap-3">
+            <div className="space-y-1">
             <Select
               value={initiative.status}
               onValueChange={handleStatusChange}
               disabled={editMode}
             >
-              <SelectTrigger className="w-40 font-medium">
+              <SelectTrigger className="w-40 font-medium" aria-describedby="initiative-status-save-note">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -1069,6 +1076,8 @@ export default function InitiativeDetail() {
                 ))}
               </SelectContent>
             </Select>
+            <p id="initiative-status-save-note" className="text-xs text-muted-foreground">Status changes save immediately.</p>
+            </div>
             <Link href={`/initiatives/${id}/score`}>
               <Button disabled={editMode}>
                 <Calculator className="mr-2 h-4 w-4" /> Score

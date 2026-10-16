@@ -2,7 +2,10 @@
 name: Dashboard product direction
 description: Confirmed first-use experience and lifecycle metric constraints.
 ---
-Preserve the dashboard introduction “Have an idea? Start here.” with the primary guided interview, secondary Quick Submit, and Idea → Initiative → Review / Prioritize → Project → Execution explanation.
+Preserve the dashboard introduction “Have an idea? Start here.” as the foundation
+for business intake, with the guided path primary and defined-idea entry
+secondary. The approved usability direction changes entry labels to “Develop an
+idea” and “Enter a defined idea” and recommends Initiative-first without a new gate.
 
 **Why:** Brian explicitly confirmed this experience worked well during published-app visual review. The product serves broad business innovation, not only AI prototypes.
 

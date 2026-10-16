@@ -7,6 +7,7 @@ import jiraLinksRouter from "./src/routes/jira-links";
 import initiativeRouter from "./src/routes/initiatives";
 import executionRouter from "./src/routes/execution";
 import matrixRouter from "./src/matrix/platform";
+import { APPLICATION_VERSION } from "./src/routes/settings";
 import { requireMatrixSession, mintSessionToken, verifySessionToken } from "./src/matrix/auth";
 import { pool } from "@workspace/db";
 
@@ -470,11 +471,11 @@ test("J1 routes and PostgreSQL persistence in isolated TEMP tables", async t => 
     });
     await t.test("Matrix app-info and health version surfaces", async () => {
       const info = await call(matrixRouter, "GET", "/app-info");
-      assert.equal(info.body.version, "v1.6.13");
+      assert.equal(info.body.version, APPLICATION_VERSION);
       assert.equal(info.body.name, "Innovation Hub");
       noSecret(info);
       const health = await call(matrixRouter, "GET", "/health");
-      assert.equal(health.body.version, "v1.6.13"); noSecret(health);
+      assert.equal(health.body.version, APPLICATION_VERSION); noSecret(health);
     });
     await t.test("unchanged Matrix session mint/verify", async () => {
       process.env.SESSION_SECRET = "J1-automated-test-session-secret-not-real";

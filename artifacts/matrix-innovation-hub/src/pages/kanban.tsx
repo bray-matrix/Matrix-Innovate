@@ -48,8 +48,12 @@ export default function KanbanBoard() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold tracking-tight">Kanban Board</h2>
-        <p className="text-muted-foreground">Visual pipeline of all active initiatives.</p>
+        <h2 className="text-2xl font-bold tracking-tight">Board view</h2>
+        <p className="text-muted-foreground">Initiatives grouped by status. The same records as the initiative list.</p>
+      </div>
+      <div className="inline-flex rounded-md border bg-card p-0.5 text-sm" role="navigation" aria-label="Initiative views">
+        <Link href="/initiatives" className="rounded px-3 py-1 hover:bg-muted" data-testid="link-view-list">List</Link>
+        <Link href="/kanban" className="rounded px-3 py-1 bg-primary text-primary-foreground" data-testid="link-view-board">Board view</Link>
       </div>
 
       <div className="flex gap-6 overflow-x-auto pb-8 snap-x min-h-[60vh]">

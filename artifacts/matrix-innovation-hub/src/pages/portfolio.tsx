@@ -133,15 +133,15 @@ export default function PortfolioPage() {
       header: "Health",
       size: 130,
       cell: ({ row }) => (
-        <div className="flex items-center gap-1.5">
+        <div className="flex flex-col items-start gap-0.5">
           <Badge variant="outline" className={HEALTH_COLORS[row.original.effectiveHealth] ?? ""}>
             {row.original.effectiveHealth}
           </Badge>
-          {row.original.healthOverridden && (
-            <div title="Manual Override">
-              <AlertCircle className="h-3 w-3 text-amber-500" />
-            </div>
-          )}
+          <span className="text-[10px] text-muted-foreground">
+            {row.original.healthOverridden
+              ? `Manual override (calc. ${row.original.calculatedHealth})`
+              : "Calculated"}
+          </span>
         </div>
       ),
     },
@@ -254,7 +254,7 @@ export default function PortfolioPage() {
             Portfolio
           </h1>
           <p className="text-muted-foreground mt-1 text-lg">
-            High-level health and delivery readiness across all projects.
+            All projects, priorities and delivery health. Health is calculated unless a manual override is shown.
           </p>
         </div>
       </div>

@@ -71,10 +71,14 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
-import { Briefcase, Users, ChevronLeft, Trash2, PlusCircle, Pencil, Flag, Link2, AlertCircle, AlertTriangle, ShieldCheck, Target, CheckSquare, Clock } from "lucide-react";
+import { MoreHorizontal, Briefcase, Users, ChevronLeft, Trash2, PlusCircle, Pencil, Flag, Link2, AlertCircle, AlertTriangle, ShieldCheck, Target, CheckSquare, Clock } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PriorityBadge } from "@/components/badges";
 import { ProjectLinkedWork } from "@/components/project-linked-work";
+import { EditProjectDetailsDialog } from "@/components/edit-project-details-dialog";
+import { ProjectNextSteps } from "@/components/project-next-steps";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 function formatDate(value: string | null | undefined): string {
   if (!value) return "—";
@@ -195,10 +199,13 @@ export default function ProjectDetailPage() {
     }
   });
 
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("overview");
+  const justCreated = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("created") === "1";
   const handleDeleteProject = () => {
-    if (window.confirm("Are you sure you want to delete this project? This cannot be undone.")) {
-      deleteMutation.mutate({ id });
-    }
+    if (deleteMutation.isPending) return;
+    deleteMutation.mutate({ id });
   };
 
   // Health Override
@@ -546,49 +553,96 @@ export default function ProjectDetailPage() {
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-12">
-      <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-start gap-3 sm:gap-4">
         <Link href="/projects">
           <Button variant="ghost" size="icon">
             <ChevronLeft className="h-5 w-5" />
           </Button>
         </Link>
-        <div className="flex-1">
-          <div className="flex items-center gap-2 mb-1">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2 mb-1">
             <Badge variant="outline">{project.projectType}</Badge>
             <span className="text-xs text-muted-foreground font-mono">PRJ-{String(project.id).padStart(4, "0")}</span>
           </div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">
+          <h1 className="break-words text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
             {project.name}
           </h1>
           <div className="flex flex-wrap items-center gap-4 mt-2 text-sm text-muted-foreground">
-            <span className="font-medium">Context: {contextParts.length ? contextParts.join(" / ") : "Internal"}</span>
+            <span className="font-medium">Client / program: {contextParts.length ? contextParts.join(" / ") : "Internal"}</span>
+            <span>Project owner: <span className="font-medium text-foreground" data-testid="text-project-owner">{project.primaryOwner || "Not set"}</span></span>
             {project.initiativeId && (
               <Link href={`/initiatives/${project.initiativeId}`} className="flex items-center gap-1 hover:text-primary transition-colors">
                 <Link2 className="h-4 w-4" />
-                From Initiative INI-{String(project.initiativeId).padStart(4,"0")}: {project.initiativeTitle || sourceInitiative?.title}
+                Linked initiative INI-{String(project.initiativeId).padStart(4,"0")}: {project.initiativeTitle || sourceInitiative?.title}
               </Link>
             )}
           </div>
         </div>
-        <Button variant="destructive" onClick={handleDeleteProject}>
-          <Trash2 className="h-4 w-4 mr-2" /> Delete
-        </Button>
+        <div className="flex w-full items-center justify-end gap-2 sm:w-auto sm:shrink-0">
+          <Button variant="outline" onClick={() => setEditOpen(true)} data-testid="button-edit-project-details">
+            <Pencil className="h-4 w-4 mr-2" /> Edit project details
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" aria-label="More project actions" data-testid="button-project-more-actions">
+                <MoreHorizontal className="h-5 w-5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={() => setDeleteOpen(true)} data-testid="menu-delete-project">
+                <Trash2 className="h-4 w-4 mr-2" /> Delete project...
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
+
+      <EditProjectDetailsDialog project={project} open={editOpen} onOpenChange={setEditOpen} />
+
+      <AlertDialog open={deleteOpen} onOpenChange={(o) => { if (!deleteMutation.isPending) setDeleteOpen(o); }}>
+        <AlertDialogContent data-testid="dialog-delete-project">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this project permanently?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-sm text-muted-foreground">
+                <p>Deleting <strong>{project.name}</strong> also permanently removes its milestones, risks, approval requests, go-live readiness assessments, resource assignments and stored Jira issue links. This cannot be undone.</p>
+                <p>Any source initiative stays in place, and the Jira issues themselves are not changed. If the work has simply stopped, consider setting the status to Closed instead.</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteMutation.isPending} data-testid="button-cancel-delete-project">Keep project</AlertDialogCancel>
+            <AlertDialogAction onClick={(e) => { e.preventDefault(); handleDeleteProject(); }} disabled={deleteMutation.isPending} className="bg-destructive text-destructive-foreground hover:bg-destructive/90" data-testid="button-confirm-delete-project">
+              {deleteMutation.isPending ? "Deleting..." : "Delete project"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="md:col-span-3 space-y-6">
-          <Tabs defaultValue="overview" className="w-full">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="mb-4 flex h-auto flex-wrap justify-start">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="milestones">Milestones</TabsTrigger>
               <TabsTrigger value="risks">Risks {risks?.filter(r => r.status === "Open" && (r.severity === "Critical" || r.severity === "High")).length ? <span className="ml-1.5 inline-flex h-2 w-2 rounded-full bg-red-500"></span> : null}</TabsTrigger>
-              <TabsTrigger value="approvals">Approvals {approvals?.filter(a => a.status === "Pending").length ? <span className="ml-1.5 inline-flex h-2 w-2 rounded-full bg-amber-500"></span> : null}</TabsTrigger>
+              <TabsTrigger value="approvals">Project approvals {approvals?.filter(a => a.status === "Pending").length ? <span className="ml-1.5 inline-flex h-2 w-2 rounded-full bg-amber-500"></span> : null}</TabsTrigger>
               <TabsTrigger value="golive">Go-Live Readiness</TabsTrigger>
-              <TabsTrigger value="resources">Resources</TabsTrigger>
+              <TabsTrigger value="resources">Assigned resources</TabsTrigger>
               <TabsTrigger value="linked-work">Linked Work</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="overview">
+            <TabsContent value="overview" className="space-y-6">
+              <ProjectNextSteps
+                project={project}
+                justCreated={justCreated}
+                milestoneCount={milestones?.length ?? 0}
+                assignmentCount={resourcesData?.length ?? 0}
+                onEditDetails={() => setEditOpen(true)}
+                onAddMilestone={() => { setActiveTab("milestones"); openMilestoneDialog(null); }}
+                onAssignResources={() => { setActiveTab("resources"); setEditingAssignment(null); setAssignmentMode("named"); setAssignmentForm({ resourceId: "", department: "", roleDescription: "", allocationPercent: "100", plannedHours: "", startDate: "", endDate: "", status: "Planned" }); setResourceOpen(true); }}
+                onOpenTab={setActiveTab}
+              />
               <Card>
                 <CardHeader>
                   <CardTitle>Overview</CardTitle>
@@ -600,7 +654,7 @@ export default function ProjectDetailPage() {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label className="text-xs text-muted-foreground">Primary Owner</Label>
+                      <Label className="text-xs text-muted-foreground">Project owner</Label>
                       <div className="text-sm mt-1 font-medium">{project.primaryOwner || "—"}</div>
                     </div>
                     <div>
@@ -755,7 +809,7 @@ export default function ProjectDetailPage() {
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
                   <div>
-                    <CardTitle>Approvals</CardTitle>
+                    <CardTitle>Project approvals</CardTitle>
                     <CardDescription>Manage formal requests for sign-off or changes.</CardDescription>
                   </div>
                   <Button size="sm" onClick={() => setApprovalOpen(true)}>
@@ -985,17 +1039,18 @@ export default function ProjectDetailPage() {
           <Card>
             <CardHeader>
               <CardTitle>Status & Attributes</CardTitle>
+              <CardDescription data-testid="text-immediate-save-note">Changes in this panel save immediately when you pick a value.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Stage</Label>
+                <Label className="text-xs text-muted-foreground">Delivery stage</Label>
                 <Select value={project.lifecycleStage} onValueChange={(v) => updateMutation.mutate({id, data: {lifecycleStage: v}})}>
                   <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
                   <SelectContent>{STAGES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">State</Label>
+                <Label className="text-xs text-muted-foreground">Active / closed status</Label>
                 <Select value={project.state} onValueChange={(v) => updateMutation.mutate({id, data: {state: v}})}>
                   <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
                   <SelectContent>{STATES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
@@ -1004,8 +1059,10 @@ export default function ProjectDetailPage() {
               
               <div className="space-y-1 p-2 rounded bg-muted/30 border">
                 <Label className="text-xs text-muted-foreground flex justify-between">
-                  <span>Health</span>
-                  {project.healthOverridden && <span className="text-[10px] text-amber-600 bg-amber-100 px-1 rounded font-semibold uppercase">Override</span>}
+                  <span>Delivery health</span>
+                  {project.healthOverridden
+                    ? <span className="text-[10px] text-amber-600 bg-amber-100 px-1 rounded font-semibold uppercase">Manual override</span>
+                    : <span className="text-[10px] text-muted-foreground px-1 rounded font-semibold uppercase">Calculated</span>}
                 </Label>
                 <Select value={project.effectiveHealth} onValueChange={handleHealthChange}>
                   <SelectTrigger className="h-8 font-semibold"><SelectValue /></SelectTrigger>
@@ -1031,7 +1088,7 @@ export default function ProjectDetailPage() {
                 </Select>
               </div>
               <div className="space-y-1 pt-2">
-                <Label className="text-xs text-muted-foreground block mb-1">Target Date</Label>
+                <Label className="text-xs text-muted-foreground block mb-1">Target date</Label>
                 <Input type="date" className="h-8" value={toDateInput(project.targetDate)} onChange={(e) => updateMutation.mutate({id, data: {targetDate: e.target.value || null}})} />
               </div>
             </CardContent>

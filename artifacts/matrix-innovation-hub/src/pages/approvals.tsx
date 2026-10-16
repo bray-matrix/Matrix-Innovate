@@ -197,10 +197,10 @@ export default function ApprovalsPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-2">
             <CheckSquare className="h-8 w-8 text-primary" />
-            Global Approvals
+            Project approvals
           </h1>
           <p className="text-muted-foreground mt-1 text-lg">
-            Review and decide on project stage gates, scope changes, and sign-offs.
+            Review and decide on project stage gates, scope changes and sign-offs. This queue covers project approval requests, not initiative review.
           </p>
         </div>
       </div>

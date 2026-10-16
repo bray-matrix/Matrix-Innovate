@@ -1,7 +1,6 @@
 import { useMemo } from "react";
 import {
   useListInitiatives,
-  useGetProductHealth,
   useGetExecutionSummary,
   useGetDashboardAttention
 } from "@workspace/api-client-react";
@@ -31,11 +30,7 @@ import {
   Gauge,
   Hourglass,
   Lightbulb,
-  ListTodo,
-  PackageCheck,
-  ParkingCircle,
   PlusCircle,
-  Tag,
   TrendingUp,
   UserX,
   Briefcase,
@@ -338,7 +333,7 @@ export default function Dashboard() {
               <div className="flex items-center gap-3">
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-[#FFC72C] text-[#002D72]"><Lightbulb className="h-5 w-5" /></span>
                 <div className="flex-1">
-                  <div className="font-semibold text-[#002D72]">Start an Idea <span className="text-muted-foreground font-normal">- Guided Idea Interview</span></div>
+                  <div className="font-semibold text-[#002D72]">Develop an idea <span className="text-muted-foreground font-normal">- guided questions</span></div>
                   <p className="text-sm text-muted-foreground mt-0.5">Use this when you have an idea, problem, client request, or improvement opportunity and want Innovation Hub to help develop it.</p>
                 </div>
                 <ArrowRight className="h-4 w-4 text-[#002D72] transition-transform group-hover:translate-x-0.5" />
@@ -348,7 +343,7 @@ export default function Dashboard() {
               <div className="flex items-center gap-3">
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-white/10"><PlusCircle className="h-5 w-5" /></span>
                 <div className="flex-1">
-                  <div className="font-semibold">Quick Submit</div>
+                  <div className="font-semibold">Enter a defined idea</div>
                   <p className="text-sm text-primary-foreground/75 mt-0.5">Use this when the idea is already well defined and you simply want to enter it directly.</p>
                 </div>
                 <ArrowRight className="h-4 w-4 opacity-70 transition-transform group-hover:translate-x-0.5" />
@@ -358,8 +353,23 @@ export default function Dashboard() {
         </div>
       </section>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-sm font-medium text-muted-foreground mr-2">Quick Links:</span>
+      <div className="flex flex-wrap items-center gap-2" data-testid="section-starting-points">
+        <span className="text-sm font-medium text-muted-foreground mr-2">Starting points:</span>
+        <Link href="/initiatives">
+          <Button variant="outline" size="sm" className="h-8" data-testid="button-home-view-initiatives">
+            <Lightbulb className="mr-2 h-4 w-4" /> View initiatives
+          </Button>
+        </Link>
+        <Link href="/projects">
+          <Button variant="outline" size="sm" className="h-8" data-testid="button-home-find-project">
+            <Briefcase className="mr-2 h-4 w-4" /> Find a project
+          </Button>
+        </Link>
+        <Link href="/projects/new">
+          <Button variant="outline" size="sm" className="h-8" data-testid="button-home-create-project">
+            <PlusCircle className="mr-2 h-4 w-4" /> Create project
+          </Button>
+        </Link>
         <Link href="/portfolio">
           <Button variant="outline" size="sm" className="h-8">
             <PieChart className="mr-2 h-4 w-4" /> View Portfolio
@@ -372,13 +382,10 @@ export default function Dashboard() {
         </Link>
         <Link href="/resources">
           <Button variant="outline" size="sm" className="h-8">
-            <Users className="mr-2 h-4 w-4" /> View Resources
+            <Users className="mr-2 h-4 w-4" /> People & capacity
           </Button>
         </Link>
       </div>
-
-      {/* Product Health */}
-      <ProductHealthWidget />
 
       {/* Execution Summary */}
       <ExecutionSummaryWidget />
@@ -418,8 +425,11 @@ export default function Dashboard() {
       <div className="space-y-4">
         <div className="flex items-center gap-2">
           <AlertTriangle className="h-5 w-5 text-[#B58900]" />
-          <h2 className="text-xl font-bold">My Attention Required</h2>
+          <h2 className="text-xl font-bold">Needs attention</h2>
         </div>
+        <p className="text-sm text-muted-foreground -mt-2" data-testid="text-needs-attention-scope">
+          Application-wide items across all initiatives. This list is not filtered to your own assignments.
+        </p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <AttentionGroup
             icon={Clock}
@@ -588,80 +598,6 @@ export default function Dashboard() {
     </div>
   );
 }
-
-function ProductHealthWidget() {
-  const { data: health, isLoading } = useGetProductHealth();
-
-  const stats = [
-    {
-      title: "Open Backlog Items",
-      value: health?.openBacklogItems,
-      icon: ListTodo,
-      iconColor: "text-[#00A3E0]",
-    },
-    {
-      title: "Parking Lot Items",
-      value: health?.parkingLotItems,
-      icon: ParkingCircle,
-      iconColor: "text-amber-500",
-    },
-    {
-      title: "Completed This Release",
-      value: health?.completedThisRelease,
-      icon: PackageCheck,
-      iconColor: "text-green-600",
-    },
-    {
-      title: "Current Version",
-      value: health?.applicationVersion,
-      icon: Tag,
-      iconColor: "text-[#002D72]",
-      mono: true,
-    },
-  ];
-
-  return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center justify-between text-sm font-semibold">
-          <span className="flex items-center gap-2">
-            <Gauge className="h-4 w-4 text-[#002D72]" />
-            Product Health
-          </span>
-          <Link href="/backlog">
-            <Button variant="ghost" size="sm" className="h-7 text-xs">
-              View Backlog
-            </Button>
-          </Link>
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {stats.map((s) => (
-            <div key={s.title} className="flex items-center gap-3">
-              <s.icon className={`h-6 w-6 shrink-0 ${s.iconColor}`} />
-              <div className="min-w-0">
-                {isLoading ? (
-                  <Skeleton className="h-6 w-14" />
-                ) : (
-                  <div
-                    className={`text-xl font-bold leading-tight ${s.mono ? "font-mono text-lg" : ""}`}
-                  >
-                    {s.value ?? "—"}
-                  </div>
-                )}
-                <div className="text-xs text-muted-foreground truncate">
-                  {s.title}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
 
 function ExecutionSummaryWidget() {
   const { data: summary, isLoading: summaryLoading } = useGetExecutionSummary();

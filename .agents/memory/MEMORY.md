@@ -10,6 +10,7 @@
 - [Promotion duplicate guard & zod dates](promotion-duplicate-guard.md) — promote must lock initiative row in a tx; api-zod coerces date-time bodies to Date, string-only parsing nulls them.
 - [Platform server SDK](platform-server-sdk.md) — outbound directory access must use the managed server SDK, not a separately implemented Bridge client.
 - [Dashboard product direction](dashboard-product-direction.md) — approved first-use introduction stays; lifecycle metrics must reflect actual data, not renamed prototype calculations.
+- [UX business decisions](ux-business-decisions.md) — Initiative-first recommended, direct creation retained; ownership and provisional relationship meanings must not invent governance.
 - [Authenticated UI verification](browser-verification.md) — browser-only fixtures permit gated UI tests; use exact contracts and wait for drawer animations.
 - [Initiative Brief boundaries](initiative-brief-review.md) — document parity, unchanged scoring policy, and unflattened private drafts for safe save retries.
 - [Content safety boundary](content-safety-boundary.md) — local-first blocking; SDK inspection is not proof of Platform-wide moderation absence.

@@ -5,6 +5,7 @@ import {
   useListOrganizations,
   useListClients,
   useListPrograms,
+  useGetPortfolio,
 } from "@workspace/api-client-react";
 import type { Project } from "@workspace/api-client-react";
 import { DataTable } from "@/components/data-table";
@@ -13,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Briefcase, PlusCircle } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { PriorityBadge } from "@/components/badges";
+import { buildHealthIndex, healthSortValue } from "@/lib/project-details";
 
 function formatDate(value: string | null | undefined): string {
   if (!value) return "—";
@@ -42,6 +44,9 @@ export default function ProjectsPage() {
   const { data: clients, isLoading: clientsLoading } = useListClients();
   const { data: programs, isLoading: programsLoading } = useListPrograms();
 
+  const { data: portfolio, isLoading: portfolioLoading, isError: portfolioError, refetch: refetchPortfolio } = useGetPortfolio();
+  const healthOf = useMemo(() => buildHealthIndex(portfolio?.rows, portfolioLoading), [portfolio, portfolioLoading]);
+
   const orgMap = useMemo(() => new Map((organizations ?? []).map(o => [o.id, o.name])), [organizations]);
   const clientMap = useMemo(() => new Map((clients ?? []).map(c => [c.id, c.name])), [clients]);
   const programMap = useMemo(() => new Map((programs ?? []).map(p => [p.id, p.name])), [programs]);
@@ -64,7 +69,7 @@ export default function ProjectsPage() {
     },
     {
       id: "context",
-      header: "Context",
+      header: "Client / program",
       size: 200,
       cell: ({ row }) => {
         const parts = [];
@@ -86,15 +91,24 @@ export default function ProjectsPage() {
       ),
     },
     {
-      accessorKey: "health",
+      id: "effectiveHealth",
+      accessorFn: (row) => healthSortValue(healthOf(row.id)),
       header: "Health",
-      size: 120,
+      size: 140,
       meta: { filterable: true },
-      cell: ({ row }) => (
-        <Badge variant="outline" className={HEALTH_COLORS[row.original.health] ?? ""}>
-          {row.original.health}
-        </Badge>
-      ),
+      cell: ({ row }) => {
+        const h = healthOf(row.original.id);
+        if (h.status === "loading") return <span className="inline-block h-5 w-16 rounded bg-muted animate-pulse" data-testid={`status-health-loading-${row.original.id}`} />;
+        if (h.status === "unavailable") return <span className="text-xs text-muted-foreground" title="Calculated health is not available right now" data-testid={`status-health-${row.original.id}`}>Unavailable</span>;
+        return (
+          <div className="flex flex-col items-start gap-0.5" data-testid={`status-health-${row.original.id}`}>
+            <Badge variant="outline" className={HEALTH_COLORS[h.effective] ?? ""}>{h.effective}</Badge>
+            <span className="text-[10px] text-muted-foreground" title={h.overridden ? `Calculated: ${h.calculated}` : undefined}>
+              {h.overridden ? `Manual override (calc. ${h.calculated})` : "Calculated"}
+            </span>
+          </div>
+        );
+      },
     },
     {
       accessorKey: "priority",
@@ -115,7 +129,7 @@ export default function ProjectsPage() {
       size: 110,
       cell: ({ row }) => <span className="text-sm">{formatDate(row.original.targetDate)}</span>,
     }
-  ], [orgMap, clientMap, programMap]);
+  ], [orgMap, clientMap, programMap, healthOf]);
 
   return (
     <div className="space-y-6">
@@ -126,15 +140,19 @@ export default function ProjectsPage() {
             Projects
           </h1>
           <p className="text-muted-foreground mt-1 text-lg">
-            Track and manage execution of active projects.
+            Work selected for planning or delivery. Health matches Portfolio: calculated unless manually overridden.
           </p>
         </div>
-        <Link href="/projects/new">
-          <Button>
-            <PlusCircle className="mr-2 h-4 w-4" /> New Project
-          </Button>
+        <Link href="/projects/new" className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90" data-testid="link-create-project">
+          <PlusCircle className="mr-2 h-4 w-4" /> Create project
         </Link>
       </div>
+      {portfolioError && (
+        <div role="alert" className="flex flex-wrap items-center gap-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800" data-testid="alert-health-unavailable">
+          Calculated project health could not be loaded, so health is shown as Unavailable rather than a stored value.
+          <Button size="sm" variant="outline" onClick={() => void refetchPortfolio()} data-testid="button-retry-health">Retry</Button>
+        </div>
+      )}
 
       <div className="bg-card rounded-xl border shadow-sm p-4">
         <DataTable 

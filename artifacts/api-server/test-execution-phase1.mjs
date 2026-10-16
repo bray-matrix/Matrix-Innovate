@@ -6,7 +6,9 @@
 // and re-verifies existing innovation endpoints.
 import { createServer } from "node:http";
 import { spawn } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { generateKeyPair, exportJWK, SignJWT } from "jose";
+const applicationVersion = `v${JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8")).version}`;
 
 const JWKS_PORT = 9311;
 const APP_PORT = 9312;
@@ -96,12 +98,12 @@ check("H. Platform authentication (session exchange)", sessRes.status === 200 &&
 
 // I. app-info
 const appInfo = await (await fetch(`${BASE}/matrix/app-info`)).json();
-check("I. /matrix/app-info = Innovation Hub v1.6.13", appInfo.name === "Innovation Hub" && appInfo.version === "v1.6.13", JSON.stringify(appInfo));
+check(`I. /matrix/app-info = Innovation Hub ${applicationVersion}`, appInfo.name === "Innovation Hub" && appInfo.version === applicationVersion, JSON.stringify(appInfo));
 
 // J. health
 const healthRes = await fetch(`${BASE}/matrix/health`);
 const health = await healthRes.json();
-check("J. /matrix/health db check", healthRes.status === 200 && health.checks?.database === "ok" && health.version === "v1.6.13");
+check("J. /matrix/health db check", healthRes.status === 200 && health.checks?.database === "ok" && health.version === applicationVersion);
 
 // A/R. initiative count snapshot
 const before = await api("GET", "/api/initiatives");

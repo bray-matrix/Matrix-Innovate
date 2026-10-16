@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useListInitiatives } from "@workspace/api-client-react";
 import type { Initiative } from "@workspace/api-client-react";
-import { useLocation } from "wouter";
+import { Link, useLocation } from "wouter";
 import { type ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/data-table";
 import { StatusBadge, PriorityBadge } from "@/components/badges";
@@ -213,8 +213,12 @@ export default function InitiativeList() {
       <div>
         <h2 className="text-2xl font-bold tracking-tight">Initiatives</h2>
         <p className="text-muted-foreground">
-          Manage and track all innovation initiatives.
+          An initiative evaluates whether an idea or opportunity is worth pursuing. Switch to Board view to see initiatives by status.
         </p>
+      </div>
+      <div className="inline-flex rounded-md border bg-card p-0.5 text-sm" role="navigation" aria-label="Initiative views">
+        <Link href="/initiatives" className="rounded px-3 py-1 bg-primary text-primary-foreground" data-testid="link-view-list">List</Link>
+        <Link href="/kanban" className="rounded px-3 py-1 hover:bg-muted" data-testid="link-view-board">Board view</Link>
       </div>
 
       <DataTable

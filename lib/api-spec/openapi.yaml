@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
-  version: 1.6.13
+  version: 1.6.14-dev.1
   description: API specification
 servers:
   - url: /api

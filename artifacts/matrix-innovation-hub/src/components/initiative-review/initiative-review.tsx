@@ -477,7 +477,7 @@ export function InitiativeReview({
         <p role="alert" className="brief-error brief-error-summary" data-print-hide>Please complete all marked fields before saving.</p>
       )}
       <div className="brief-bottom-actions" data-print-hide>
-        <Button variant="outline" onClick={onBack} disabled={saving} data-testid="button-cancel-review">Cancel</Button>
+        <Button variant="outline" onClick={onBack} disabled={saving} data-testid="button-cancel-review">Return to interview</Button>
         <Button onClick={handleSave} disabled={saving} data-testid="button-save-initiative-bottom">
           {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...</> : <><Save className="mr-2 h-4 w-4" /> Save Initiative</>}
         </Button>

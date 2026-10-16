@@ -1,0 +1,725 @@
+TARGET REPLIT PROJECT: INNOVATION HUB
+
+BRIAN RULE DATE: October 16, 2026
+TIME ZONE: US Central (America/Chicago)
+PURPOSE: UX Simplification — Release A
+MODE: IMPLEMENTATION WITH CONTROLLED VALIDATION
+
+DO NOT RUN IN:
+- Matrix Platform
+- Finance Hub
+- Workforce Hub
+- Infrastructure Hub
+- legacy Matrix Compass
+
+CURRENT ACCEPTED PRODUCTION BASELINE:
+Innovation Hub v1.6.13
+
+============================================================
+1. OBJECTIVE
+============================================================
+
+Implement the first bounded release of the Innovation Hub
+usability improvements identified in the October 16, 2026
+UX assessment.
+
+The goal is to make Innovation Hub easier to understand,
+navigate, and use, particularly when creating and managing
+projects.
+
+Preserve the existing architecture, integrations, records,
+and security model.
+
+This release focuses on:
+
+1. Simplified primary navigation
+2. Clearer terminology
+3. Improved project creation
+4. Editing existing project details
+5. Better workflow guidance
+6. Consistent project health presentation
+7. Honest labels and clearer Save/Cancel behavior
+
+Do not redesign the application or introduce new governance
+requirements.
+
+============================================================
+2. APPROVED BUSINESS DECISIONS
+============================================================
+
+DECISION 1 — INITIATIVES VS PROJECTS
+
+An Initiative evaluates whether an idea or opportunity
+is worth pursuing.
+
+A Project manages work that has been selected for planning
+or execution.
+
+IMPORTANT:
+
+Brian has NOT approved unrestricted direct project creation
+as the preferred long-term business workflow.
+
+His concern is that bypassing the Initiative process could
+produce poorly defined projects without sufficient scope,
+business justification, or expected outcomes.
+
+For this release:
+
+- Preserve existing direct project creation.
+- Preserve Initiative-to-Project creation.
+- Do not introduce a mandatory Initiative prerequisite.
+- Do not change API authorization or governance rules.
+- Make the Initiative-first path the recommended experience.
+- Explain that the Initiative process helps establish scope,
+  expected outcomes, and business justification.
+- Present direct project creation as an alternative for work
+  that is already sufficiently defined.
+- Do not imply that direct creation has been permanently
+  approved as the preferred organizational policy.
+
+We will evaluate whether additional project-intake controls
+are appropriate after usability testing.
+
+DECISION 2 — APPROVAL REQUIREMENTS
+
+Creating a Project from an Initiative does not require
+the Initiative to have Approved status.
+
+Preserve this behavior.
+
+Creating a Project does not automatically authorize
+funding, production deployment, or implementation.
+
+Do not introduce new approval gates.
+
+DECISION 3 — ORGANIZATIONS, CLIENTS, PROGRAMS
+
+Use these working definitions:
+
+Organization:
+An optional parent company or corporate entity.
+
+Client:
+An individual Matrix customer/account.
+
+Program:
+A grouping of related projects.
+
+These definitions are provisional.
+
+Do not restructure the database, merge records, or enforce
+new relationships.
+
+Use brief contextual explanations where helpful.
+
+DECISION 4 — PROJECT OWNERSHIP
+
+Project Owner means the individual accountable for
+successful project delivery.
+
+In many Matrix projects, the Project Owner will also be
+the Project Manager.
+
+THIS IS EXPECTED AND ACCEPTABLE.
+
+Do not create a separate Project Manager field.
+
+Executive Sponsor:
+Provides leadership sponsorship and helps remove obstacles.
+
+Assigned Resources:
+People or departments performing project work.
+
+Preserve the existing data model.
+
+Do not invent new project sponsor fields or reinterpret
+Supporting Owners as formal sponsors.
+
+============================================================
+3. PRIMARY NAVIGATION
+============================================================
+
+Implement a simplified primary navigation structure.
+
+HOME
+- Starting points
+- Relevant activity
+- Needs attention
+
+IDEAS & INITIATIVES
+- Initiative list
+- Board view
+- Develop an idea
+- Enter a defined idea
+
+PROJECTS
+- Project list
+- Create project
+- Clients
+- People & capacity
+- Project approvals
+
+PORTFOLIO
+- Portfolio overview
+- Programs
+- Reports
+
+SECONDARY NAVIGATION
+
+HELP
+- Available guidance
+- Clear explanation when content is unavailable
+
+ADMINISTRATION
+- Existing administrative functions
+- Hub improvements
+- Deferred improvements
+- Release checks
+
+Do not delete any existing functionality.
+
+Preserve existing routes and deep links.
+
+Board view should be accessible within Ideas & Initiatives
+rather than presented as an unrelated application module.
+
+Product Backlog, Parking Lot, and Validation are Hub
+maintenance capabilities, not ordinary business workflows.
+
+Move them into secondary navigation.
+
+Preserve existing server-side permissions.
+
+Navigation placement must not become a substitute for
+authorization.
+
+Do not introduce new security roles.
+
+============================================================
+4. PROJECT CREATION
+============================================================
+
+Simplify the existing direct project-creation experience.
+
+The initial form should emphasize:
+
+REQUIRED:
+- Project name
+- Project owner
+- Work type
+
+OPTIONAL:
+- Description / intended outcome
+- Client
+
+ADDITIONAL DETAILS:
+- Organization
+- Program
+- Supporting owners
+- Target date
+- Other existing optional fields
+
+Preserve existing defaults where appropriate.
+
+Do not automatically classify every new project as
+Internal Technology.
+
+Make the work-type selection understandable for business
+users across Matrix.
+
+Use clear required-field indicators.
+
+Provide field-level validation and useful error messages.
+
+Do not introduce a multi-page wizard unless technically
+necessary.
+
+Do not remove existing fields or capabilities.
+
+Do not fabricate project scope, owners, dates, or
+business justification.
+
+IMPORTANT:
+
+Before simplifying the creation form, ensure users can
+edit deferred information after the project is created.
+
+============================================================
+5. EDIT EXISTING PROJECT DETAILS
+============================================================
+
+This is a critical requirement.
+
+Currently, users cannot edit several fundamental project
+attributes from the normal Project Detail interface.
+
+Implement a clear "Edit project details" action.
+
+Support editing existing fields including:
+
+- Project name
+- Description
+- Primary owner
+- Supporting owners
+- Work type
+- Client
+- Organization
+- Program
+- Target date, where supported by the existing contract
+
+Use the existing API/update architecture wherever possible.
+
+Do not change project IDs.
+
+Do not lose:
+
+- Linked initiatives
+- Jira links
+- Milestones
+- Risks
+- Approvals
+- Resources
+- Readiness assessments
+- Historical relationships
+
+Preserve existing validation and authorization.
+
+Ensure Cancel discards unsaved edits.
+
+Ensure Save persists only intended changes.
+
+Validate optional relationship clearing and unchanged-field
+behavior carefully.
+
+Do not introduce a new schema unless an unavoidable
+technical requirement is identified and reported first.
+
+============================================================
+6. PROJECT NEXT STEPS
+============================================================
+
+After creating a project, provide clear next actions.
+
+Examples:
+
+1. Confirm project scope and ownership.
+2. Add the next milestone.
+3. Assign resources or identify department needs.
+
+These should be contextual actions linking to existing
+capabilities.
+
+Do not automatically create milestones, assignments,
+approvals, or readiness requirements.
+
+Do not impose new project-governance obligations.
+
+The user should immediately understand:
+
+- What was created
+- What information was saved
+- What remains optional
+- What to do next
+
+============================================================
+7. INITIATIVE-TO-PROJECT WORKFLOW
+============================================================
+
+Preserve the existing Initiative promotion architecture.
+
+Change confusing user-facing terminology.
+
+Prefer:
+
+"Create linked project"
+
+instead of:
+
+"Promote"
+
+Explain that:
+
+- The Initiative remains intact.
+- A separate Project is created.
+- The Project retains its relationship to the Initiative.
+- Existing supported Jira links remain associated.
+- Project creation does not itself constitute formal approval.
+
+Clearly distinguish:
+
+Develop an idea
+→ Save Initiative
+→ Evaluate Initiative
+→ Create linked Project
+→ Manage Project
+
+This represents the recommended business workflow.
+
+Do not imply every step is a mandatory technical gate.
+
+Do not change Initiative scoring, interview convergence,
+status transitions, or duplicate-project protections.
+
+============================================================
+8. TERMINOLOGY CLEANUP
+============================================================
+
+Implement the following user-facing terminology changes
+where appropriate.
+
+Dashboard → Home
+
+Kanban → Board view
+
+Quick Submit → Enter a defined idea
+
+Guided Idea Interview entry action → Develop an idea
+
+Promote → Create linked project
+
+Primary Owner → Project owner
+
+Resources → People & capacity
+
+Approvals → Project approvals
+
+Product Backlog → Hub improvements
+
+Parking Lot → Deferred improvements
+
+Validation → Release checks
+
+Documents → Help & guides, with honest availability state
+
+Use contextual descriptions for:
+
+- Initiative
+- Project
+- Program
+- Organization
+- Client
+- Project owner
+- Executive sponsor
+- Assigned resources
+
+Do not rename persisted enum values, database columns,
+API contracts, or integration identifiers merely to change
+presentation labels.
+
+============================================================
+9. DASHBOARD / HOME
+============================================================
+
+Make Home a practical starting point.
+
+Emphasize:
+
+- Develop an idea
+- View initiatives
+- Create or find a project
+- Needs attention
+- Recent activity, where already supported
+
+IMPORTANT:
+
+The current "My Attention Required" queue is not actually
+filtered to the signed-in user's responsibilities.
+
+Rename it:
+
+"Needs attention"
+
+Clearly indicate that it represents application-wide
+items rather than personal assignments.
+
+Do not claim personalized ownership until Platform-backed
+identity references support that capability.
+
+Move Hub product-maintenance metrics out of the ordinary
+business dashboard.
+
+Preserve their availability in the appropriate secondary
+administrative area.
+
+============================================================
+10. PROJECT HEALTH CONSISTENCY
+============================================================
+
+The assessment identified inconsistent health presentation.
+
+Project lists currently display stored health.
+
+Portfolio uses effective health.
+
+Ensure project health is presented consistently using the
+existing effective-health calculation.
+
+Preserve:
+
+- Existing deterministic calculations
+- Existing override rules
+- Existing health history
+- Existing reporting behavior
+
+Do not invent a new health algorithm.
+
+If an API response enhancement is necessary, keep it bounded
+and backward compatible.
+
+Clearly distinguish calculated health from manual overrides.
+
+============================================================
+11. SAVE / CANCEL / DELETE
+============================================================
+
+Improve consistency across the affected workflows.
+
+For multi-field editing:
+
+Save = persist changes.
+
+Cancel = discard unsaved changes.
+
+For existing immediate-save controls:
+
+Clearly indicate that changes save immediately.
+
+Where Cancel actually returns to a previous interview
+screen, use accurate wording such as:
+
+"Return to interview"
+
+Do not alter private interview autosave behavior.
+
+Move prominent destructive Project Delete actions into
+an appropriate secondary action area.
+
+Preserve existing deletion authorization and behavior.
+
+Explain potential consequences before deletion.
+
+Do not modify database cascade rules.
+
+============================================================
+12. HELP AND DOCUMENTATION
+============================================================
+
+Do not implement the full documentation/PDF architecture
+in this release.
+
+That remains planned for a later bounded release.
+
+However:
+
+- Remove or disable nonfunctional Download actions.
+- Do not imply unpublished documents are available.
+- Provide concise contextual explanations where necessary.
+- Ensure new terminology and workflow guidance match
+  actual application behavior.
+
+Do not generate placeholder documents and present them
+as approved Matrix policies.
+
+============================================================
+13. ARCHITECTURE AND SECURITY
+============================================================
+
+PRESERVE:
+
+- Matrix Platform authentication
+- Platform-signed identity
+- Server-side authorization
+- Private interview ownership
+- Platform Shared AI Service
+- Centralized Microsoft credentials
+- Jira integration
+- Existing Initiative/Project relationships
+- Existing resources and assignments
+- Deterministic scoring
+- Reporting
+- Historical data
+- Gateway registration and routing
+
+DO NOT:
+
+- Introduce independent Microsoft Graph credentials
+- Introduce local authentication bypasses
+- Change Platform launch-token handling
+- Modify Matrix Platform
+- Migrate existing records
+- Rebuild the data model
+- Remove existing capabilities
+- Resurrect legacy Matrix Compass
+
+============================================================
+14. VALIDATION REQUIREMENTS
+============================================================
+
+Before reporting completion, validate:
+
+A. NAVIGATION
+- All primary destinations work.
+- Secondary destinations remain accessible.
+- Existing deep links continue working.
+- Desktop and mobile layouts work.
+- No unauthorized functionality is exposed.
+
+B. PROJECT CREATION
+- Direct project creation still works.
+- Linked project creation still works.
+- Required-field validation works.
+- Optional fields can be deferred.
+- Existing relationships remain intact.
+
+C. PROJECT EDITING
+- Name can be changed.
+- Owner can be changed.
+- Description can be changed.
+- Client/program/organization context can be updated.
+- Optional relationships can be cleared where supported.
+- Cancel does not persist unsaved changes.
+- Existing milestones, risks, resources, and Jira links
+  remain intact.
+
+D. INITIATIVES
+- Guided Interview behavior unchanged.
+- Scoring unchanged.
+- Existing initiative statuses unchanged.
+- Linked-project duplicate protection preserved.
+- No new approval gate introduced.
+
+E. REPORTING
+- Health is consistent across affected screens.
+- Portfolio and reports remain functional.
+
+F. SECURITY
+- Existing Platform authentication unchanged.
+- Server-side authorization unchanged.
+- No local identity substitution introduced.
+
+G. BUILD
+- Typecheck passes.
+- Application builds successfully.
+- Existing relevant automated tests pass.
+- Add focused regression tests where appropriate.
+
+IMPORTANT:
+
+The previous UX assessment could not verify real authenticated
+development persistence.
+
+Do not represent browser fixtures or mocked sessions as
+successful end-to-end authentication testing.
+
+If live Platform-authenticated development testing is
+unavailable, clearly identify that limitation.
+
+Do not weaken authentication to complete testing.
+
+============================================================
+15. RELEASE CONTROL
+============================================================
+
+This is the first UX implementation release after the
+accepted v1.6.13 baseline.
+
+Use the next appropriate development version according
+to the project's existing versioning convention.
+
+Do not change production until Brian approves.
+
+Do not automatically publish, deploy, or push.
+
+Preserve existing development work and Git history.
+
+============================================================
+16. REQUIRED COMPLETION REPORT
+============================================================
+
+TARGET PROJECT:
+Innovation Hub
+
+BRIAN RULE DATE:
+October 16, 2026 — US Central
+
+VERSION BEFORE:
+
+VERSION AFTER:
+
+IMPLEMENTED CHANGES:
+- Navigation:
+- Project creation:
+- Project editing:
+- Initiative workflow:
+- Terminology:
+- Dashboard:
+- Health consistency:
+- Save/Cancel behavior:
+- Help/documentation:
+
+BUSINESS DECISIONS PRESERVED:
+- Initiative-first recommendation:
+- Direct project creation:
+- Approval requirements:
+- Organization/Client/Program relationships:
+- Project Owner/Project Manager interpretation:
+
+VALIDATION RESULTS:
+- Typecheck:
+- Build:
+- Automated tests:
+- Browser testing:
+- Authenticated persistence testing:
+- Regression testing:
+
+KNOWN LIMITATIONS:
+
+ARCHITECTURAL CHANGES:
+- State NONE or explain any unavoidable changes.
+
+DATABASE CHANGES:
+- State NONE or explain.
+
+AUTHENTICATION CHANGES:
+NONE
+
+MATRIX PLATFORM CHANGES:
+NONE
+
+GIT STATUS:
+- Ready for review:
+- Ready for checkpoint:
+- Ready for push:
+
+PUBLISHED:
+NO
+
+DEPLOYED:
+NO
+
+PUSHED:
+NO
+
+============================================================
+17. FINAL INSTRUCTION
+============================================================
+
+Implement this bounded UX release.
+
+Do not expand scope into identity-directory integration,
+new governance policies, role redesign, schema restructuring,
+or the full documentation/PDF system.
+
+Prioritize usability over additional features.
+
+Preserve all existing functionality and integrations.
+
+Complete implementation and validation.
+
+Report results.
+
+STOP.
+
+Wait for Brian's review and explicit authorization before
+publishing, deploying, or pushing.

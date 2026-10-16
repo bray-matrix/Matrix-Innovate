@@ -321,7 +321,7 @@ export default function ProgramsPage() {
             Programs
           </h1>
           <p className="text-muted-foreground mt-1 text-lg">
-            Manage programs that group related projects together.
+            A program is an optional grouping of related projects.
           </p>
         </div>
         <Button onClick={() => { setEditing(null); setDialogOpen(true); }}>

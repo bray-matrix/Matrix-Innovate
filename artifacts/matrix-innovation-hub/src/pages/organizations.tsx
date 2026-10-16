@@ -209,7 +209,7 @@ export default function OrganizationsPage() {
             Organizations
           </h1>
           <p className="text-muted-foreground mt-1 text-lg">
-            Manage overarching organizational entities.
+            An organization is an optional parent company or corporate entity that clients, programs or projects can belong to.
           </p>
         </div>
         <Button onClick={() => { setEditing(null); setDialogOpen(true); }}>

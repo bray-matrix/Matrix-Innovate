@@ -735,7 +735,7 @@ export default function AIInnovationInterview() {
 
   if (loadingInterview || resumeChoice || blockedActiveDraft || (persistenceError && !savedInterview && !ownerRef.current)) {
     return <div className="max-w-3xl mx-auto py-16 space-y-5 text-center">
-      <h2 className="text-2xl font-bold">Guided Idea Interview</h2>
+      <h2 className="text-2xl font-bold">Develop an idea</h2>
       {loadingInterview ? <p data-testid="status-loading-interview">Loading your private interview…</p> : blockedActiveDraft ?
         <><p>A previous interview cannot be resumed under the current content policy. You may discard it and start a new interview. Nothing has been deleted yet.</p>
           <p role="alert" className="text-destructive">{persistenceError}</p>
@@ -881,7 +881,7 @@ export default function AIInnovationInterview() {
         <div>
           <h2 className="text-2xl font-bold tracking-tight flex items-center gap-2">
             <Sparkles className="h-6 w-6 text-secondary" />
-            Innovation Interview
+            Develop an idea
           </h2>
           <p className="text-muted-foreground text-sm">
             A guided conversation that adapts to your idea and turns it into a

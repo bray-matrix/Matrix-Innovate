@@ -1,4 +1,6 @@
 import { useMemo, useState } from "react";
+import { useLocation, useSearch } from "wouter";
+import { ProductHealthWidget } from "@/components/product-health-widget";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useListBacklogItems,
@@ -282,7 +284,7 @@ function BacklogItemDialog({
           <DialogTitle>
             {editing
               ? `Edit ${editing.displayId}: ${editing.title}`
-              : "New Backlog Item"}
+              : "New Hub improvement"}
           </DialogTitle>
           <DialogDescription>
             {editing
@@ -644,7 +646,7 @@ function ParkingLotDialog({
           <DialogTitle>
             {editing
               ? `Edit ${editing.displayId}: ${editing.title}`
-              : "New Parking Lot Item"}
+              : "New deferred improvement"}
           </DialogTitle>
           <DialogDescription>
             Ideas intentionally set aside — captured so they are not lost.
@@ -749,6 +751,9 @@ function ParkingLotDialog({
 // ---------------------------------------------------------------------------
 
 export default function ProductBacklogPage() {
+  const search = useSearch();
+  const [, setLocation] = useLocation();
+  const activeTab = new URLSearchParams(search).get("tab") === "deferred" ? "parking" : "backlog";
   const { data: backlogItems, isLoading: backlogLoading } =
     useListBacklogItems();
   const { data: parkingItems, isLoading: parkingLoading } =
@@ -952,18 +957,20 @@ export default function ProductBacklogPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold tracking-tight">Product Backlog</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Hub improvements</h1>
         <p className="text-muted-foreground">
-          Innovation Hub manages its own evolution here — features,
-          fixes, technical debt, and parked ideas.
+          Maintenance of the Innovation Hub application itself: features,
+          fixes, technical debt and deferred improvements. Business ideas belong in Ideas &amp; Initiatives.
         </p>
       </div>
 
-      <Tabs defaultValue="backlog">
+      <ProductHealthWidget />
+
+      <Tabs value={activeTab} onValueChange={(v) => setLocation(v === "parking" ? "/backlog?tab=deferred" : "/backlog")}>
         <TabsList>
           <TabsTrigger value="backlog">
             <ListTodo className="mr-2 h-4 w-4" />
-            Active Product Backlog
+            Hub improvements
             {backlogItems && (
               <Badge variant="secondary" className="ml-2">
                 {backlogItems.length}
@@ -972,7 +979,7 @@ export default function ProductBacklogPage() {
           </TabsTrigger>
           <TabsTrigger value="parking">
             <PauseCircle className="mr-2 h-4 w-4" />
-            Parking Lot
+            Deferred improvements
             {parkingItems && (
               <Badge variant="secondary" className="ml-2">
                 {parkingItems.length}
@@ -990,7 +997,7 @@ export default function ProductBacklogPage() {
               }}
             >
               <PlusCircle className="mr-2 h-4 w-4" />
-              New Backlog Item
+              New Hub improvement
             </Button>
           </div>
           <DataTable
@@ -1019,7 +1026,7 @@ export default function ProductBacklogPage() {
               }}
             >
               <PlusCircle className="mr-2 h-4 w-4" />
-              New Parking Lot Item
+              New deferred improvement
             </Button>
           </div>
           <DataTable

@@ -453,10 +453,10 @@ export default function ValidationPage() {
         <div>
           <h2 className="text-2xl font-bold flex items-center gap-2">
             <ClipboardCheck className="h-6 w-6 text-primary" />
-            Validation Review
+            Release checks
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Validate each application version against the feature checklist and
+            Hub maintenance: validate each Innovation Hub release against the feature checklist and
             generate clean feedback for the development team.
           </p>
         </div>

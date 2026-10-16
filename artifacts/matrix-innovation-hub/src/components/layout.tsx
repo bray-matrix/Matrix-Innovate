@@ -1,4 +1,4 @@
-import { Link, useLocation } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import {
   Sidebar,
   SidebarContent,
@@ -36,75 +36,97 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Menu,
+  FilePlus2,
+  UserCog,
+  HelpCircle,
+  PauseCircle,
 } from "lucide-react";
+
+type NavItem = { href: string; label: string; icon: React.ComponentType; tab?: string };
+type NavGroup = { label: string; secondary?: boolean; items: NavItem[] };
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const { data: settings } = useGetSettings();
   const { user, logout } = useMatrixAuth();
 
-  const navGroups = [
+  const search = useSearch();
+  const backlogTab = new URLSearchParams(search).get("tab") === "deferred" ? "deferred" : "";
+
+  const navGroups: NavGroup[] = [
     {
       label: "HOME",
       items: [
-        { href: "/", label: "Dashboard", icon: LayoutDashboard },
-        { href: "/portfolio", label: "Portfolio", icon: PieChart },
+        { href: "/", label: "Home", icon: LayoutDashboard },
       ]
     },
     {
-      label: "INNOVATION",
+      label: "IDEAS & INITIATIVES",
       items: [
-        { href: "/interview", label: "Guided Idea Interview", icon: Sparkles },
-        { href: "/submit", label: "Quick Submit", icon: PlusCircle },
         { href: "/initiatives", label: "Initiatives", icon: List },
-        { href: "/kanban", label: "Kanban", icon: KanbanSquare },
+        { href: "/kanban", label: "Board view", icon: KanbanSquare },
+        { href: "/interview", label: "Develop an idea", icon: Sparkles },
+        { href: "/submit", label: "Enter a defined idea", icon: PlusCircle },
       ]
     },
     {
-      label: "EXECUTION",
+      label: "PROJECTS",
       items: [
         { href: "/projects", label: "Projects", icon: Briefcase },
+        { href: "/projects/new", label: "Create project", icon: FilePlus2 },
         { href: "/clients", label: "Clients", icon: Users },
-        { href: "/organizations", label: "Organizations", icon: Building2 },
-        { href: "/resources", label: "Resources", icon: Users },
-        { href: "/approvals", label: "Approvals", icon: CheckSquare },
+        { href: "/resources", label: "People & capacity", icon: UserCog },
+        { href: "/approvals", label: "Project approvals", icon: CheckSquare },
       ]
     },
     {
-      label: "REPORTING",
+      label: "PORTFOLIO",
       items: [
+        { href: "/portfolio", label: "Portfolio overview", icon: PieChart },
+        { href: "/programs", label: "Programs", icon: FolderKanban },
         { href: "/reports", label: "Reports", icon: FileText },
       ]
     },
     {
-      label: "GOVERNANCE",
+      label: "HELP",
+      secondary: true,
       items: [
-        { href: "/validation", label: "Validation", icon: ClipboardCheck },
-        { href: "/documents", label: "Documents", icon: FileText },
-      ]
-    },
-    {
-      label: "MANAGEMENT",
-      items: [
-        { href: "/programs", label: "Programs", icon: FolderKanban },
-      ]
-    },
-    {
-      label: "PRODUCT MANAGEMENT",
-      items: [
-        { href: "/backlog", label: "Product Backlog", icon: ListTodo },
+        { href: "/documents", label: "Help & guides", icon: HelpCircle },
       ]
     },
     {
       label: "ADMINISTRATION",
+      secondary: true,
       items: [
-        { href: "/admin", label: "Admin", icon: Settings },
+        { href: "/admin", label: "Admin settings", icon: Settings },
+        { href: "/organizations", label: "Organizations", icon: Building2 },
+        { href: "/backlog", label: "Hub improvements", icon: ListTodo, tab: "" },
+        { href: "/backlog?tab=deferred", label: "Deferred improvements", icon: PauseCircle, tab: "deferred" },
+        { href: "/validation", label: "Release checks", icon: ClipboardCheck },
       ]
     }
   ];
 
+  const allItems = navGroups.flatMap(g => g.items);
+  const pathOf = (href: string) => href.split("?")[0];
+  // Choose the single most specific matching item so only one entry is active.
+  const activeHref = allItems
+    .filter(i => {
+      const p = pathOf(i.href);
+      const pathMatch = p === "/" ? location === "/" : (location === p || location.startsWith(p + "/"));
+      if (!pathMatch) return false;
+      if (i.tab !== undefined) return i.tab === backlogTab;
+      if (p === "/projects" && location === "/projects/new") return false;
+      return true;
+    })
+    .sort((x, y) => pathOf(y.href).length - pathOf(x.href).length)[0]?.href;
+
   const displayName = user.name ?? user.email ?? user.sub ?? "";
-  const currentLabel = navGroups.flatMap(g => g.items).find(i => i.href === location)?.label || "Innovation Hub";
+  const exact = allItems.find(i => i.href === activeHref);
+  const currentLabel = /^\/projects\/\d+/.test(location) ? "Project"
+    : /^\/initiatives\/\d+\/score/.test(location) ? "Score initiative"
+    : /^\/initiatives\/\d+/.test(location) ? "Initiative"
+    : exact?.label || "Innovation Hub";
 
   return (
     <SidebarProvider>
@@ -125,16 +147,17 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           </SidebarHeader>
           <SidebarContent className="p-2 gap-0">
             {navGroups.map((group) => (
-              <SidebarGroup key={group.label} className="py-2">
-                <SidebarGroupLabel className="text-xs font-semibold tracking-wider text-sidebar-foreground/50">
+              <SidebarGroup key={group.label} className={group.secondary ? "py-1 first-of-type:mt-0" : "py-2"}>
+                {group.label === "HELP" && <div className="mx-2 mb-1 mt-2 border-t border-sidebar-border" aria-hidden="true" />}
+                <SidebarGroupLabel className={`text-xs font-semibold tracking-wider ${group.secondary ? "text-sidebar-foreground/40" : "text-sidebar-foreground/50"}`}>
                   {group.label}
                 </SidebarGroupLabel>
                 <SidebarGroupContent>
                   <SidebarMenu>
                     {group.items.map((item) => (
                       <SidebarMenuItem key={item.href}>
-                        <SidebarMenuButton asChild tooltip={item.label} isActive={location === item.href || (item.href !== '/' && location.startsWith(item.href))}>
-                          <Link href={item.href} data-testid={`link-nav-${item.href.replace(/\//g, "") || "dashboard"}`}>
+                        <SidebarMenuButton asChild tooltip={item.label} isActive={item.href === activeHref} size={group.secondary ? "sm" : "default"}>
+                          <Link href={item.href} data-testid={`link-nav-${item.href.replace(/[/?=]/g, "") || "dashboard"}`}>
                             <item.icon />
                             <span>{item.label}</span>
                           </Link>

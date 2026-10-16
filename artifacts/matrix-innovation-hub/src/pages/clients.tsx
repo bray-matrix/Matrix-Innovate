@@ -244,7 +244,7 @@ export default function ClientsPage() {
             Clients
           </h1>
           <p className="text-muted-foreground mt-1 text-lg">
-            Manage external client entities.
+            A client is an individual Matrix customer or account. A client can optionally belong to a parent organization.
           </p>
         </div>
         <Button onClick={() => { setEditing(null); setDialogOpen(true); }}>

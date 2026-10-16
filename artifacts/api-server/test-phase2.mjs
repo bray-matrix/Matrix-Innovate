@@ -2,7 +2,9 @@
 // health, attention). Same pattern as test-execution-phase1.mjs.
 import { createServer } from "node:http";
 import { spawn } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { generateKeyPair, exportJWK, SignJWT } from "jose";
+const applicationVersion = `v${JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8")).version}`;
 
 const JWKS_PORT = 9321;
 const APP_PORT = 9322;
@@ -51,9 +53,9 @@ async function api(method, path, body) {
 
 check("P. Platform authentication", sessRes.status === 200 && !!cookie);
 const appInfo = await (await fetch(`${BASE}/matrix/app-info`)).json();
-check("A/Q. app-info Innovation Hub v1.6.13", appInfo.name === "Innovation Hub" && appInfo.version === "v1.6.13", JSON.stringify(appInfo));
+check(`A/Q. app-info Innovation Hub ${applicationVersion}`, appInfo.name === "Innovation Hub" && appInfo.version === applicationVersion, JSON.stringify(appInfo));
 const health = await (await fetch(`${BASE}/matrix/health`)).json();
-check("R. /matrix/health passes", health.checks?.database === "ok" && health.version === "v1.6.13");
+check("R. /matrix/health passes", health.checks?.database === "ok" && health.version === applicationVersion);
 
 const initsBefore = (await api("GET", "/api/initiatives")).json.length;
 const projsBefore = (await api("GET", "/api/projects")).json.length;

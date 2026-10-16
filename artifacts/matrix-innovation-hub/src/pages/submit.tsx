@@ -93,8 +93,8 @@ export default function SubmitInitiative() {
   return (
     <div className="max-w-4xl mx-auto space-y-6 pb-12">
       <div>
-        <h2 className="text-2xl font-bold tracking-tight">Submit Initiative</h2>
-        <p className="text-muted-foreground">Propose a new AI prototype or pilot project.</p>
+        <h2 className="text-2xl font-bold tracking-tight">Enter a defined idea</h2>
+        <p className="text-muted-foreground">Use this form when your idea is already well defined. To shape an earlier idea with guided questions, use Develop an idea.</p>
       </div>
 
       <Form {...form}>

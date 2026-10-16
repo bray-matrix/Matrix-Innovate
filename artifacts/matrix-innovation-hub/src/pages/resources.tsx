@@ -238,10 +238,10 @@ export default function ResourcesPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-2">
             <Users className="h-8 w-8 text-primary" />
-            Resources
+            People &amp; capacity
           </h1>
           <p className="text-muted-foreground mt-1 text-lg">
-            Manage team capacity, assignments, and utilization.
+            People and departments performing project work: capacity, assignments and utilization.
           </p>
         </div>
         <Button onClick={() => {

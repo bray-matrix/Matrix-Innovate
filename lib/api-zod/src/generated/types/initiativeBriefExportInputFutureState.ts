@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Api
  * API specification
- * OpenAPI spec version: 1.6.13
+ * OpenAPI spec version: 1.6.14-dev.1
  */
 
 export type InitiativeBriefExportInputFutureState = { [key: string]: unknown };
