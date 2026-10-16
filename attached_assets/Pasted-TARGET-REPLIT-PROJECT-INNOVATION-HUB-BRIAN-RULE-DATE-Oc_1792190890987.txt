@@ -1,0 +1,789 @@
+TARGET REPLIT PROJECT: INNOVATION HUB
+
+BRIAN RULE DATE: October 16, 2026
+TIME ZONE: US Central (America/Chicago)
+
+TASK: UX RELEASE B — NAVIGATION, LAYOUT & READABILITY
+MODE: CONTROLLED IMPLEMENTATION
+
+DO NOT RUN IN:
+- Matrix Platform
+- Finance Hub
+- Workforce Hub
+- Infrastructure Hub
+- legacy Matrix Compass
+
+CURRENT BASELINE:
+- Production: v1.6.13
+- Development: v1.6.14-dev.1
+
+============================================================
+1. OBJECTIVE
+============================================================
+
+Implement the second phase of Innovation Hub's usability
+improvements based on Brian's live review of Release A.
+
+Release A successfully introduced:
+
+- Simplified project creation
+- Project detail editing
+- Improved terminology
+- Initiative-first recommendations
+- Project next-step guidance
+- Improved health consistency
+- Matrix Platform-authenticated development testing
+
+However, the application still feels unnecessarily
+compressed, visually dense, and intimidating to new users.
+
+The current design does not use available screen space
+effectively.
+
+This release must substantially improve usability without
+changing the underlying application architecture.
+
+PRIMARY GOALS:
+
+1. Simplify navigation further.
+2. Improve font sizes and readability.
+3. Use available desktop screen space effectively.
+4. Replace cramped editing dialogs.
+5. Improve project detail layout.
+6. Reduce unnecessary visual clutter.
+7. Improve responsive behavior.
+8. Investigate M365-backed user selection without
+   introducing new credentials or Platform dependencies.
+
+IMPORTANT:
+
+This is a user-experience improvement release.
+
+Do not expand it into a platform modernization project.
+
+============================================================
+2. DESIGN PRINCIPLES
+============================================================
+
+Innovation Hub is a business application used by executives,
+department managers, project managers, account managers,
+and other Matrix employees.
+
+Users should not need extensive training to understand it.
+
+Design for:
+
+- Clear navigation
+- Comfortable reading
+- Efficient workflows
+- Consistent interaction patterns
+- Appropriate use of screen space
+- Minimal unnecessary scrolling
+- Clear primary actions
+- Contextual secondary actions
+- Responsive layouts
+
+Avoid:
+
+- Tiny text
+- Narrow centered content columns
+- Excessive whitespace around cramped forms
+- Too many simultaneously visible navigation choices
+- Excessive cards
+- Nested boxes without clear purpose
+- Unnecessarily large guidance panels
+- Overuse of modals
+- Dense administrative terminology
+
+Do not sacrifice readability simply to fit more
+information onto a screen.
+
+============================================================
+3. APPLICATION-WIDE LAYOUT STANDARDS
+============================================================
+
+Inspect existing shared layout components and CSS.
+
+Determine why major pages use narrow content containers
+despite substantial available desktop space.
+
+Implement consistent responsive layout standards.
+
+DESKTOP:
+
+- Use approximately 85–90% of available content width
+  where appropriate.
+- Apply sensible maximum widths based on content type.
+- Allow dashboards, project details, and data tables
+  to use more horizontal space.
+- Avoid arbitrary narrow max-width restrictions.
+- Maintain consistent horizontal spacing.
+
+FORMS:
+
+- Use wider layouts when multiple fields are present.
+- Avoid placing large forms inside narrow dialogs.
+- Group related fields logically.
+- Keep labels close to their corresponding controls.
+
+TABLES:
+
+- Use available width effectively.
+- Maintain readable columns.
+- Preserve horizontal scrolling when necessary.
+- Do not compress text into unreadable columns.
+
+MOBILE/TABLET:
+
+- Preserve responsive behavior.
+- Avoid horizontal overflow.
+- Stack content where appropriate.
+- Ensure navigation remains usable.
+- Keep actions accessible.
+
+Do not apply a blanket width rule that damages
+simple reading pages or short forms.
+
+Use appropriate layouts for each content type.
+
+============================================================
+4. TYPOGRAPHY AND READABILITY
+============================================================
+
+Establish consistent application-wide typography.
+
+Recommended desktop standards:
+
+- Body text: 14–16px minimum
+- Form labels: 14px minimum
+- Navigation labels: 14–15px
+- Page titles: 24–28px
+- Section headings: 16–20px
+- Supporting text: readable without zooming
+
+Avoid widespread use of 10–12px text.
+
+Improve:
+
+- Line height
+- Contrast
+- Label spacing
+- Button readability
+- Form field readability
+- Card headings
+- Table text
+- Empty-state messages
+
+Preserve the existing Matrix branding and color palette.
+
+Do not introduce an unrelated visual theme.
+
+============================================================
+5. NAVIGATION REDESIGN
+============================================================
+
+The current sidebar still displays approximately
+19 destinations.
+
+This is too much for an initial user experience.
+
+Implement a simplified navigation structure.
+
+PRIMARY NAVIGATION:
+
+HOME
+
+IDEAS & INITIATIVES
+
+PROJECTS
+
+PORTFOLIO
+
+SECONDARY:
+
+HELP
+
+ADMINISTRATION
+
+Use expandable navigation groups, flyouts, or another
+accessible pattern appropriate to the existing framework.
+
+Preferred behavior:
+
+HOME
+- Opens Home directly.
+
+IDEAS & INITIATIVES
+- Opens the main Initiative workspace.
+- Secondary actions available through an expandable menu
+  or within the workspace:
+  - Develop an idea
+  - Enter a defined idea
+  - Board view
+
+PROJECTS
+- Opens the Project workspace.
+- Secondary actions:
+  - Create project
+  - Clients
+  - People & capacity
+  - Project approvals
+
+PORTFOLIO
+- Opens the Portfolio overview.
+- Secondary destinations:
+  - Programs
+  - Reports
+
+HELP
+- Help & guides
+
+ADMINISTRATION
+- Admin settings
+- Organizations
+- Hub improvements
+- Deferred improvements
+- Release checks
+
+IMPORTANT:
+
+Do not display all secondary destinations simultaneously
+by default.
+
+Do not make important actions difficult to discover.
+
+Provide clear expand/collapse indicators.
+
+Preserve existing routes and deep links.
+
+Maintain appropriate active-navigation highlighting.
+
+Navigation must work with keyboard and screen readers.
+
+Preserve all existing server-side authorization.
+
+Do not expose administrative functions to users who
+are not authorized to access them.
+
+Do not introduce new roles or permissions.
+
+============================================================
+6. PROJECT CREATION PAGE
+============================================================
+
+Improve the existing project creation page layout.
+
+Keep the Release A workflow and validation.
+
+Preserve required fields:
+
+- Project name
+- Project owner
+- Work type
+
+Preserve optional fields and existing relationships.
+
+Make better use of available screen width.
+
+Avoid unnecessarily narrow forms.
+
+Use a balanced layout that works on both desktop
+and smaller screens.
+
+SHORTEN INITIATIVE GUIDANCE.
+
+Replace the current lengthy recommendation with:
+
+"Starting something new? We recommend developing an
+Initiative first to define scope, expected outcomes,
+and business value. Already have a defined project?
+Continue below."
+
+Provide a clear action to start an Initiative.
+
+Preserve direct project creation.
+
+Do not introduce mandatory Initiative approval.
+
+Do not change existing project creation APIs.
+
+============================================================
+7. PROJECT EDITING EXPERIENCE
+============================================================
+
+The current "Edit project details" dialog is too narrow.
+
+It displays many fields in a small centered modal,
+leaving most of the screen unused.
+
+Replace this with a more usable editing experience.
+
+PREFERRED:
+
+A responsive right-side editing panel/drawer.
+
+DESKTOP:
+- Approximately 40–50% of available content width,
+  subject to sensible minimum and maximum widths.
+- Comfortable spacing.
+- Readable labels.
+- Clear Save and Cancel actions.
+- Internal scrolling where needed.
+- Project context remains visible.
+
+MOBILE:
+- Full-width editing experience.
+
+If the existing component framework supports a better
+accessible pattern, use it.
+
+Preserve Release A functionality:
+
+- Changed-fields-only updates
+- Optional relationship clearing
+- Validation
+- Retry behavior
+- Cancel discards edits
+- Duplicate-save prevention
+- Existing authorization
+- Preservation of linked records
+
+Do not change the underlying project data model.
+
+============================================================
+8. PROJECT DETAIL PAGE
+============================================================
+
+Improve the project detail page layout.
+
+CURRENT ISSUES:
+
+- Main content is unnecessarily narrow.
+- Status & Attributes panel is cramped.
+- Next Steps guidance dominates the page.
+- Excessive unused horizontal space.
+- Tabs and information compete for attention.
+
+RECOMMENDED STRUCTURE:
+
+PROJECT HEADER
+- Project name
+- Project ID
+- Work type
+- Owner
+- Primary actions
+
+PROJECT SUMMARY
+- Description
+- Key relationships
+- Current delivery status
+- Important dates
+
+PROJECT WORKSPACE
+- Overview
+- Milestones
+- Risks
+- Approvals
+- Readiness
+- Resources
+- Linked work
+
+STATUS & ATTRIBUTES
+- Clearly presented
+- Readable controls
+- Consistent spacing
+
+NEXT STEPS
+- Contextual and appropriately sized
+
+Use a balanced responsive layout.
+
+Do not remove existing project functionality.
+
+Preserve current project tabs and deep-link behavior.
+
+============================================================
+9. PROJECT NEXT-STEP GUIDANCE
+============================================================
+
+Immediately after project creation:
+
+Display the expanded Next Steps guidance.
+
+This is useful for new users.
+
+On subsequent visits:
+
+Do not repeatedly dominate the page with the
+same large guidance panel.
+
+Prefer a compact, collapsible guidance section.
+
+Allow users to reopen it.
+
+Preserve the existing suggested actions:
+
+- Confirm scope and ownership
+- Add milestone
+- Assign resources
+- Record risk
+- Request approval
+- Link Jira work
+
+Do not automatically create records.
+
+Do not treat suggestions as mandatory approvals.
+
+Use an appropriate mechanism to distinguish the
+post-creation experience from later visits.
+
+Do not require a database migration solely to
+remember whether the guidance was expanded.
+
+============================================================
+10. DASHBOARD / HOME
+============================================================
+
+Improve the Home page layout using the new standards.
+
+Preserve existing metrics and functionality.
+
+Prioritize:
+
+- Clear starting actions
+- Useful executive summary
+- Needs attention
+- Initiative and project visibility
+
+Avoid excessive card density.
+
+Use horizontal space effectively.
+
+Improve text readability.
+
+Do not invent personalized assignments.
+
+The existing Needs Attention section remains
+application-wide until identity-backed ownership
+is implemented.
+
+Preserve honest labeling.
+
+============================================================
+11. MICROSOFT 365 USER SELECTION
+============================================================
+
+Brian has confirmed an important requirement:
+
+Project owners, sponsors, and assigned resources
+should ultimately be selected from actual users in
+Matrix's Microsoft 365 tenant.
+
+These users do NOT necessarily have to be registered
+Matrix Platform application users.
+
+ARCHITECTURAL REQUIREMENT:
+
+Innovation Hub
+    |
+    v
+Matrix Platform
+    |
+    v
+Microsoft Graph / Entra ID
+    |
+    v
+Matrix M365 Directory
+
+Matrix Platform must remain the centralized owner
+of Microsoft Graph credentials and integrations.
+
+DO NOT:
+
+- Create an Innovation Hub Graph app registration
+- Request Microsoft client secrets
+- Add independent Graph credentials
+- Duplicate Platform authentication
+- Query Microsoft Graph directly from Innovation Hub
+- Require all selectable employees to be Platform users
+- Introduce new Platform endpoints without approval
+
+FOR THIS RELEASE:
+
+Perform a read-only investigation of the existing
+Platform-backed directory capabilities.
+
+Determine:
+
+1. Does Platform already expose a supported endpoint
+   for searching M365 tenant users?
+
+2. Does it include employees who are not registered
+   as Platform application users?
+
+3. What stable identity fields are available?
+
+4. What information can Innovation Hub safely display?
+
+5. Can the existing Project Owner field support
+   directory-backed selection without schema changes?
+
+6. Can Supporting Owners and assigned resources
+   eventually use the same mechanism?
+
+7. What additional Platform work, if any, is required?
+
+If a supported endpoint already exists and can be used
+without Platform changes, determine whether a bounded
+Innovation Hub integration is safe.
+
+Do not implement it if identity mapping, authorization,
+or backward compatibility is uncertain.
+
+Do not replace existing owner values or historical
+records.
+
+If Platform work is required, document the minimal
+requirements for a future separate Platform task.
+
+IMPORTANT:
+
+Do not allow the M365 investigation to delay completion
+of the visual UX improvements.
+
+============================================================
+12. GENERAL UI CONSISTENCY
+============================================================
+
+Review shared UI components affected by this release.
+
+Improve consistency of:
+
+- Page headings
+- Navigation spacing
+- Buttons
+- Form fields
+- Dropdowns
+- Dialogs
+- Drawers
+- Cards
+- Tables
+- Empty states
+- Help text
+- Save/Cancel actions
+
+Avoid one-off styling fixes when a shared component
+can address the issue safely.
+
+Do not rewrite the entire frontend.
+
+Keep changes focused and maintainable.
+
+============================================================
+13. PRESERVE EXISTING ARCHITECTURE
+============================================================
+
+Preserve:
+
+- Matrix Platform authentication
+- Signed launch tokens
+- Server-side authorization
+- Existing production launch behavior
+- Development Preview launch behavior
+- Private interview ownership
+- Platform Shared AI Service
+- Jira integration
+- Initiative-to-Project relationships
+- Existing project records
+- Milestones
+- Risks
+- Approvals
+- Resources
+- Reporting
+- Effective health calculations
+- Deterministic scoring
+- Existing database schema
+
+Do not modify Matrix Platform.
+
+Do not introduce new credentials.
+
+Do not migrate existing data.
+
+Do not modify application registration.
+
+Do not change authentication or authorization behavior.
+
+============================================================
+14. VALIDATION
+============================================================
+
+Validate the following:
+
+NAVIGATION:
+- Primary navigation is simpler.
+- Secondary destinations remain accessible.
+- Expand/collapse behavior works.
+- Active page is clearly indicated.
+- Deep links remain functional.
+- Keyboard navigation works.
+- Mobile navigation works.
+
+LAYOUT:
+- Desktop content uses available space appropriately.
+- Typography is readable.
+- Forms are not unnecessarily narrow.
+- Project details are balanced.
+- Editing panel works correctly.
+- Mobile and tablet layouts remain functional.
+
+PROJECTS:
+- Project creation works.
+- Project editing works.
+- Cancel discards changes.
+- Saved changes persist.
+- Linked records remain intact.
+- Next Steps behavior works as designed.
+
+INITIATIVES:
+- Guided Interview remains functional.
+- Initiative creation remains functional.
+- Linked-project creation remains functional.
+- Scoring remains unchanged.
+
+SECURITY:
+- Platform authentication unchanged.
+- Authorization unchanged.
+- No independent Graph credentials introduced.
+
+TESTS:
+- Typecheck
+- API build
+- Frontend build
+- Existing automated tests
+- Focused regression tests
+- Browser-based desktop testing
+- Browser-based mobile testing
+
+Use authenticated development testing where available.
+
+Clearly distinguish real authenticated testing
+from fixtures or synthetic tests.
+
+Do not claim real M365 directory integration
+unless it has actually been implemented and verified.
+
+============================================================
+15. VERSIONING AND RELEASE CONTROL
+============================================================
+
+Start from the current development baseline:
+
+v1.6.14-dev.1
+
+Advance to the next appropriate development version
+according to the existing project convention.
+
+Do not overwrite or lose Release A changes.
+
+Production remains v1.6.13.
+
+Do not publish Innovation Hub.
+
+Do not deploy.
+
+Do not push to GitHub.
+
+Do not modify Matrix Platform.
+
+============================================================
+16. REQUIRED COMPLETION REPORT
+============================================================
+
+TARGET PROJECT:
+Innovation Hub
+
+BRIAN RULE DATE:
+October 16, 2026 — US Central
+
+VERSION BEFORE:
+
+VERSION AFTER:
+
+IMPLEMENTED:
+
+1. Navigation simplification:
+2. Typography improvements:
+3. Responsive layout improvements:
+4. Project creation layout:
+5. Project editing panel:
+6. Project detail layout:
+7. Next Steps behavior:
+8. Dashboard improvements:
+9. Shared UI consistency:
+
+M365 DIRECTORY INVESTIGATION:
+
+- Existing Platform endpoint found:
+- Supports non-Platform M365 users:
+- Stable identity fields:
+- Existing owner-field compatibility:
+- Innovation Hub integration implemented:
+- Platform changes required:
+- Recommended next step:
+
+VALIDATION:
+
+- Typecheck:
+- API build:
+- Frontend build:
+- Automated tests:
+- Browser desktop:
+- Browser mobile:
+- Authenticated testing:
+- Regression testing:
+
+KNOWN LIMITATIONS:
+
+ARCHITECTURAL CHANGES:
+
+DATABASE CHANGES:
+
+AUTHENTICATION CHANGES:
+
+MATRIX PLATFORM CHANGES:
+NONE
+
+GIT STATUS:
+
+PUBLISHED:
+NO
+
+DEPLOYED:
+NO
+
+PUSHED:
+NO
+
+============================================================
+17. FINAL INSTRUCTION
+============================================================
+
+Implement the bounded visual and workflow improvements.
+
+Do not expand scope into Platform development or
+new identity infrastructure.
+
+Investigate M365 user selection but do not introduce
+unsafe or incomplete integration behavior.
+
+Preserve Release A functionality.
+
+Complete implementation and validation.
+
+Report results.
+
+STOP.
+
+Wait for Brian's review before publishing,
+deploying, or pushing any changes.

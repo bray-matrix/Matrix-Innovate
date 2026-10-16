@@ -8,7 +8,7 @@ import { isPlatformAdministrator as canManageDepartments } from "../lib/admin-au
 
 const router: IRouter = Router();
 
-export const APPLICATION_VERSION = "v1.6.14-dev.1";
+export const APPLICATION_VERSION = "v1.6.14-dev.2";
 
 const SETTINGS = {
   categories: [

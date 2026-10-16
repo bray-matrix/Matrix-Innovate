@@ -24,3 +24,14 @@ a last resort after supported Platform options are unavailable.
 **How to apply:** Inspect current Platform launch contracts before adding child
 navigation. Preview URL metadata alone is not proof of a preview launch capability.
 Do not repoint the existing production launch destination to make preview work.
+
+Brian's October 16, 2026 UX brief confirms Platform-authenticated development
+testing is available. Preserve that supported workflow; an agent's signed-out
+test browser is not evidence that development authentication is unavailable.
+
+**Why:** User-confirmed preview testing and agent fixture-based testing are
+different evidence and must not be conflated.
+
+**How to apply:** Use a real supported Platform session when available; otherwise
+report the limitation of this test session, without changing authentication or
+claiming fixture interactions prove live Platform-authenticated persistence.

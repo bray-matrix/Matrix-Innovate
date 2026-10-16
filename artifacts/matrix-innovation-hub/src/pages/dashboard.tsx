@@ -129,10 +129,10 @@ function AttentionItem({ initiative, detail, onClick }: AttentionItemProps) {
   return (
     <button
       onClick={onClick}
-      className="w-full text-left flex items-center justify-between gap-3 rounded-md border bg-background px-3 py-2 hover:bg-muted/50 transition-colors"
+      className="w-full text-left flex items-center justify-between gap-3 rounded-md border bg-background px-3 py-2.5 hover:bg-muted/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       <div className="min-w-0">
-        <div className="truncate text-sm font-medium">{initiative.title}</div>
+        <div className="truncate text-[15px] font-medium">{initiative.title}</div>
         <div className="text-xs text-muted-foreground truncate">
           {initiative.department}
         </div>
@@ -162,7 +162,7 @@ function AttentionGroup({
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center justify-between text-sm font-semibold">
+        <CardTitle className="flex items-center justify-between text-base font-semibold">
           <span className="flex items-center gap-2">
             <Icon className={`h-4 w-4 ${iconColor}`} />
             {title}
@@ -309,13 +309,13 @@ export default function Dashboard() {
   const goTo = (id: number) => setLocation(`/initiatives/${id}`);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-10">
       {/* Front door */}
       <section className="bg-primary text-primary-foreground rounded-xl shadow-lg overflow-hidden" data-testid="section-front-door">
         <div className="p-6 md:p-8 grid gap-6 lg:grid-cols-[1.1fr_1fr] items-start">
           <div>
             <p className="text-xs font-semibold tracking-[0.18em] text-[#FFC72C] uppercase">Innovation Hub</p>
-            <h2 className="mt-2 text-2xl md:text-3xl font-bold tracking-tight">Have an idea? Start here.</h2>
+            <h2 className="mt-2 text-2xl md:text-2xl md:text-[1.75rem] font-bold tracking-tight">Have an idea? Start here.</h2>
             <p className="mt-2 text-primary-foreground/80 max-w-xl">
               Bring an idea, problem, client request, or improvement. We help shape it, review it, and turn the best ones into real projects.
             </p>
@@ -408,13 +408,13 @@ export default function Dashboard() {
             className={`border-l-4 ${k.accent} hover-elevate transition-all`}
           >
             <CardHeader className="flex flex-row items-center justify-between pb-1">
-              <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <CardTitle className="text-sm font-semibold text-muted-foreground">
                 {k.title}
               </CardTitle>
               <k.icon className={`h-5 w-5 ${k.iconColor}`} />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold tracking-tight">{k.value}</div>
+              <div className="text-2xl md:text-[1.75rem] font-bold tracking-tight">{k.value}</div>
               <p className="text-xs text-muted-foreground mt-1">{k.sub}</p>
             </CardContent>
           </Card>
@@ -653,13 +653,13 @@ function ExecutionSummaryWidget() {
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center justify-between text-sm font-semibold">
+        <CardTitle className="flex items-center justify-between text-base font-semibold">
           <span className="flex items-center gap-2">
             <Briefcase className="h-4 w-4 text-[#002D72]" />
             Execution Summary
           </span>
           <Link href="/portfolio">
-            <Button variant="ghost" size="sm" className="h-7 text-xs">
+            <Button variant="ghost" size="sm" className="h-8 text-sm">
               View Portfolio
             </Button>
           </Link>
@@ -679,7 +679,7 @@ function ExecutionSummaryWidget() {
                       {s.value ?? "—"}
                     </div>
                   )}
-                  <div className="text-xs text-muted-foreground truncate">
+                  <div className="text-sm text-muted-foreground leading-snug">
                     {s.title}
                   </div>
                 </div>

@@ -1,4 +1,5 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { consumedKey, hasCreatedMarker, initialNextStepsMode, stripCreatedMarker } from "@/lib/next-steps-state";
 import { useRoute, Link, useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -202,7 +203,21 @@ export default function ProjectDetailPage() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
-  const justCreated = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("created") === "1";
+  // Consume the one-time ?created=1 marker: expand next steps once, then strip
+  // only that parameter (keeping base path, other params and hash) so reloads
+  // and later visits show the compact version.
+  const [justCreated] = useState(() => {
+    if (typeof window === "undefined" || !id) return false;
+    let consumed = false;
+    try { consumed = window.sessionStorage.getItem(consumedKey(id)) === "1"; } catch { /* storage unavailable */ }
+    return initialNextStepsMode(hasCreatedMarker(window.location.search), consumed) === "expanded";
+  });
+  useEffect(() => {
+    if (typeof window === "undefined" || !id || !hasCreatedMarker(window.location.search)) return;
+    try { window.sessionStorage.setItem(consumedKey(id), "1"); } catch { /* storage unavailable */ }
+    const { pathname, search, hash } = window.location;
+    window.history.replaceState(window.history.state, "", pathname + stripCreatedMarker(search) + hash);
+  }, [id]);
   const handleDeleteProject = () => {
     if (deleteMutation.isPending) return;
     deleteMutation.mutate({ id });
@@ -552,19 +567,17 @@ export default function ProjectDetailPage() {
   const sortedApprovals = (approvals ?? []).slice().sort((a, b) => (a.status === "Pending" ? -1 : 1));
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto pb-12">
+    <div className="space-y-6 w-full pb-12">
       <div className="flex flex-wrap items-start gap-3 sm:gap-4">
-        <Link href="/projects">
-          <Button variant="ghost" size="icon">
-            <ChevronLeft className="h-5 w-5" />
-          </Button>
+        <Link href="/projects" aria-label="Back to projects" data-testid="link-back-projects" className="inline-flex h-9 w-9 items-center justify-center rounded-md hover:bg-muted">
+          <ChevronLeft className="h-5 w-5" />
         </Link>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2 mb-1">
             <Badge variant="outline">{project.projectType}</Badge>
-            <span className="text-xs text-muted-foreground font-mono">PRJ-{String(project.id).padStart(4, "0")}</span>
+            <span className="text-sm text-muted-foreground font-mono">PRJ-{String(project.id).padStart(4, "0")}</span>
           </div>
-          <h1 className="break-words text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+          <h1 className="break-words text-2xl sm:text-2xl md:text-[1.75rem] font-bold tracking-tight text-foreground">
             {project.name}
           </h1>
           <div className="flex flex-wrap items-center gap-4 mt-2 text-sm text-muted-foreground">
@@ -578,7 +591,7 @@ export default function ProjectDetailPage() {
             )}
           </div>
         </div>
-        <div className="flex w-full items-center justify-end gap-2 sm:w-auto sm:shrink-0">
+        <div className="flex w-full items-center justify-end gap-2 xl:w-auto xl:shrink-0">
           <Button variant="outline" onClick={() => setEditOpen(true)} data-testid="button-edit-project-details">
             <Pencil className="h-4 w-4 mr-2" /> Edit project details
           </Button>
@@ -619,10 +632,43 @@ export default function ProjectDetailPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="md:col-span-3 space-y-6">
+      <section aria-label="Project summary" className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-x-6 gap-y-4 rounded-xl border bg-card px-5 py-4" data-testid="section-project-summary">
+        <div className="sm:col-span-2 xl:col-span-1 min-w-0">
+          <p className="text-sm text-muted-foreground">Description</p>
+          <p className="text-[15px] line-clamp-3 break-words" data-testid="text-summary-description">{project.description || "No description yet."}</p>
+        </div>
+        <div className="min-w-0">
+          <p className="text-sm text-muted-foreground">Client / program</p>
+          <p className="text-[15px] font-medium break-words">{contextParts.length ? contextParts.join(" / ") : "Internal"}</p>
+          {project.supportingOwners && <p className="text-sm text-muted-foreground break-words">Supporting: {project.supportingOwners}</p>}
+        </div>
+        <div className="min-w-0">
+          <p className="text-sm text-muted-foreground">Delivery status</p>
+          <p className="text-[15px] font-medium" data-testid="text-summary-status">{project.lifecycleStage} · {project.state}</p>
+          <p className="text-sm text-muted-foreground" data-testid="text-summary-health">Health: <span className="font-medium text-foreground">{project.effectiveHealth}</span> ({project.healthOverridden ? "manual override" : "calculated"})</p>
+        </div>
+        <div className="min-w-0">
+          <p className="text-sm text-muted-foreground">Important dates</p>
+          <p className="text-[15px] font-medium" data-testid="text-summary-target">Target: {formatDate(project.targetDate)}</p>
+          <p className="text-sm text-muted-foreground">Created {formatDate(project.createdAt)}</p>
+        </div>
+      </section>
+
+      <ProjectNextSteps
+        project={project}
+        justCreated={justCreated}
+        milestoneCount={milestones?.length ?? 0}
+        assignmentCount={resourcesData?.length ?? 0}
+        onEditDetails={() => setEditOpen(true)}
+        onAddMilestone={() => { setActiveTab("milestones"); openMilestoneDialog(null); }}
+        onAssignResources={() => { setActiveTab("resources"); setEditingAssignment(null); setAssignmentMode("named"); setAssignmentForm({ resourceId: "", department: "", roleDescription: "", allocationPercent: "100", plannedHours: "", startDate: "", endDate: "", status: "Planned" }); setResourceOpen(true); }}
+        onOpenTab={setActiveTab}
+      />
+
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(300px,360px)] gap-6">
+        <div className="min-w-0 space-y-6">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="mb-4 flex h-auto flex-wrap justify-start">
+            <TabsList className="mb-4 flex h-auto flex-wrap justify-start gap-1 [&>button]:text-sm [&>button]:px-3 [&>button]:py-1.5">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="milestones">Milestones</TabsTrigger>
               <TabsTrigger value="risks">Risks {risks?.filter(r => r.status === "Open" && (r.severity === "Critical" || r.severity === "High")).length ? <span className="ml-1.5 inline-flex h-2 w-2 rounded-full bg-red-500"></span> : null}</TabsTrigger>
@@ -633,16 +679,6 @@ export default function ProjectDetailPage() {
             </TabsList>
 
             <TabsContent value="overview" className="space-y-6">
-              <ProjectNextSteps
-                project={project}
-                justCreated={justCreated}
-                milestoneCount={milestones?.length ?? 0}
-                assignmentCount={resourcesData?.length ?? 0}
-                onEditDetails={() => setEditOpen(true)}
-                onAddMilestone={() => { setActiveTab("milestones"); openMilestoneDialog(null); }}
-                onAssignResources={() => { setActiveTab("resources"); setEditingAssignment(null); setAssignmentMode("named"); setAssignmentForm({ resourceId: "", department: "", roleDescription: "", allocationPercent: "100", plannedHours: "", startDate: "", endDate: "", status: "Planned" }); setResourceOpen(true); }}
-                onOpenTab={setActiveTab}
-              />
               <Card>
                 <CardHeader>
                   <CardTitle>Overview</CardTitle>
@@ -762,19 +798,19 @@ export default function ProjectDetailPage() {
                               
                               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
                                 <div>
-                                  <div className="text-[10px] uppercase text-muted-foreground">Probability</div>
+                                  <div className="text-xs text-muted-foreground">Probability</div>
                                   <div className="text-xs font-medium">{r.probability}</div>
                                 </div>
                                 <div>
-                                  <div className="text-[10px] uppercase text-muted-foreground">Impact</div>
+                                  <div className="text-xs text-muted-foreground">Impact</div>
                                   <div className="text-xs font-medium">{r.impact}</div>
                                 </div>
                                 <div>
-                                  <div className="text-[10px] uppercase text-muted-foreground">Owner</div>
+                                  <div className="text-xs text-muted-foreground">Owner</div>
                                   <div className="text-xs font-medium">{r.owner || "—"}</div>
                                 </div>
                                 <div>
-                                  <div className="text-[10px] uppercase text-muted-foreground">Due Date</div>
+                                  <div className="text-xs text-muted-foreground">Due Date</div>
                                   <div className="text-xs font-medium">{formatDate(r.dueDate)}</div>
                                 </div>
                               </div>
@@ -1041,31 +1077,31 @@ export default function ProjectDetailPage() {
               <CardTitle>Status & Attributes</CardTitle>
               <CardDescription data-testid="text-immediate-save-note">Changes in this panel save immediately when you pick a value.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Delivery stage</Label>
                 <Select value={project.lifecycleStage} onValueChange={(v) => updateMutation.mutate({id, data: {lifecycleStage: v}})}>
-                  <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
                   <SelectContent>{STAGES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Active / closed status</Label>
                 <Select value={project.state} onValueChange={(v) => updateMutation.mutate({id, data: {state: v}})}>
-                  <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
                   <SelectContent>{STATES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               
-              <div className="space-y-1 p-2 rounded bg-muted/30 border">
+              <div className="space-y-1 p-3 rounded-md bg-muted/30 border sm:col-span-2 xl:col-span-1">
                 <Label className="text-xs text-muted-foreground flex justify-between">
                   <span>Delivery health</span>
                   {project.healthOverridden
-                    ? <span className="text-[10px] text-amber-600 bg-amber-100 px-1 rounded font-semibold uppercase">Manual override</span>
-                    : <span className="text-[10px] text-muted-foreground px-1 rounded font-semibold uppercase">Calculated</span>}
+                    ? <span className="text-xs text-amber-700 bg-amber-100 px-1.5 rounded font-semibold">Manual override</span>
+                    : <span className="text-xs text-muted-foreground px-1.5 rounded font-semibold">Calculated</span>}
                 </Label>
                 <Select value={project.effectiveHealth} onValueChange={handleHealthChange}>
-                  <SelectTrigger className="h-8 font-semibold"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="h-9 font-semibold"><SelectValue /></SelectTrigger>
                   <SelectContent>{HEALTHS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
                 </Select>
                 {project.healthOverridden && (
@@ -1083,13 +1119,13 @@ export default function ProjectDetailPage() {
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Priority</Label>
                 <Select value={project.priority} onValueChange={(v) => updateMutation.mutate({id, data: {priority: v}})}>
-                  <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
                   <SelectContent>{PRIORITIES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <div className="space-y-1 pt-2">
+              <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground block mb-1">Target date</Label>
-                <Input type="date" className="h-8" value={toDateInput(project.targetDate)} onChange={(e) => updateMutation.mutate({id, data: {targetDate: e.target.value || null}})} />
+                <Input type="date" className="h-9" value={toDateInput(project.targetDate)} onChange={(e) => updateMutation.mutate({id, data: {targetDate: e.target.value || null}})} />
               </div>
             </CardContent>
           </Card>

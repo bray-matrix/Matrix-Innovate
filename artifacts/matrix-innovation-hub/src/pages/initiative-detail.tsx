@@ -957,7 +957,7 @@ export default function InitiativeDetail() {
               {initiative.version}
             </Badge>
           </div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">
+          <h1 className="text-2xl md:text-[1.75rem] font-bold tracking-tight text-foreground">
             {initiative.title}
           </h1>
           <div className="flex flex-wrap items-center gap-4 mt-3 text-sm text-muted-foreground">

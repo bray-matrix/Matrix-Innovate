@@ -1,12 +1,17 @@
+import { useEffect, useState } from "react";
 import { Link, useLocation, useSearch } from "wouter";
+import { NAV_SECTIONS, resolveActiveNav, defaultExpanded, headerTitle } from "@/lib/nav-model";
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
   SidebarGroup,
-  SidebarGroupLabel,
   SidebarGroupContent,
+  SidebarMenuAction,
+  SidebarMenuSub,
+  SidebarMenuSubItem,
+  SidebarMenuSubButton,
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
@@ -19,7 +24,7 @@ import { withBase } from "@/lib/base-path";
 import { 
   LayoutDashboard, 
   PlusCircle, 
-  List, 
+
   KanbanSquare, 
   FileText, 
   Settings, 
@@ -40,93 +45,28 @@ import {
   UserCog,
   HelpCircle,
   PauseCircle,
+  Lightbulb,
+  ChevronDown,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
-type NavItem = { href: string; label: string; icon: React.ComponentType; tab?: string };
-type NavGroup = { label: string; secondary?: boolean; items: NavItem[] };
+const ICONS: Record<string, LucideIcon> = {
+  home: LayoutDashboard, ideas: Lightbulb, develop: Sparkles, submit: PlusCircle, board: KanbanSquare,
+  projects: Briefcase, create: FilePlus2, clients: Users, people: UserCog, approvals: CheckSquare,
+  portfolio: PieChart, programs: FolderKanban, reports: FileText, help: HelpCircle, admin: Settings,
+  settings: Settings, organizations: Building2, backlog: ListTodo, deferred: PauseCircle, validation: ClipboardCheck,
+};
+
+const navTestId = (href: string) => `link-nav-${href.replace(/[/?=]/g, "") || "dashboard"}`;
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
+  const search = useSearch();
   const { data: settings } = useGetSettings();
   const { user, logout } = useMatrixAuth();
 
-  const search = useSearch();
-  const backlogTab = new URLSearchParams(search).get("tab") === "deferred" ? "deferred" : "";
-
-  const navGroups: NavGroup[] = [
-    {
-      label: "HOME",
-      items: [
-        { href: "/", label: "Home", icon: LayoutDashboard },
-      ]
-    },
-    {
-      label: "IDEAS & INITIATIVES",
-      items: [
-        { href: "/initiatives", label: "Initiatives", icon: List },
-        { href: "/kanban", label: "Board view", icon: KanbanSquare },
-        { href: "/interview", label: "Develop an idea", icon: Sparkles },
-        { href: "/submit", label: "Enter a defined idea", icon: PlusCircle },
-      ]
-    },
-    {
-      label: "PROJECTS",
-      items: [
-        { href: "/projects", label: "Projects", icon: Briefcase },
-        { href: "/projects/new", label: "Create project", icon: FilePlus2 },
-        { href: "/clients", label: "Clients", icon: Users },
-        { href: "/resources", label: "People & capacity", icon: UserCog },
-        { href: "/approvals", label: "Project approvals", icon: CheckSquare },
-      ]
-    },
-    {
-      label: "PORTFOLIO",
-      items: [
-        { href: "/portfolio", label: "Portfolio overview", icon: PieChart },
-        { href: "/programs", label: "Programs", icon: FolderKanban },
-        { href: "/reports", label: "Reports", icon: FileText },
-      ]
-    },
-    {
-      label: "HELP",
-      secondary: true,
-      items: [
-        { href: "/documents", label: "Help & guides", icon: HelpCircle },
-      ]
-    },
-    {
-      label: "ADMINISTRATION",
-      secondary: true,
-      items: [
-        { href: "/admin", label: "Admin settings", icon: Settings },
-        { href: "/organizations", label: "Organizations", icon: Building2 },
-        { href: "/backlog", label: "Hub improvements", icon: ListTodo, tab: "" },
-        { href: "/backlog?tab=deferred", label: "Deferred improvements", icon: PauseCircle, tab: "deferred" },
-        { href: "/validation", label: "Release checks", icon: ClipboardCheck },
-      ]
-    }
-  ];
-
-  const allItems = navGroups.flatMap(g => g.items);
-  const pathOf = (href: string) => href.split("?")[0];
-  // Choose the single most specific matching item so only one entry is active.
-  const activeHref = allItems
-    .filter(i => {
-      const p = pathOf(i.href);
-      const pathMatch = p === "/" ? location === "/" : (location === p || location.startsWith(p + "/"));
-      if (!pathMatch) return false;
-      if (i.tab !== undefined) return i.tab === backlogTab;
-      if (p === "/projects" && location === "/projects/new") return false;
-      return true;
-    })
-    .sort((x, y) => pathOf(y.href).length - pathOf(x.href).length)[0]?.href;
-
   const displayName = user.name ?? user.email ?? user.sub ?? "";
-  const exact = allItems.find(i => i.href === activeHref);
-  const currentLabel = /^\/projects\/\d+/.test(location) ? "Project"
-    : /^\/initiatives\/\d+\/score/.test(location) ? "Score initiative"
-    : /^\/initiatives\/\d+/.test(location) ? "Initiative"
-    : exact?.label || "Innovation Hub";
+  const currentLabel = headerTitle(location, search);
 
   return (
     <SidebarProvider>
@@ -146,35 +86,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             </div>
           </SidebarHeader>
           <SidebarContent className="p-2 gap-0">
-            {navGroups.map((group) => (
-              <SidebarGroup key={group.label} className={group.secondary ? "py-1 first-of-type:mt-0" : "py-2"}>
-                {group.label === "HELP" && <div className="mx-2 mb-1 mt-2 border-t border-sidebar-border" aria-hidden="true" />}
-                <SidebarGroupLabel className={`text-xs font-semibold tracking-wider ${group.secondary ? "text-sidebar-foreground/40" : "text-sidebar-foreground/50"}`}>
-                  {group.label}
-                </SidebarGroupLabel>
-                <SidebarGroupContent>
-                  <SidebarMenu>
-                    {group.items.map((item) => (
-                      <SidebarMenuItem key={item.href}>
-                        <SidebarMenuButton asChild tooltip={item.label} isActive={item.href === activeHref} size={group.secondary ? "sm" : "default"}>
-                          <Link href={item.href} data-testid={`link-nav-${item.href.replace(/[/?=]/g, "") || "dashboard"}`}>
-                            <item.icon />
-                            <span>{item.label}</span>
-                          </Link>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    ))}
-                  </SidebarMenu>
-                </SidebarGroupContent>
-              </SidebarGroup>
-            ))}
+            <NavSections location={location} search={search} />
           </SidebarContent>
           <SidebarFooter className="border-t border-sidebar-border p-2 gap-1">
             <div className="flex items-center gap-2 px-2 py-1.5 min-w-0 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:justify-center" title={displayName}>
               <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-sidebar-accent text-[11px] font-semibold">
                 {displayName.slice(0, 1).toUpperCase()}
               </span>
-              <span className="text-xs font-medium truncate group-data-[collapsible=icon]:sr-only" data-testid="text-user-name">{displayName}</span>
+              <span className="text-sm font-medium truncate group-data-[collapsible=icon]:sr-only" data-testid="text-user-name">{displayName}</span>
             </div>
             <SidebarMenu>
               <SidebarMenuItem>
@@ -194,8 +113,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               {currentLabel}
             </h1>
           </header>
-          <div className="flex-1 overflow-auto p-4 md:p-8">
-            <div className="max-w-7xl mx-auto w-full">
+          <div className="flex-1 overflow-auto px-4 py-5 md:px-6 md:py-8 xl:px-[5%]">
+            <div className="app-content mx-auto w-full max-w-[1680px]" data-app-content>
               {children}
             </div>
           </div>
@@ -239,5 +158,92 @@ function MobileMenuButton() {
     >
       <Menu className="h-5 w-5" />
     </button>
+  );
+}
+
+function NavSections({ location, search }: { location: string; search: string }) {
+  const { isMobile, setOpenMobile } = useSidebar();
+  const active = resolveActiveNav(location, search);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>(() => defaultExpanded(active));
+
+  // When navigation lands on a child destination, make sure its section is open.
+  useEffect(() => {
+    if (active.sectionId && active.isChild) {
+      const id = active.sectionId;
+      setExpanded(e => (e[id] ? e : { ...e, [id]: true }));
+    }
+  }, [active.sectionId, active.isChild]);
+
+  const onNavigate = () => { if (isMobile) setOpenMobile(false); };
+
+  const renderSection = (sectionId: string) => {
+    const s = NAV_SECTIONS.find(x => x.id === sectionId)!;
+    const Icon = ICONS[s.primary.iconKey];
+    const isOpen = !!expanded[s.id];
+    const primaryActive = active.href === s.primary.href && !active.isChild;
+    const childActive = active.sectionId === s.id && active.isChild;
+    const subId = `nav-sub-${s.id}`;
+    return (
+      <SidebarMenuItem key={s.id}>
+        <SidebarMenuButton asChild tooltip={s.primary.label} isActive={primaryActive}
+          className={`text-[15px] ${childActive ? "font-semibold" : ""}`}>
+          <Link href={s.primary.href} onClick={onNavigate} aria-current={primaryActive ? "page" : undefined} data-testid={navTestId(s.primary.href)}>
+            <Icon />
+            <span>{s.primary.label}</span>
+          </Link>
+        </SidebarMenuButton>
+        {s.children.length > 0 && (
+          <>
+            <SidebarMenuAction
+              onClick={() => setExpanded(e => ({ ...e, [s.id]: !isOpen }))}
+              aria-expanded={isOpen}
+              aria-controls={subId}
+              aria-label={`${isOpen ? "Hide" : "Show"} ${s.label} options`}
+              title={`${isOpen ? "Hide" : "Show"} ${s.label} options`}
+              data-testid={`button-toggle-nav-${s.id}`}
+              className="top-1.5 h-6 w-6 rounded-md"
+            >
+              <ChevronDown className={`transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+            </SidebarMenuAction>
+            {isOpen && (
+              <SidebarMenuSub id={subId} aria-label={`${s.label} options`}>
+                {s.children.map(c => {
+                  const CIcon = ICONS[c.iconKey];
+                  const isActive = active.href === c.href && active.isChild;
+                  return (
+                    <SidebarMenuSubItem key={c.href}>
+                      <SidebarMenuSubButton asChild isActive={isActive} className="text-sm h-8">
+                        <Link href={c.href} onClick={onNavigate} aria-current={isActive ? "page" : undefined} data-testid={navTestId(c.href) + (c.href === s.primary.href ? "-child" : "")}>
+                          <CIcon />
+                          <span>{c.label}</span>
+                        </Link>
+                      </SidebarMenuSubButton>
+                    </SidebarMenuSubItem>
+                  );
+                })}
+              </SidebarMenuSub>
+            )}
+          </>
+        )}
+      </SidebarMenuItem>
+    );
+  };
+
+  const primary = NAV_SECTIONS.filter(s => !s.secondary);
+  const secondary = NAV_SECTIONS.filter(s => s.secondary);
+  return (
+    <nav aria-label="Main navigation" className="flex flex-col gap-0">
+      <SidebarGroup className="py-2">
+        <SidebarGroupContent>
+          <SidebarMenu className="gap-1">{primary.map(s => renderSection(s.id))}</SidebarMenu>
+        </SidebarGroupContent>
+      </SidebarGroup>
+      <div className="mx-3 my-1 border-t border-sidebar-border" aria-hidden="true" />
+      <SidebarGroup className="py-2">
+        <SidebarGroupContent>
+          <SidebarMenu className="gap-1">{secondary.map(s => renderSection(s.id))}</SidebarMenu>
+        </SidebarGroupContent>
+      </SidebarGroup>
+    </nav>
   );
 }

@@ -40,13 +40,13 @@ export function ProductHealthWidget() {
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center justify-between text-sm font-semibold">
+        <CardTitle className="flex items-center justify-between text-base font-semibold">
           <span className="flex items-center gap-2">
             <Gauge className="h-4 w-4 text-[#002D72]" />
             Hub product health
           </span>
           <Link href="/validation">
-            <Button variant="ghost" size="sm" className="h-7 text-xs">
+            <Button variant="ghost" size="sm" className="h-8 text-sm">
               Release checks
             </Button>
           </Link>

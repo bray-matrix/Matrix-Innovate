@@ -247,7 +247,7 @@ export default function ReportsPage() {
     <div className="space-y-6 print:hidden">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-2">
+          <h1 className="text-2xl md:text-[1.75rem] font-bold tracking-tight text-foreground flex items-center gap-2">
             <FileText className="h-8 w-8 text-primary" />
             Reporting
           </h1>

@@ -29,3 +29,18 @@ on October 16, 2026; additional project-intake controls await usability testing.
 Keep presentation changes separate from authorization, schema and governance
 changes. Follow the actual Platform identity model; do not infer personal
 assignments from free-text owner names.
+
+## M365 selection scope
+
+Project owners, sponsors and assigned resources should ultimately be selected
+from actual users in Matrix's Microsoft 365 tenant. They do **not** have to be
+registered Matrix Platform application users. Microsoft Graph credentials and
+directory integration must remain centralized in Matrix Platform.
+
+**Why:** Brian explicitly clarified the selectable population for the second UX
+release; application launch eligibility and employee assignment are different
+requirements.
+
+**How to apply:** Do not substitute Platform-authorized application users for the
+M365 population, or silently match historical names to identities. Directory
+selection remains separate from permissions to sign in and launch Innovation Hub.

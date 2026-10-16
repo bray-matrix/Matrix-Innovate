@@ -106,13 +106,13 @@ export default function NewProjectPage() {
   const pending = createMutation.isPending;
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
+    <div className="space-y-6 w-full max-w-6xl mx-auto">
       <div className="flex items-center gap-4">
         <Link href="/projects" aria-label="Back to projects" className="inline-flex h-9 w-9 items-center justify-center rounded-md hover:bg-muted">
           <ChevronLeft className="h-5 w-5" />
         </Link>
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-2">
+          <h1 className="text-2xl md:text-[1.75rem] font-bold tracking-tight text-foreground flex items-center gap-2">
             <Briefcase className="h-8 w-8 text-primary" />
             Create project
           </h1>
@@ -123,17 +123,13 @@ export default function NewProjectPage() {
       </div>
 
       <Card className="border-primary/30 bg-primary/5" data-testid="card-initiative-first">
-        <CardContent className="p-4 flex flex-col sm:flex-row gap-4 sm:items-center">
-          <Lightbulb className="h-6 w-6 text-primary shrink-0" />
-          <div className="flex-1 text-sm">
-            <p className="font-medium">Recommended: start with an initiative</p>
-            <p className="text-muted-foreground">
-              Developing the idea as an initiative first helps establish scope, expected outcomes and business justification. You can then create a linked project from it.
-              Use this form when the work is already well defined.
-            </p>
-          </div>
+        <CardContent className="px-5 py-3.5 flex flex-col sm:flex-row gap-3 sm:items-center">
+          <Lightbulb className="h-5 w-5 text-primary shrink-0" aria-hidden="true" />
+          <p className="flex-1 text-[15px]" data-testid="text-initiative-first-guidance">
+            Starting something new? We recommend developing an Initiative first to define scope, expected outcomes, and business value. Already have a defined project? Continue below.
+          </p>
           <Link href="/interview" className="inline-flex items-center justify-center gap-2 rounded-md border bg-card px-3 py-2 text-sm font-medium hover:bg-muted shrink-0" data-testid="link-develop-idea-instead">
-            <Sparkles className="h-4 w-4" /> Develop an idea
+            <Sparkles className="h-4 w-4" /> Start an Initiative
           </Link>
         </CardContent>
       </Card>
@@ -146,7 +142,9 @@ export default function NewProjectPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="grid gap-4">
+          <div className="grid gap-x-10 gap-y-6 lg:grid-cols-2">
+          <div className="grid gap-4 content-start">
+            <p className="text-base font-semibold">Required</p>
             <NameField form={form} setForm={setForm} error={errors.name} idPrefix="new-project" />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <OwnerField form={form} setForm={setForm} error={errors.primaryOwner} idPrefix="new-project" />
@@ -154,12 +152,11 @@ export default function NewProjectPage() {
             </div>
           </div>
 
-          <div className="grid gap-4 border-t pt-6">
-            <p className="text-sm font-medium text-muted-foreground">Optional</p>
+          <div className="grid gap-4 content-start border-t pt-6 lg:border-t-0 lg:pt-0 lg:border-l lg:pl-10">
+            <p className="text-base font-semibold">Optional</p>
             <DescriptionField form={form} setForm={setForm} idPrefix="new-project" />
-            <div className="md:max-w-sm">
-              <RelationSelect label="Client" kind="client" idPrefix="new-project" help={RELATION_HELP.client} value={form.clientId} options={clients} onChange={(v) => setForm(f => ({ ...f, clientId: v }))} />
-            </div>
+            <RelationSelect label="Client" kind="client" idPrefix="new-project" help={RELATION_HELP.client} value={form.clientId} options={clients} onChange={(v) => setForm(f => ({ ...f, clientId: v }))} />
+          </div>
           </div>
 
           <Collapsible open={moreOpen} onOpenChange={setMoreOpen} className="border-t pt-4">
@@ -178,7 +175,7 @@ export default function NewProjectPage() {
                 <SupportingOwnersField form={form} setForm={setForm} idPrefix="new-project" />
                 <TargetDateField form={form} setForm={setForm} idPrefix="new-project" disabled={pending} />
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
                 <SimpleSelect id="new-project-stage" label="Delivery stage" value={extra.lifecycleStage} options={STAGES} onChange={(v) => setExtra(x => ({ ...x, lifecycleStage: v }))} />
                 <SimpleSelect id="new-project-state" label="Active / closed status" value={extra.state} options={STATES} onChange={(v) => setExtra(x => ({ ...x, state: v }))} />
                 <SimpleSelect id="new-project-priority" label="Project priority" value={extra.priority} options={PRIORITIES} onChange={(v) => setExtra(x => ({ ...x, priority: v }))} />

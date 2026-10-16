@@ -192,10 +192,10 @@ export default function ApprovalsPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto">
+    <div className="space-y-6 w-full">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-2">
+          <h1 className="text-2xl md:text-[1.75rem] font-bold tracking-tight text-foreground flex items-center gap-2">
             <CheckSquare className="h-8 w-8 text-primary" />
             Project approvals
           </h1>

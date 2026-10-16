@@ -153,7 +153,7 @@ export default function Admin() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6 max-w-5xl mx-auto">
+      <div className="space-y-6 max-w-6xl mx-auto">
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-48" />
         <div className="grid gap-6 md:grid-cols-2"><Skeleton className="h-48" /><Skeleton className="h-48" /></div>
@@ -163,7 +163,7 @@ export default function Admin() {
 
   if (isError || !settings) {
     return (
-      <div role="alert" className="max-w-5xl mx-auto rounded-md border p-4 text-sm flex items-center justify-between gap-3">
+      <div role="alert" className="max-w-6xl mx-auto rounded-md border p-4 text-sm flex items-center justify-between gap-3">
         <span>Admin settings could not be loaded.</span>
         <Button size="sm" variant="outline" onClick={() => void refetch()}>Retry</Button>
       </div>
@@ -182,7 +182,7 @@ export default function Admin() {
     : updateDepartment.mutate({ id: row.id, data: { active: !row.active } });
 
   return (
-    <div className="space-y-8 max-w-5xl mx-auto">
+    <div className="space-y-8 max-w-6xl mx-auto">
       <div className="flex justify-between items-end gap-3">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Admin Settings</h2>
