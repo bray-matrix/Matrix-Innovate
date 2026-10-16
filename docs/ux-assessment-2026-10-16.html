@@ -1,0 +1,1094 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Innovation Hub — UX Assessment — October 16, 2026</title><style>
+:root{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#202b38;background:#f4f6f8;line-height:1.65}body{margin:0}main{max-width:1120px;margin:32px auto;padding:32px 42px;background:white;border:1px solid #dfe4eb;border-radius:8px}h1,h2,h3{color:#002d72;line-height:1.25}h1{font-size:2.1rem}h2{border-top:2px solid #dfe4eb;margin-top:2.4rem;padding-top:1.2rem;font-size:1.5rem}h3{margin-top:1.8rem;font-size:1.15rem}p,li{max-width:100ch}table{border-collapse:collapse;font-size:.87rem;width:100%;margin:20px 0;display:block;overflow-x:auto}th,td{padding:10px 12px;border:1px solid #dfe4eb;vertical-align:top;text-align:left;min-width:115px}th{background:#edf2f8;color:#002d72}tr:nth-child(even){background:#fafbfd}pre{background:#f3f5f8;padding:18px;overflow:auto;border-left:3px solid #002d72;font-size:.88rem;line-height:1.5}code{overflow-wrap:anywhere;font-size:.9em}a{color:#002d72}strong{font-weight:650}@media(max-width:700px){main{margin:0;padding:20px 16px;border:0}h1{font-size:1.6rem}table{font-size:.8rem}}@media print{body{background:white}main{margin:0;border:0;padding:0;max-width:none}h2,h3{break-after:avoid}table{display:table;font-size:8pt}th,td{min-width:0;padding:5px}pre{white-space:pre-wrap}a{color:inherit}}
+</style></head><body><main><h1>Innovation Hub — UX assessment and workflow simplification</h1>
+<p><strong>Assessment date:</strong> October 16, 2026 — America/Chicago<br>
+<strong>Target:</strong> Innovation Hub<br>
+<strong>Accepted production baseline:</strong> v1.6.13<br>
+<strong>Current source version:</strong> v1.6.13<br>
+<strong>Status:</strong> Recommendations only. Not an approved design or implementation plan.</p>
+<h2>Scope, method, and evidence</h2>
+<p>This assessment is for Matrix Imaging's approximately 180 employees, including occasional, nontechnical users across leadership, sales, account management, operations, project management, IT, finance, compliance, and HR.</p>
+<p><strong>Formal Planning Mode used: NO.</strong> Replit's documented Plan Mode is appropriate for read-only investigation and discussion before implementation. This session remained in its existing mode, using read-only source inspection and isolated browser assessment instead. No implementation tasks were submitted for approval or execution. No claim is made that Planning Mode prevents browser inspection.</p>
+<p>Evidence labels:</p>
+<ul>
+<li><strong>C — Code-confirmed:</strong> observed in current routes, components, API contracts, or schema. Not proof of a successful live transaction.</li>
+<li><strong>V — Visually inspected:</strong> rendered-browser evidence; see the browser addendum for exact coverage and fixture limitations.</li>
+<li><strong>R — Recommendation:</strong> proposed behavior, not functionality that exists today.</li>
+<li><strong>D — Decision needed:</strong> business policy or terminology that cannot be settled from code.</li>
+</ul>
+<p>All 21 named client routes, the fallback route, all 17 sidebar destinations, their main components, and the relevant execution, governance, directory, reporting, and intake data paths were inspected. Findings are a heuristic assessment, not employee usability-study results. No task-completion times, adoption rates, or success rates were measured.</p>
+<p>Source citations use the evidence index at the end. No production records, application code, schema, configuration, integration, or version were changed.</p>
+<h3>Browser assessment — completed with explicit limitations</h3>
+<p>The unmodified development preview displayed <strong>Matrix Platform sign-in required</strong>. No real authenticated session was available. This does not establish whether Platform's current development-launch capability has changed since the earlier investigation.</p>
+<p>To inspect actual rendered components without weakening authentication or writing data, the browser intercepted the session response with a synthetic identity and supplied empty/contract-shaped API responses. All non-GET and cross-origin requests were blocked. No real cookies or signed identity tokens were created. These fixtures existed only in the browser; they were not installed in the application.</p>
+<p><strong>Visually inspected routes (12):</strong> <code>/</code>, <code>/projects</code>, <code>/projects/new</code>, <code>/submit</code>, <code>/initiatives</code>, <code>/clients</code>, <code>/portfolio</code>, <code>/resources</code>, <code>/validation</code>, <code>/backlog</code>, <code>/documents</code>, <code>/approvals</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Requested workflow</th>
+<th>Browser portion completed</th>
+<th>Not visually verified</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A — Employee idea</td>
+<td>Quick Submit form and sections</td>
+<td>Guided interview, AI, draft resume, final save</td>
+</tr>
+<tr>
+<td>B — Manager review</td>
+<td>Initiative list/table/empty state</td>
+<td>Populated initiative detail, review and history</td>
+</tr>
+<tr>
+<td>C — Direct project</td>
+<td>Home → Projects → New Project; full form/dropdowns; Cancel back to list; desktop/mobile</td>
+<td>Create request, validation feedback after submit, persistence</td>
+</tr>
+<tr>
+<td>D — Project from initiative</td>
+<td>Source inspection only</td>
+<td>Promotion dialog and successful linked creation</td>
+</tr>
+<tr>
+<td>E — Ownership/resources</td>
+<td>Resources empty state, filters and controls</td>
+<td>Project detail, assignment dialog, changing owner/sponsor</td>
+</tr>
+<tr>
+<td>F — Executive oversight</td>
+<td>Portfolio layout and filters with synthetic zero metrics</td>
+<td>Populated analytics, drill-down, report export</td>
+</tr>
+<tr>
+<td>G — Client discovery</td>
+<td>Clients list, New Client dialog and Cancel</td>
+<td>Populated client relationships and real client report</td>
+</tr>
+</tbody>
+</table>
+<p>Additional visual inspection covered Approval status tabs, Backlog/Parking Lot empty states, Validation's empty state, and Documents' empty state. No generation, approval, deletion, submission or external-service action was performed.</p>
+<p><strong>V — Layout findings:</strong> at 1280×720, navigation requires its own vertical scrolling; the Dashboard puts Product Health prominently below idea entry. The project form has no visible required markers and requires scrolling to reach the bottom controls. At 390×844, the form stacks into one column, with bottom actions reachable and no apparent horizontal overflow. The mobile drawer was inspected after settling and measured 288px wide. The initiative table is wide and horizontally scrollable; reduce default columns rather than remove advanced table capability.</p>
+<p><strong>Important fixture boundary:</strong> empty records and zero metrics are not real business data. In particular, the visually empty Documents screen does not contradict the source-confirmed six static document entries: the browser supplied an empty fixture. Initial generic settings/portfolio fixtures caused rendering errors; replacing them with the actual contract shapes resolved those fixture errors. They are not reported as application defects.</p>
+<p>Sixteen browser screenshots were captured, including the genuine sign-in gate, desktop/mobile project form, navigation, client dialog and the listed empty-state screens. The project-form, Dashboard and mobile captures were also reviewed directly for this report. Remaining routes and populated details were assessed from source only. This is not a successful live authentication or end-to-end persistence test.</p>
+<h2>A. Executive summary — five most significant problems</h2>
+<h3>1. Navigation presents modules rather than user goals</h3>
+<p><strong>C:</strong> The same 17 destinations in eight groups are constructed for every signed-in user. Dashboard, Portfolio, Reports, Validation, Product Backlog, and Admin compete with the two most common entry tasks: submitting an idea and managing a project. “My Attention Required” is calculated from the full initiative list, not the signed-in user's assignments. [E1, E2]</p>
+<p><strong>Impact:</strong> Users must learn the application taxonomy before they can choose a starting point. “My” implies responsibility the application has not actually established.</p>
+<p><strong>R:</strong> Preserve the existing first-use idea introduction. Add an equally explicit direct-project entry, organize navigation by work, and move product-maintenance tools to a secondary area. Rename the current global queue “Needs attention” until real ownership-based filtering is supported.</p>
+<h3>2. Project setup is front-loaded, but basic project editing is missing</h3>
+<p><strong>C:</strong> Direct creation exists at <code>/projects/new</code>; no initiative is required. It exposes 13 fields, including three different status concepts and three optional relationship selectors. Name and Primary Owner are enforced by the form, but neither is marked required there. Type is preselected as Internal Technology. The API contract requires name/type but not Primary Owner. [E3, E4]</p>
+<p><strong>C:</strong> After creation, project detail shows name, description, owner, supporting owners, type, and relationship context without a corresponding general edit form. Its status, priority, health, and target-date controls do update. A user cannot use this screen to correct the principal owner or the project name. [E5]</p>
+<p><strong>Impact:</strong> Users must decide too much before they understand the project, then cannot correct important details through the normal interface.</p>
+<p><strong>R:</strong> Fix basic project editing before deferring setup fields. Start creation with project name, accountable owner, and a clear work type; group optional details. Send users to a short, dismissible “Next steps” section, not an unprioritized set of tabs.</p>
+<h3>3. The idea-to-project story is not the actual state machine</h3>
+<p><strong>C:</strong> An Idea is already an Initiative record with a status, not a separate object that becomes an Initiative only after approval. The guided interview creates a private draft, then a reviewed brief, then a saved/scored Initiative. “Approved” is one initiative status. Creating a linked Project is not gated on that status in the inspected UI or promotion handler. The Approvals screen manages project approval records, not initiative approval. [E6, E7, E8]</p>
+<p><strong>C:</strong> “Quick Submit” displays 19 inputs/selectors and requires ten fields, including AI Concept and Prototype Goal. This conflicts with the business expectation that any employee can submit a business problem without technical planning. [E6]</p>
+<p><strong>Impact:</strong> Users cannot reliably infer what “review,” “approval,” “save,” or “create project” means. The application appears more prescriptive in some places and less governed in others.</p>
+<p><strong>R:</strong> Explain the two legitimate starting paths. Use “Create linked project” for the initiative action and explain what is retained. Rename Quick Submit to “Enter a defined idea” as an immediate honest label. Any later reduction of intake requirements needs separate validation; do not fabricate values or alter scoring/convergence.</p>
+<h3>4. Relationships are easy to enter but hard to use</h3>
+<p><strong>C:</strong> Clients, Organizations, and Programs primarily offer lists and create/edit dialogs. Clicking a client name does not provide a related-work workspace. Project creation asks for all three relationships independently. The schema permits them to be absent and does not establish a mandatory organization → client → program → project chain. Initiatives do not have direct client/organization/program references. [E3, E9]</p>
+<p><strong>Impact:</strong> An account manager cannot start with a client and naturally discover its work. Users must understand the schema to enter “Context,” and can assume relationships exist that the data does not represent.</p>
+<p><strong>R:</strong> Add contextual “View projects” and “View client report” actions using existing IDs. Present client work as “Who is this for?” Keep parent organization and program grouping optional. Do not infer client relationships to unlinked initiatives from text.</p>
+<h3>5. Guidance and information trust are inconsistent</h3>
+<p><strong>C:</strong> The Document Library returns six static “Not Published” entries; Download has no handler or link. The project list displays stored <code>health</code>, whereas Portfolio uses <code>effectiveHealth</code>. Project attributes save immediately, initiative editing uses explicit save/cancel, and interview review's “Cancel” returns to the interview rather than discarding it. [E5, E7, E10, E11]</p>
+<p><strong>Impact:</strong> Labels imply help, status consistency, or a cancellation behavior that is not always delivered.</p>
+<p><strong>R:</strong> Remove misleading affordances, add task-specific guidance, consume the same existing effective-health result across views, and make save behavior explicit. The current project-list response supplies stored health, so that consistency work requires an appropriate existing portfolio-data mapping or a bounded response enhancement, not merely swapping a field name. Do not change the health calculation itself.</p>
+<h2>B. Current application map and complete screen inventory</h2>
+<h3>Current primary navigation</h3>
+<pre><code class="language-text">HOME:                Dashboard; Portfolio
+INNOVATION:          Guided Idea Interview; Quick Submit; Initiatives; Kanban
+EXECUTION:           Projects; Clients; Organizations; Resources; Approvals
+REPORTING:           Reports
+GOVERNANCE:          Validation; Documents
+MANAGEMENT:          Programs
+PRODUCT MANAGEMENT:  Product Backlog
+ADMINISTRATION:      Admin
+</code></pre>
+<p>The header title is matched by exact route. Detail and creation paths can fall back to “Innovation Hub,” although the page itself has a specific heading. Sidebar active-state matching is broader. Breadcrumbs are not consistently supplied. [E1]</p>
+<h3>Route inventory</h3>
+<p>“Primary?” below is a recommendation, not an existing permission change. Intended users are inferred from the functions, not implemented role models.</p>
+<table>
+<thead>
+<tr>
+<th>Route / screen</th>
+<th>Purpose and intended user</th>
+<th>Reach and primary action</th>
+<th>Connections / main issue</th>
+<th>Primary?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/</code> Dashboard</td>
+<td>Idea entry plus innovation, delivery, and product-maintenance summaries; currently everyone</td>
+<td>Sidebar/home; start guided idea or manual submission</td>
+<td>Links Portfolio, Reports, Resources, Backlog, initiatives; overloaded and not genuinely personalized</td>
+<td>Yes, as Home</td>
+</tr>
+<tr>
+<td><code>/interview</code> Guided Idea Interview</td>
+<td>Help an employee structure an idea</td>
+<td>Home/sidebar; optional Jira context, answer questions, review, save</td>
+<td>Private resume/discard states, AI processing, editable brief; technical Jira choice precedes business narrative</td>
+<td>Within Ideas</td>
+</tr>
+<tr>
+<td><code>/submit</code> Submit Initiative</td>
+<td>Manual structured intake for a well-defined idea</td>
+<td>Quick Submit sidebar/home; submit full form</td>
+<td>Goes to initiative detail; name promises brevity not supported by requirements</td>
+<td>Within Ideas</td>
+</tr>
+<tr>
+<td><code>/initiatives</code> Initiatives</td>
+<td>Search, sort, filter, review proposals</td>
+<td>Sidebar; open initiative row</td>
+<td>Shared table with column controls, saved layout and CSV; lifecycle/score terminology needs explanation</td>
+<td>Yes, under Ideas &amp; Initiatives</td>
+</tr>
+<tr>
+<td><code>/initiatives/:id</code> Initiative detail</td>
+<td>Review business case, ownership, score, status, history</td>
+<td>List, board, dashboard, linked project</td>
+<td>Edit mode, score/recalculate, export/brief tools, create linked project; competing actions and no clear recommended next action</td>
+<td>Contextual</td>
+</tr>
+<tr>
+<td><code>/initiatives/:id/score</code> Score Initiative</td>
+<td>Manually assess value drivers and penalties</td>
+<td>Initiative detail; adjust and save</td>
+<td>Returns to detail; specialist governance activity, not first-time employee work</td>
+<td>Contextual reviewer tool</td>
+</tr>
+<tr>
+<td><code>/kanban</code> Kanban Board</td>
+<td>Initiatives grouped by status</td>
+<td>Sidebar; open card or change status with selector</td>
+<td>Same records as list; not a project task board and not drag-and-drop in current component</td>
+<td>Alternate Ideas view</td>
+</tr>
+<tr>
+<td><code>/projects</code> Projects</td>
+<td>Find delivery projects</td>
+<td>Sidebar; New Project or project link</td>
+<td>Owner, stage, health, priority, target/context columns; health presentation differs from portfolio</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>/projects/new</code> New Project</td>
+<td>Create independent delivery work</td>
+<td>Projects → New Project</td>
+<td>Optional organization/client/program, no initiative dependency; 13 visible fields and hidden requiredness</td>
+<td>Contextual action</td>
+</tr>
+<tr>
+<td><code>/projects/:id</code> Project detail</td>
+<td>Manage delivery and governance</td>
+<td>Projects, Portfolio, reports, approvals, promotion</td>
+<td>Seven tabs plus status card; no general edit basics UI, prominent Delete</td>
+<td>Contextual</td>
+</tr>
+<tr>
+<td><code>/clients</code> Clients</td>
+<td>Maintain external client records</td>
+<td>Sidebar; New/Edit/Delete</td>
+<td>Optional organization; no client-work drill-down</td>
+<td>Secondary under Projects, pinned for account managers</td>
+</tr>
+<tr>
+<td><code>/organizations</code> Organizations</td>
+<td>Maintain grouping records</td>
+<td>Sidebar; New/Edit/Delete</td>
+<td>Optional parent for clients/programs/projects; “overarching organizational entities” is not a usable definition</td>
+<td>Secondary relationship maintenance</td>
+</tr>
+<tr>
+<td><code>/programs</code> Programs</td>
+<td>Maintain multi-project grouping metadata</td>
+<td>Sidebar; New/Edit/Delete</td>
+<td>Owner, description, status, optional client/org; no linked-project workspace here</td>
+<td>Within Portfolio</td>
+</tr>
+<tr>
+<td><code>/portfolio</code> Portfolio</td>
+<td>Cross-project delivery/health/capacity oversight</td>
+<td>Sidebar/dashboard; filter and drill into project</td>
+<td>Effective health, risk/readiness and resource links; overlaps other summaries but serves a distinct job</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>/approvals</code> Approvals</td>
+<td>Project approval queue</td>
+<td>Sidebar/project context; approve/reject, notes</td>
+<td>Pending/Approved/Rejected/Cancelled/All; not initiative review and not a verified personal inbox</td>
+<td>Secondary work queue</td>
+</tr>
+<tr>
+<td><code>/resources</code> Resources</td>
+<td>People/capacity planning</td>
+<td>Sidebar/portfolio; search, create/edit resource, inspect capacity</td>
+<td>Name, department, role, weekly capacity, status; not Platform identity management</td>
+<td>Secondary under Projects</td>
+</tr>
+<tr>
+<td><code>/reports</code> Reports</td>
+<td>Select and read/export eight report types</td>
+<td>Sidebar/dashboard; choose scope then generate</td>
+<td>Client/program reports partially compensate for missing contextual pages</td>
+<td>Under Portfolio, contextual shortcuts</td>
+</tr>
+<tr>
+<td><code>/validation</code> Validation</td>
+<td>Record validation of Innovation Hub releases</td>
+<td>Sidebar; record checklist outcomes and export evidence</td>
+<td>Version/release/validator/date fields, result history and details; easily mistaken for business-project checks</td>
+<td>Product maintenance only</td>
+</tr>
+<tr>
+<td><code>/documents</code> Documents</td>
+<td>Advertised governance/help library</td>
+<td>Sidebar; currently inert Download</td>
+<td>Six metadata cards, no document content; not currently working task guidance</td>
+<td>Replace entry with honest Help experience</td>
+</tr>
+<tr>
+<td><code>/backlog</code> Product Backlog</td>
+<td>Maintain the Hub product's own evolution</td>
+<td>Sidebar/dashboard; backlog/parking forms</td>
+<td>Linked initiative/validation/version fields; not general business work intake</td>
+<td>Product maintenance only</td>
+</tr>
+<tr>
+<td><code>/admin</code> Admin Settings</td>
+<td>Integration/configuration visibility and department management</td>
+<td>Sidebar</td>
+<td>Jira settings, AI service information, department edits, read-only categories/status/scoring, environment history; some actions role-gated, sidebar entry is not</td>
+<td>Secondary admin area</td>
+</tr>
+<tr>
+<td>Unmatched route</td>
+<td>404</td>
+<td>Direct invalid URL</td>
+<td>Technical “Page Not Found”; recovery guidance can improve</td>
+<td>No</td>
+</tr>
+</tbody>
+</table>
+<h3>Embedded workflows, forms, dialogs and secondary screens</h3>
+<p>These do not have separate routes. Hiding a sidebar item must not remove them.</p>
+<table>
+<thead>
+<tr>
+<th>Host</th>
+<th>Surfaces inventoried</th>
+<th>Save/edit/delete behavior and UX issue</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Guided interview</td>
+<td>Existing-draft resume; discard confirmation; optional Jira search/select; question flow; processing state; Initiative Review</td>
+<td>Private autosave and explicit final save differ; never describe a fixture walkthrough as verified persistence</td>
+</tr>
+<tr>
+<td>Initiative Review</td>
+<td>Nine brief sections; supporting context; unknowns; editable values; export controls; top/bottom save actions</td>
+<td>“Cancel” invokes return-to-interview; label should state this rather than imply discard</td>
+</tr>
+<tr>
+<td>Initiative detail</td>
+<td>Edit Mode; ownership/business narrative; Tracking &amp; Governance; status selector; score/recalculate; version history and comparison; calculation history/transparency; promotion dialog; delete confirmation</td>
+<td>Mixes business planning, calculation detail and technical version information; advanced detail can stay available without leading the page</td>
+</tr>
+<tr>
+<td>Promotion</td>
+<td>Context preview; owner/type; optional org/client/program/date; linked-project warning; explicit additional-project action</td>
+<td>Preserves source initiative and selected Jira links; no milestones/risks/resources/approvals are committed automatically</td>
+</tr>
+<tr>
+<td>Project detail</td>
+<td>Overview; Milestones; Risks; Approvals; Go-Live Readiness; Resources; Linked Work</td>
+<td>Tabs are legitimate capabilities; default Overview should guide setup and decisions</td>
+</tr>
+<tr>
+<td>Milestones</td>
+<td>Add/edit dialog, due date, owner, sequence, formal stage gate, delete</td>
+<td>Explain milestone vs stage gate; sequence is an advanced control</td>
+</tr>
+<tr>
+<td>Risks</td>
+<td>Add/edit/delete, severity/probability/impact, owner, mitigation, due date</td>
+<td>Three risk dimensions without examples can be hard for occasional users</td>
+</tr>
+<tr>
+<td>Project approvals</td>
+<td>Request approval; global approve/reject dialog; status actions</td>
+<td>Clarify scope and decision authority; free-text approver is not proof of an authorization relationship</td>
+</tr>
+<tr>
+<td>Go-live</td>
+<td>Create assessment, optional standard checklist, add/edit/delete checklist items, required flag/status</td>
+<td>Keep readiness rules; explain when an assessment is applicable and what “Not Applicable” means</td>
+</tr>
+<tr>
+<td>Assignments</td>
+<td>Named Resource / Department Demand modes; role, allocation, planned hours, start/end, status; edit/remove</td>
+<td>Distinguish committed staffing from unfilled demand; not the same as accountable owner</td>
+</tr>
+<tr>
+<td>Linked Work</td>
+<td>Jira search/filter/select/confirm; open Jira; unlink confirmation</td>
+<td>Existing helper text correctly says work stays in Jira; preserve this boundary</td>
+</tr>
+<tr>
+<td>Project health</td>
+<td>Computed/overridden display; manual override dialog; clear override</td>
+<td>Keep calculation explanation but move expert controls behind an explicit action</td>
+</tr>
+<tr>
+<td>Client / Organization / Program</td>
+<td>Create/edit dialogs and delete confirmations</td>
+<td>Primarily record administration, not a workspace for business users</td>
+</tr>
+<tr>
+<td>Resources</td>
+<td>Create/edit dialog, capacity summaries, department/status/search/overallocation filters</td>
+<td>Directory linkage is future scope; do not imply name matching is identity</td>
+</tr>
+<tr>
+<td>Reports</td>
+<td>Catalog; project/client/program selector; report viewer; export controls</td>
+<td>Useful capability, but should be accessible from the record being discussed</td>
+</tr>
+<tr>
+<td>Validation</td>
+<td>Release form, grouped check results, result detail/history, export</td>
+<td>Technical assurance of Hub itself, not validation of initiatives</td>
+</tr>
+<tr>
+<td>Backlog / Parking Lot</td>
+<td>Separate create/edit forms, status/priority/module/version/link fields; parked reason/value/candidate flag</td>
+<td>Product backlog and parked product ideas must not become another business idea pipeline</td>
+</tr>
+<tr>
+<td>Admin</td>
+<td>Department create/rename/activate/deactivate; Jira integration controls; read-only configuration/history</td>
+<td>Keep the accepted production-safe Admin scope; do not reintroduce broad setup/reset actions</td>
+</tr>
+<tr>
+<td>Shared table</td>
+<td>Global search, column filters, sorting, column visibility, pagination, saved layout and CSV</td>
+<td>Preserve advanced controls, but select task-relevant initial columns and clearer empty/error states</td>
+</tr>
+</tbody>
+</table>
+<h3>Actual relationship map</h3>
+<pre><code class="language-text">Matrix identity (stable sub)
+  └─ owns private interview draft
+       └─ reviewed/saved as Initiative
+            ├─ version history / calculation history
+            ├─ optional selected Jira issue links
+            └─ optional linked Project(s), created by promotion
+
+Organization
+  ├─ optional reference from Client
+  ├─ optional reference from Program
+  └─ optional reference from Project
+Client
+  ├─ optional reference from Program
+  └─ optional reference from Project
+Program
+  └─ optional reference from Project
+
+Project
+  ├─ Milestones
+  ├─ Risks
+  ├─ Approval requests
+  ├─ Readiness assessments → checklist items
+  ├─ Assignments → named Resource OR department-only demand
+  └─ selected Jira issue links
+</code></pre>
+<p><strong>Required:</strong> a milestone, risk, approval, assignment or assessment belongs to a project; a checklist item belongs to an assessment. Resource name/department are required in the resource form. Direct-project UI requires name/owner and supplies a type; its API contract differs as noted above.</p>
+<p><strong>Optional:</strong> project initiative, organization, client and program references; client organization; program client/organization; assignment named resource. A project can be internal and stand alone.</p>
+<p><strong>Not a forced hierarchy:</strong> project organization/client/program are separate foreign keys. The creation selectors do not constrain each other. A parent relationship does not imply every descendant field is automatically inherited.</p>
+<p><strong>Not represented:</strong> initiatives have no direct structured client, organization or program fields; projects do not have distinct sponsor and project-manager columns. Initiative business owner/sponsor are text; promotion copies other relevant owners into supporting owners. Local Resource IDs are not Platform identity IDs.</p>
+<p><strong>Historical safety:</strong> several parent references use <code>ON DELETE SET NULL</code>; deleting a project cascades its child records. Existing confirmations do not explain all of that impact. Prefer explaining impact and emphasizing existing inactive/closed states, not inventing an archive capability or changing deletion rules during UX work.</p>
+<p><strong>Jira:</strong> an application Project is not a Jira project. Hub stores selected issue links and bounded metadata; Jira remains authoritative. No broad synchronization or migration is recommended. [E4, E8, E9, E12]</p>
+<h2>C. Terminology assessment</h2>
+<table>
+<thead>
+<tr>
+<th>Current term</th>
+<th>Actual meaning</th>
+<th>Why confusing</th>
+<th>Recommended user-facing wording</th>
+<th>Disposition</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Idea</td>
+<td>An early initiative status, or unsaved/private interview material</td>
+<td>Looks like a separate public record type</td>
+<td>“Idea” for intake; explain “saved as an initiative”</td>
+<td>Keep, explain</td>
+</tr>
+<tr>
+<td>Initiative</td>
+<td>Business proposal/case with scoring and lifecycle</td>
+<td>Sounds interchangeable with project</td>
+<td>“Initiative — an idea being evaluated” in help</td>
+<td>Keep</td>
+</tr>
+<tr>
+<td>Project</td>
+<td>Delivery record with milestones, risks, staffing and approvals</td>
+<td>“Execution” implies a technical subsystem</td>
+<td>“Project — work we are planning or delivering”</td>
+<td>Keep</td>
+</tr>
+<tr>
+<td>Promote</td>
+<td>Creates another linked record; does not replace initiative</td>
+<td>Suggests conversion or approval</td>
+<td>“Create linked project”</td>
+<td>Rename action/dialog wording</td>
+</tr>
+<tr>
+<td>Program</td>
+<td>Optional grouping of related projects</td>
+<td>No visible business example; looks mandatory</td>
+<td>“Program (group of related projects)”</td>
+<td>Keep, secondary</td>
+</tr>
+<tr>
+<td>Organization</td>
+<td>Optional grouping/parent record for client/program/project</td>
+<td>Could mean Matrix department or client company</td>
+<td>“Parent organization” only after confirming business usage</td>
+<td>Decision; secondary</td>
+</tr>
+<tr>
+<td>Client</td>
+<td>External client record, optionally grouped by organization</td>
+<td>User expects related work, gets maintenance</td>
+<td>“Client” with “View work” action</td>
+<td>Keep, improve context</td>
+</tr>
+<tr>
+<td>Dashboard</td>
+<td>Mixed entry and summaries</td>
+<td>Competes with Portfolio as the “main” screen</td>
+<td>“Home”</td>
+<td>Rename</td>
+</tr>
+<tr>
+<td>Portfolio</td>
+<td>Cross-project oversight</td>
+<td>Sounds like another dashboard</td>
+<td>“Portfolio” with “All projects, priorities and delivery health”</td>
+<td>Keep</td>
+</tr>
+<tr>
+<td>Kanban</td>
+<td>Initiatives grouped by status</td>
+<td>Agile jargon; may imply project task board</td>
+<td>“Board view” within Ideas &amp; Initiatives</td>
+<td>Consolidate destination</td>
+</tr>
+<tr>
+<td>Quick Submit</td>
+<td>Full manual initiative form</td>
+<td>Neither particularly quick nor minimal</td>
+<td>“Enter a defined idea”</td>
+<td>Rename</td>
+</tr>
+<tr>
+<td>Guided Idea Interview</td>
+<td>Question-assisted private drafting</td>
+<td>“Interview” may sound formal, but function is useful</td>
+<td>“Develop an idea” action; retain explanatory feature name</td>
+<td>Simplify entry wording</td>
+</tr>
+<tr>
+<td>Innovation Canvas</td>
+<td>Structured initiative detail</td>
+<td>“Canvas” does not explain purpose</td>
+<td>“Business case” or “Initiative brief”</td>
+<td>Rename presentation</td>
+</tr>
+<tr>
+<td>Product Backlog</td>
+<td>Hub feature/fix/technical-debt tracker</td>
+<td>Sounds like business priorities</td>
+<td>“Hub improvements”</td>
+<td>Rename; secondary</td>
+</tr>
+<tr>
+<td>Parking Lot</td>
+<td>Deferred Hub product ideas</td>
+<td>Confused with paused initiatives/projects</td>
+<td>“Deferred improvements” within Hub improvements</td>
+<td>Rename; secondary</td>
+</tr>
+<tr>
+<td>Validation</td>
+<td>Hub release testing</td>
+<td>Confused with idea validation or project readiness</td>
+<td>“Release checks”</td>
+<td>Rename; secondary</td>
+</tr>
+<tr>
+<td>Documents</td>
+<td>Static unpublished governance metadata</td>
+<td>Promises accessible content</td>
+<td>“Help &amp; guides” once usable; honest unavailable state meanwhile</td>
+<td>Replace presentation, not pretend content exists</td>
+</tr>
+<tr>
+<td>Resources</td>
+<td>Local people/capacity records and staffing views</td>
+<td>Generic and impersonal</td>
+<td>“People &amp; capacity”</td>
+<td>Rename presentation</td>
+</tr>
+<tr>
+<td>Primary Owner</td>
+<td>Accountable project lead, free text</td>
+<td>May be mistaken for manager or assigned worker</td>
+<td>“Project owner” plus accountability explanation</td>
+<td>Rename label</td>
+</tr>
+<tr>
+<td>Supporting Owners</td>
+<td>Free-text additional people; copied sponsor/owner context on promotion</td>
+<td>Does not distinguish sponsor vs delivery contributors</td>
+<td>Keep field initially, explain; “Supporting contacts” requires agreement</td>
+<td>Decision</td>
+</tr>
+<tr>
+<td>Executive Sponsor</td>
+<td>Initiative sponsorship, not distinct project field</td>
+<td>Users expect it everywhere</td>
+<td>“Sponsor” with scope explanation</td>
+<td>Keep, contextual</td>
+</tr>
+<tr>
+<td>Approvals</td>
+<td>Project requests/decisions</td>
+<td>Implies initiative approval queue</td>
+<td>“Project approvals”</td>
+<td>Rename</td>
+</tr>
+<tr>
+<td>Stage / State / Health</td>
+<td>Delivery phase / administrative activity / computed or overridden risk indicator</td>
+<td>Overlapping “On Hold,” “Closed,” “Completed” concepts</td>
+<td>“Delivery stage,” “Active/closed status,” “Delivery health”</td>
+<td>Clarify; hide advanced state control by default</td>
+</tr>
+<tr>
+<td>Readiness</td>
+<td>Interview completeness or go-live checklist result, depending on screen</td>
+<td>Same word for different calculations</td>
+<td>“Idea completeness” versus “Go-live readiness”</td>
+<td>Qualify; preserve calculations</td>
+</tr>
+<tr>
+<td>Priority</td>
+<td>Score-derived for initiative; selectable on project</td>
+<td>Looks like one policy but behaves differently</td>
+<td>“Initiative priority (score-based)” / “Project priority”</td>
+<td>Qualify</td>
+</tr>
+<tr>
+<td>Context</td>
+<td>Concatenated organization/client/program names</td>
+<td>Data-model language</td>
+<td>“Client / program” with separate links</td>
+<td>Rename display</td>
+</tr>
+</tbody>
+</table>
+<p>Do not rename persisted enum values merely to change labels. Do not claim these recommendations reflect established Matrix vocabulary until reviewed.</p>
+<h2>D. Workflow assessment</h2>
+<h3>A — General employee submits an idea</h3>
+<p><strong>Current:</strong> Home gives a helpful explanation and two entry choices. Guided entry first offers optional Jira context, then private questions, review, and Save Initiative. Manual entry requires a substantially developed business case. The saved initiative becomes visible in the shared initiative workflow; the private interview itself is identity-owned.</p>
+<p><strong>Problems:</strong> Jira-first terminology distracts nontechnical employees. “Quick” is misleading. Defaults such as medium risk/readiness and zero value estimates can be read as assessed facts; avoid inventing certainty in revised copy. Users need to know when private drafting becomes shared work.</p>
+<p><strong>Recommendation:</strong> Keep the accepted introduction. Use “Develop an idea” and “Enter a defined idea”; make the optional Jira association visually secondary without removing it or changing intake context handling. Explain private autosave versus shared final save. Broader minimal-intake changes are not a prerequisite to the first pilot usability release.</p>
+<h3>B — Manager reviews an initiative</h3>
+<p><strong>Current:</strong> Find it via list, board, or global attention group; open brief/detail; review score and owner; choose status, score or create project. History and calculations are available.</p>
+<p><strong>Problems:</strong> No clear reviewer task hierarchy. “My Attention” is not personal. Score, completeness, priority, and approval are easily conflated. Initiative status selection and project approval records are different mechanisms.</p>
+<p><strong>Recommendation:</strong> A short summary should state current status, accountable owner, unresolved business questions, and available next actions. Advanced scoring/history remain accessible. Do not describe a suggested action as a mandatory gate unless it is actually enforced.</p>
+<h3>C — Project manager creates a project directly</h3>
+<p><strong>Current:</strong> Projects → New Project → 13-field form → toast → project detail. No initiative required.</p>
+<p><strong>Problems:</strong> Default Internal Technology biases non-IT work; optionality is unclear; no distinction between state and stage; generic error toast; owner required only at the form layer; name/owner/context cannot be corrected on the normal detail screen.</p>
+<p><strong>Recommendation:</strong> See section F. Add basic edit first; preserve direct creation as a first-class path. Never require an artificial initiative to obtain a project.</p>
+<h3>D — Project manager creates a project from an “approved” initiative</h3>
+<p><strong>Current:</strong> Open any initiative outside Edit Mode → Create Project → promotion dialog → create linked project. Owner prefilled from business owner or sponsor; name from title; six input choices; linked-project warning/explicit additional creation. Server locks the initiative during duplicate check/create. The source initiative stays intact. Selected Jira links are carried over; no delivery commitments are generated automatically.</p>
+<p><strong>Important:</strong> Approval is not a prerequisite in the inspected handler. “Approved initiative → project” is a suggested business path, not the enforced current contract.</p>
+<p><strong>Recommendation:</strong> “Create linked project” with source summary, inherited versus editable fields, and clear outcome. Retain duplicate protection and explicit additional-project creation. Decide separately whether approval must gate creation; do not introduce a hidden governance change as a UX cleanup.</p>
+<h3>E — Assign owner, sponsor and resources</h3>
+<p><strong>Current:</strong> Initiative has business owner/sponsor. Direct project has primary/supporting owners; resources are separate local records assigned in the project tab, or department demand without a named person.</p>
+<p><strong>Problems:</strong> No single workflow covers the three concepts. Project owner cannot be edited in detail. Project has no distinct sponsor/manager fields. Typing a person's name does not establish a Platform identity or grant permissions.</p>
+<p><strong>Recommendation:</strong> Explain accountable owner vs sponsor vs delivery team. Provide basic-owner edit, then “Add people or request department capacity.” Do not add sponsor/manager schema casually; retain initiative sponsorship context. Future Platform directory work is a separate dependency.</p>
+<h3>F — Executive reviews priorities and delivery</h3>
+<p><strong>Current:</strong> Dashboard combines initiative and execution metrics with Hub product health. Portfolio provides project filters and drill-down. Reports supplies eight report types, including leadership pack.</p>
+<p><strong>Problems:</strong> Competing entry points; global attention looks personal; delivery health can differ between list and portfolio because of field selection; summaries mix app-maintenance and business work.</p>
+<p><strong>Recommendation:</strong> Portfolio is the decision-oriented cross-project workspace; Home remains the starting/action page. Move Hub product maintenance metrics to its secondary workspace. Use existing effective-health values consistently. Label innovation value estimates as estimates, not realized returns.</p>
+<h3>G — Account manager finds a client's work</h3>
+<p><strong>Current:</strong> Clients provides record maintenance. Reports → Client Portfolio → select client is a supported alternative. Portfolio search can match displayed context, but is not a structured client workspace.</p>
+<p><strong>Problems:</strong> No obvious client → work path; relying on names/search is weaker than ID-based context. Initiatives without project links cannot honestly be included as structured client work.</p>
+<p><strong>Recommendation:</strong> Add View projects and View report at the client row/detail; preselect exact client ID. Show initiatives only through explicit linked projects, clearly labeled, until separately approved relationship work exists.</p>
+<h3>Existing-project maintenance and consistency</h3>
+<p>Milestones, risks, readiness, approvals, assignments and linked Jira work are useful, distinct capabilities. Preserve them. A project overview should summarize next milestone, blockers, staffing gaps, and pending decisions, with links into the existing tabs.</p>
+<p>Move Delete into a secondary action menu and explain its consequences. Label immediate-saving attributes; use explicit Save/Cancel for multi-field edits. Give Cancel a consistent meaning, and warn about dirty forms where loss is possible. Do not assert persistence or rollback from a visual-only inspection.</p>
+<h2>E. Proposed navigation and alternatives</h2>
+<h3>Recommended hierarchy — proposal, not approval</h3>
+<pre><code class="language-text">Home
+  Start an idea | Create a project | Needs attention | Recent work
+
+Ideas &amp; Initiatives
+  Initiatives: List / Board
+  Develop an idea
+  Enter a defined idea
+  [Initiative detail → business case, review, score, history, linked projects]
+
+Projects
+  All projects | Create project
+  Clients
+    Client work | Client report
+    Parent organizations [secondary maintenance]
+  People &amp; capacity
+  Project approvals
+  [Project detail → overview, milestones, risks, readiness, team, Jira work]
+
+Portfolio
+  Overview
+  Programs
+  Reports
+
+Help &amp; guides [persistent secondary link]
+Administration [secondary, existing capability-aware presentation]
+  Settings &amp; integrations
+  Hub improvements
+    Active improvements | Deferred improvements
+  Release checks
+</code></pre>
+<p>Maintain current URLs/deep links initially. “List / Board” changes navigation presentation, not record identity. Risks, milestones, documents/help and reporting remain reachable; none are removed.</p>
+<p><strong>Alternative 1: five work areas plus Clients as a primary area.</strong> Better for frequent account managers, but adds global complexity for everyone else. Recommend a client shortcut/pin before a universal sixth area.</p>
+<p><strong>Alternative 2: separate role homepages and menus.</strong> Potentially valuable, but current people ownership is often free text and current roles do not establish the requested five personas. Too risky to make role inference or new permissions a prerequisite.</p>
+<p><strong>Alternative 3: simply collapse current eight groups.</strong> Low cost but preserves confusing semantics. Not sufficient alone.</p>
+<p><strong>Why the recommendation:</strong> it preserves capability and route structure while aligning the menu to starting work, managing delivery, and overseeing results. Administration placement is not a security mechanism. Preserve current server authorization and do not hide currently permitted specialist functions behind invented admin checks.</p>
+<h2>F. Simplified project creation — proposed steps</h2>
+<h3>Prerequisite: make deferred fields editable</h3>
+<p>Add a bounded Edit project details surface backed by the existing update contract: name, description, owner, supporting owners, type and optional context. Preserve history/links and existing policies. Without this, “complete later” is a misleading promise.</p>
+<h3>1. Choose the starting path</h3>
+<ul>
+<li><strong>Create a project:</strong> the work is already identified; no initiative necessary.</li>
+<li><strong>Create linked project:</strong> reached from an initiative; retains the business case and traceability.</li>
+</ul>
+<p>Do not add a mandatory wizard just to explain two choices. Use short inline guidance and the existing entry points.</p>
+<h3>2. Provide the minimum initial information</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Initially</th>
+<th>Rationale</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Project name</td>
+<td>Required</td>
+<td>Identifies the work; inherited and identified as such in linked creation</td>
+</tr>
+<tr>
+<td>Project owner</td>
+<td>Required under current UI expectation</td>
+<td>One accountable lead; align server validation only as an explicitly reviewed consistency change</td>
+</tr>
+<tr>
+<td>Work type</td>
+<td>Required choice / clearly explained default</td>
+<td>API already requires it; avoid silently classifying everything as IT</td>
+</tr>
+<tr>
+<td>Description / intended result</td>
+<td>Optional, strongly encouraged</td>
+<td>Current contract permits omission; do not add governance through copy</td>
+</tr>
+<tr>
+<td>Client</td>
+<td>Optional; ask “Is this client work?”</td>
+<td>Existing data model does not require a client, even for a client-oriented type; any mandatory client rule is a decision</td>
+</tr>
+<tr>
+<td>Parent organization</td>
+<td>Optional advanced context</td>
+<td>Do not force users to maintain hierarchy</td>
+</tr>
+<tr>
+<td>Program</td>
+<td>Optional advanced grouping</td>
+<td>Use only for genuine coordinated delivery</td>
+</tr>
+<tr>
+<td>Supporting owners</td>
+<td>Later</td>
+<td>Not required to establish accountable lead</td>
+</tr>
+<tr>
+<td>Target date</td>
+<td>Optional / later</td>
+<td>Unknown is valid; do not manufacture deadlines</td>
+</tr>
+<tr>
+<td>Priority</td>
+<td>Existing Medium default, editable later</td>
+<td>Distinguish from initiative score-derived priority</td>
+</tr>
+<tr>
+<td>Stage</td>
+<td>Existing Planning default</td>
+<td>No need to ask a new user unless intentionally importing ongoing work</td>
+</tr>
+<tr>
+<td>State</td>
+<td>Existing Active default</td>
+<td>Preserve but do not lead with overlapping administrative status</td>
+</tr>
+<tr>
+<td>Health</td>
+<td>System-derived display after creation</td>
+<td>Do not request an unsupported health judgment before evidence exists; preserve explicit override capability</td>
+</tr>
+</tbody>
+</table>
+<p>Use an “Additional details” disclosure for optional controls, visible required markers, associated labels, inline validation and a specific error message. Keep the form one page unless observed user tests establish a real need for steps.</p>
+<h3>3. Review and create</h3>
+<p>Button: <strong>Create project</strong> or <strong>Create linked project</strong>. Show which initiative/context is being retained. Do not imply this approves funding or authorizes launch. Preserve double-submit/duplicate guards and all source links.</p>
+<h3>4. Land on the project with concrete next actions</h3>
+<p>Show the newly created project and three optional next steps:</p>
+<ol>
+<li>Confirm the scope and owner.</li>
+<li>Add the next milestone.</li>
+<li>Add people or record department demand.</li>
+</ol>
+<p>Offer risk/approval/readiness setup contextually, according to existing rules. This is guidance, not newly generated obligations or automatic commitments.</p>
+<h3>5. Keep corrections and navigation straightforward</h3>
+<p>Edit details available on Overview; links back to source initiative/client/program where applicable; Cancel returns to the originating context. Distinguish unsaved forms from immediately saved status controls. No schema change is needed for the core creation/editing simplification.</p>
+<h2>G. Role-based experience without inventing permissions</h2>
+<table>
+<thead>
+<tr>
+<th>Perspective</th>
+<th>Useful starting point</th>
+<th>Information/actions that matter</th>
+<th>Current obstacle</th>
+<th>Proposed presentation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>General employee</td>
+<td>Home → Develop an idea</td>
+<td>Private draft, understandable questions, what happens after submission</td>
+<td>Technical intake and maintenance navigation</td>
+<td>Simple entry and clear privacy/save explanation; advanced tools secondary</td>
+</tr>
+<tr>
+<td>Project manager</td>
+<td>Projects</td>
+<td>Create/edit, next milestone, risks, resources, approvals</td>
+<td>Setup complexity and missing general edit</td>
+<td>Project workspace and next steps</td>
+</tr>
+<tr>
+<td>Department manager</td>
+<td>Portfolio / People &amp; capacity</td>
+<td>Department demand, ownership, priorities, capacity</td>
+<td>Department resources do not equal project department ownership</td>
+<td>Explicit filters with scope explained; no false “my team” promises</td>
+</tr>
+<tr>
+<td>Account manager</td>
+<td>Clients shortcut</td>
+<td>Related projects, status, client report</td>
+<td>Maintenance list does not expose work</td>
+<td>Client work context using exact IDs</td>
+</tr>
+<tr>
+<td>Executive</td>
+<td>Portfolio</td>
+<td>Delivery exceptions, upcoming decisions, priorities, business-value context</td>
+<td>Mixed dashboard purposes, inconsistent health display</td>
+<td>Decision summary and drill-down; leadership report shortcut</td>
+</tr>
+</tbody>
+</table>
+<p>These are work perspectives, not five new security roles. Current Platform identity and server authorization remain authoritative. Do not infer ownership or role from names/emails or department text. A genuine “My work” view should wait for reliable identity references; the minimum release can honestly use “Needs attention.”</p>
+<h2>H. Documentation and contextual guidance</h2>
+<h3>Current assessment</h3>
+<p>The Documents page is a catalog of six unpublished titles: Charter, AI Opportunity Playbook, Operating Manual, AI Project Lifecycle, Scoring and Prioritization Guide, and Functional Specification. The API does not supply their body content or download URLs. Therefore document accuracy cannot be validated from this surface, and a functional download cannot be claimed. Internal validation and architecture notes in the repository are not a substitute for business-facing help.</p>
+<h3>Priority improvements</h3>
+<ol>
+<li><strong>“Where do I start?”</strong> Idea vs project, with examples: mail-production improvement, client onboarding rollout, compliance change, internal technology work.</li>
+<li><strong>Create a project directly</strong> and <strong>Create a project from an initiative</strong>: separate, short guides that match actual permissions and gates.</li>
+<li><strong>Who does what?</strong> Owner, sponsor, supporting owner, assigned person, department demand; distinguish labels from authorization.</li>
+<li><strong>What happens after save?</strong> Draft privacy, shared initiative, linked project, next milestone.</li>
+<li><strong>Understand status:</strong> initiative lifecycle, project delivery stage, administrative state, health, and readiness.</li>
+<li><strong>Find client work</strong> and <strong>Read Portfolio</strong> with scope/metric definitions.</li>
+<li><strong>Jira remains the execution source for linked issues:</strong> linking/unlinking does not edit Jira.</li>
+</ol>
+<p>Readable application pages and runtime PDF downloads should ultimately share one content source, with visible revision date. That is a future documentation implementation, not something implemented in this audit. First remove or disable misleading Download controls and show an honest availability message; a small set of real guides is better than a large empty library.</p>
+<p>Contextual help should sit beside decisions: optional program, unknown target date, computed health, and promotion effects. Keep detailed technical/scoring guidance available for specialists.</p>
+<h2>I. Prioritized improvement backlog</h2>
+<p>Priority means <strong>P0: task blocker; P1: before broader pilot; P2: important but deferrable; P3: future enhancement.</strong> Complexity is relative (S/M/L), not an estimate. Risk separates interface changes from data/policy changes.</p>
+<table>
+<thead>
+<tr>
+<th>ID / priority</th>
+<th>Problem</th>
+<th>Proposed solution</th>
+<th>User impact</th>
+<th>Complexity</th>
+<th>Architecture/data risk</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>U01 — P0 for project correction</td>
+<td>Project owner/name/context cannot be corrected in normal UI</td>
+<td>Add Edit project details using existing update contract</td>
+<td>Completes core maintenance loop; avoids recreating records</td>
+<td>M</td>
+<td>Low–medium: preserve links, validate null/unchanged semantics</td>
+</tr>
+<tr>
+<td>U02 — P1</td>
+<td>17 destinations/eight groups expose maintenance concepts</td>
+<td>Proposed hierarchy, board as view, secondary maintenance</td>
+<td>Easier starting point for all users</td>
+<td>M</td>
+<td>Low if routes and existing access remain</td>
+</tr>
+<tr>
+<td>U03 — P1</td>
+<td>Creation overload and misleading requiredness</td>
+<td>Progressive optional fields, required markers, neutral type choice, inline errors</td>
+<td>PM can start without understanding schema</td>
+<td>M</td>
+<td>Medium: depends on U01; owner validation consistency needs explicit review</td>
+</tr>
+<tr>
+<td>U04 — P1</td>
+<td>Initiative/project/approval semantics conflict</td>
+<td>Plain-language next steps and linked-project wording; documented actual gates</td>
+<td>Managers know what action means</td>
+<td>S–M</td>
+<td>Low for copy; high if turned into new approval enforcement</td>
+</tr>
+<tr>
+<td>U05 — P1</td>
+<td>“Quick” intake requires technical answers</td>
+<td>Honest entry labels, optional Jira visual emphasis, privacy/save help</td>
+<td>Nontechnical employees can choose correctly</td>
+<td>S</td>
+<td>Low if convergence/requirements/scoring unchanged</td>
+</tr>
+<tr>
+<td>U06 — P1</td>
+<td>Client screen is a dead end for work discovery</td>
+<td>Exact-ID View projects/View report actions</td>
+<td>Account managers find delivery work</td>
+<td>M</td>
+<td>Low–medium: do not fabricate initiative associations</td>
+</tr>
+<tr>
+<td>U07 — P1</td>
+<td>Global attention labeled “My”</td>
+<td>Rename to Needs attention; show scope</td>
+<td>Prevents false assignment assumptions</td>
+<td>S</td>
+<td>Low; no identity redesign</td>
+</tr>
+<tr>
+<td>U08 — P1</td>
+<td>Stored/effective health displayed inconsistently</td>
+<td>Use existing effective-health field consistently and label overrides</td>
+<td>Executives see consistent status</td>
+<td>S–M</td>
+<td>Low–medium; preserve deterministic computation</td>
+</tr>
+<tr>
+<td>U09 — P1</td>
+<td>Nonfunctional document downloads and absent guidance</td>
+<td>Honest unavailable state plus initial task guides</td>
+<td>Restores trust and self-service</td>
+<td>S–M</td>
+<td>Low; no promised PDF until implemented</td>
+</tr>
+<tr>
+<td>U10 — P1</td>
+<td>Inconsistent Save/Cancel and prominent destructive action</td>
+<td>Explain immediate-save fields; label return-to-interview; move Delete secondary with impact copy</td>
+<td>Fewer accidental actions and less uncertainty</td>
+<td>M</td>
+<td>Medium: must preserve saved drafts/transactions</td>
+</tr>
+<tr>
+<td>U11 — P2</td>
+<td>Organization/client/program choices appear dependent but are independent</td>
+<td>Context help, optional grouped selection and contextual links</td>
+<td>Less relationship confusion</td>
+<td>M</td>
+<td>Medium: do not overwrite inconsistent historical combinations</td>
+</tr>
+<tr>
+<td>U12 — P2</td>
+<td>Broad tables and poor error/empty distinction</td>
+<td>Task-focused defaults, explicit loading/error/empty states, contextual CTAs</td>
+<td>Easier scanning and recovery</td>
+<td>M</td>
+<td>Low; keep export/filter capabilities</td>
+</tr>
+<tr>
+<td>U13 — P2</td>
+<td>Programs are metadata rather than a useful grouping workspace</td>
+<td>Program → existing projects/report navigation</td>
+<td>Program owners see grouped delivery</td>
+<td>M</td>
+<td>Low; no new program model needed</td>
+</tr>
+<tr>
+<td>U14 — P2</td>
+<td>Help/catalog lacks usable content architecture</td>
+<td>Single-source web guides and runtime PDFs</td>
+<td>Current, readable help and shareable copies</td>
+<td>M</td>
+<td>Low–medium: export parity and access</td>
+</tr>
+<tr>
+<td>U15 — P2</td>
+<td>Persona navigation not tailored</td>
+<td>Saved/pinned shortcuts and explicit view choices</td>
+<td>Occasional users see relevant work</td>
+<td>M</td>
+<td>Low if presentation only; no inferred permissions</td>
+</tr>
+<tr>
+<td>U16 — P3</td>
+<td>Names are not stable identity references</td>
+<td>Separately scoped Platform directory references with historical snapshots</td>
+<td>Enables reliable My work/owner selection</td>
+<td>L</td>
+<td>High relative to UI cleanup; no Graph secrets, migration by explicit mapping only</td>
+</tr>
+<tr>
+<td>U17 — P3 / decision</td>
+<td>No distinct project sponsor/manager semantics</td>
+<td>Validate business need before introducing fields/policies</td>
+<td>Prevents redundant ownership concepts</td>
+<td>Unknown until decision</td>
+<td>Potential schema/report/auth impact</td>
+</tr>
+</tbody>
+</table>
+<p><strong>No universal P0 outage is asserted.</strong> U01 is a confirmed missing core task path, not proof that project creation fails. Live development authentication is also a verification dependency; this assessment did not establish its current Platform-side readiness and does not reopen authentication implementation.</p>
+<h2>J. Proposed bounded release sequence</h2>
+<p>These are proposed scopes only, without new version numbers or implementation authorization.</p>
+<h3>Release A — Core project usability and honest guidance</h3>
+<p>U01, U03, U04's wording, U05's label/help, U07, U08, immediate U09 honesty and U10's highest-risk labels.</p>
+<p><strong>Exit checks:</strong> a permitted user can create a project directly and from an initiative, correct owner/name/context, save/cancel without losing data, and see consistent health; source initiative and Jira links are retained; existing score/convergence/auth behavior unchanged. Test ordinary and administrative identities under the existing policy. No synthetic-only test substitutes for successful authenticated persistence.</p>
+<h3>Release B — Navigation and business-context discovery</h3>
+<p>U02, U06, initial task guides, selected U11/U12, and contextual Portfolio/report links.</p>
+<p><strong>Exit checks:</strong> users can find client work and a client report without knowing schema terms; all old routes and specialist capabilities remain reachable; nontechnical entry and PM entry are both obvious; responsive/keyboard navigation and empty/error states verified.</p>
+<p><strong>Minimum broader-pilot gate:</strong> Release A plus navigation reduction, client-work links, and the essential guides from Release B. Do not wait for directory migration, role redesign, full PDF architecture, or additional governance fields.</p>
+<h3>Release C — Depth and personalization</h3>
+<p>Program contextual view, richer web/PDF help, saved shortcuts and further table improvements. Platform directory and any new sponsor/manager model remain separate scoped work, not automatic additions.</p>
+<h3>Proposed validation with representative users</h3>
+<p>After implementation, use the seven requested tasks A–G with employees representing the five perspectives. Observe first-click choice, misunderstanding, requests for help, abandonment, and whether the user can explain the next action. Establish baseline timing then; this audit supplies no fabricated timing targets or measured success rates.</p>
+<h2>Architectural risks and decisions for Brian</h2>
+<h3>Preserve without redesign</h3>
+<p>Platform-signed identity and stable private-draft ownership; server authorization; Shared AI; centralized Microsoft credentials; Jira selected links; scoring and health/readiness calculations; all existing initiatives/projects, assignments, history, gateway routes and reporting. Innovation Hub remains the surviving application. No legacy Compass revival.</p>
+<h3>Decisions that need business confirmation</h3>
+<ol>
+<li><strong>Is approval required before creating a linked project?</strong> Current behavior does not require it. Keep that behavior during copy/navigation changes unless a separate governance change is approved.</li>
+<li><strong>What does Organization mean at Matrix?</strong> Parent client company, legal entity, or another grouping? Do not rename it to Department or merge it into Client without confirmation.</li>
+<li><strong>Should client work have a dedicated primary shortcut for account managers?</strong> Recommend yes as a shortcut, not another universal top-level area.</li>
+<li><strong>Who should see Hub improvements and Release checks?</strong> Recommend secondary presentation; existing capabilities must remain accessible until an explicit permission decision.</li>
+<li><strong>Does every project need distinct sponsor and manager roles?</strong> They do not exist as separate project fields today. Do not overload supporting owners to imply enforced responsibilities.</li>
+<li><strong>Which creation policy is intended for Project Owner?</strong> The UI requires it while direct-create API does not. Recommended alignment is an explicit consistency requirement, not an unannounced policy change.</li>
+</ol>
+<p>Changing a sidebar label is low risk. Inventing an identity mapping, merging records, deriving permissions from text, auto-filling unknown business facts, or enforcing new gates is not. Most minimum-pilot improvements need no schema changes.</p>
+<h2>Evidence index</h2>
+<p>Paths below are workspace-relative; line numbers may shift after future implementation.</p>
+<ul>
+<li><strong>E1:</strong> <code>artifacts/matrix-innovation-hub/src/App.tsx</code> (named routes); <code>components/layout.tsx</code> (17 entries, eight groups, exact-match header, unconditional groups).</li>
+<li><strong>E2:</strong> <code>pages/dashboard.tsx</code> (first-use introduction, global attention filtering, product health/execution widgets).</li>
+<li><strong>E3:</strong> <code>pages/projects-new.tsx</code> (13 fields, validation, defaults, success navigation).</li>
+<li><strong>E4:</strong> <code>artifacts/api-server/src/routes/execution.ts</code> (create/update, promotion); <code>lib/api-spec/openapi.yaml</code> (<code>ProjectCreate</code>, <code>ProjectUpdate</code>, <code>PromoteInitiativeRequest</code>).</li>
+<li><strong>E5:</strong> <code>pages/project-detail.tsx</code> (read-only basics, immediate status/date mutations, seven tabs and dialogs).</li>
+<li><strong>E6:</strong> <code>pages/submit.tsx</code> (required schema, 19 controls); <code>pages/interview.tsx</code>; <code>components/interview-jira-picker.tsx</code>.</li>
+<li><strong>E7:</strong> <code>pages/initiative-detail.tsx</code>; <code>pages/score-initiative.tsx</code>; <code>components/initiative-review/initiative-review.tsx</code>; <code>pages/kanban.tsx</code>; API <code>routes/settings.ts</code> (eight initiative statuses).</li>
+<li><strong>E8:</strong> API <code>routes/execution.ts</code> promotion handler (row lock, source preservation, owner mapping, Jira links); <code>routes/governance.ts</code>; frontend <code>pages/approvals.tsx</code>.</li>
+<li><strong>E9:</strong> <code>lib/db/src/schema/execution.ts</code>, <code>initiatives.ts</code>, <code>interview-drafts.ts</code>; frontend <code>pages/clients.tsx</code>, <code>organizations.tsx</code>, <code>programs.tsx</code>, <code>resources.tsx</code>.</li>
+<li><strong>E10:</strong> Frontend <code>pages/documents.tsx</code>; API <code>routes/documents.ts</code> (six static unpublished entries and no download behavior).</li>
+<li><strong>E11:</strong> Frontend <code>pages/projects.tsx</code>, <code>portfolio.tsx</code>, <code>reports.tsx</code>; API <code>lib/reporting.ts</code> (eight report definitions).</li>
+<li><strong>E12:</strong> <code>lib/db/src/schema/jira.ts</code>; <code>components/project-linked-work.tsx</code>; API <code>routes/jira-links.ts</code>.</li>
+<li><strong>E13:</strong> Frontend <code>pages/backlog.tsx</code>, <code>validation.tsx</code>, <code>admin.tsx</code>, <code>components/init-wizard.tsx</code>, <code>components/data-table.tsx</code>; API <code>routes/settings.ts</code>; <code>src/app.ts</code> (session boundary).</li>
+</ul>
+<p>Frontend abbreviated paths above are under <code>artifacts/matrix-innovation-hub/src/</code>. API abbreviated paths are under <code>artifacts/api-server/src/</code>.</p>
+<h2>Completion controls</h2>
+<table>
+<thead>
+<tr>
+<th>Control</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Application code changed</td>
+<td>NO</td>
+</tr>
+<tr>
+<td>Database/schema/data changed</td>
+<td>NO</td>
+</tr>
+<tr>
+<td>Authentication/authorization/integrations changed</td>
+<td>NO</td>
+</tr>
+<tr>
+<td>Version changed</td>
+<td>NO</td>
+</tr>
+<tr>
+<td>Published</td>
+<td>NO</td>
+</tr>
+<tr>
+<td>Deployed</td>
+<td>NO</td>
+</tr>
+<tr>
+<td>Pushed</td>
+<td>NO</td>
+</tr>
+<tr>
+<td>Implementation started or requested</td>
+<td>NO</td>
+</tr>
+<tr>
+<td>Deliverables</td>
+<td>Assessment and proposed improvement sequence only</td>
+</tr>
+</tbody>
+</table>
+<p>Stop for Brian and ChatGPT review. Nothing in this report authorizes implementation.</p>
+</main></body></html>

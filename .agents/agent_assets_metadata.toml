@@ -112,3 +112,17 @@ mtime_ms = 1790784280181
 storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:40451992-c03c-4e01-8515-2c896d8b22c5/50f019e3-44ad-49c1-b155-a51c837c4080/170e5d60-a611-43f5-8bfe-9c886d00ae4f"
 storage_version_token = "1790784307677549"
 content_type = "application/pdf"
+
+[[outputs]]
+id = "ZOCp7Jb3ejwEJWazTx_eQ"
+uri = "file://docs/ux-assessment-2026-10-16.html"
+type = "html"
+title = "Innovation Hub — UX Assessment & Proposed Improvement Plan"
+description = "Read-only assessment: complete screen inventory, terminology and relationship maps, workflows A–G, proposed navigation, simplified project creation, prioritized backlog, release sequence, and browser verification limitations."
+logical_id = "9b5080d9-0b36-4920-bece-4922b3d8a936"
+content_hash = "sha256:7aef7a5c9c463e812ce5d3b930130247ea2952c662c2bc3e6047dad23c2c90e2"
+size = 64896
+mtime_ms = 1792185633863
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:40451992-c03c-4e01-8515-2c896d8b22c5/9b5080d9-0b36-4920-bece-4922b3d8a936/3a79b1f2-8983-468d-8997-05ce2aae7057"
+storage_version_token = "1792185652534441"
+content_type = "text/html"

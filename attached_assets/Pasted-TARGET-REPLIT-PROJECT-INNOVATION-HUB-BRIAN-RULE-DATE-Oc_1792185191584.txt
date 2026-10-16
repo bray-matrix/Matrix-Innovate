@@ -1,0 +1,766 @@
+TARGET REPLIT PROJECT: INNOVATION HUB
+
+BRIAN RULE DATE: October 16, 2026
+TIME ZONE: US Central (America/Chicago)
+PURPOSE: Comprehensive UX Audit and Workflow Simplification
+MODE: INVESTIGATION / PLANNING ONLY
+
+DO NOT RUN IN:
+- Matrix Platform
+- Finance Hub
+- Workforce Hub
+- Infrastructure Hub
+- legacy Matrix Compass
+
+CURRENT ACCEPTED PRODUCTION BASELINE:
+Innovation Hub v1.6.13
+
+============================================================
+1. OBJECTIVE
+============================================================
+
+Conduct a comprehensive usability, navigation, terminology,
+and workflow assessment of Matrix Innovation Hub.
+
+The application has become functionally sophisticated but
+is not sufficiently intuitive for normal business users.
+
+Even the CIO, who participated in designing the application,
+finds portions of the navigation, terminology, and workflows
+confusing.
+
+This is a significant usability concern.
+
+We need to simplify the experience before expanding the
+executive pilot.
+
+DO NOT implement changes during this assessment.
+
+The objective is to understand the existing application,
+identify problems, and develop a practical improvement plan.
+
+Preserve all existing architecture, integrations, security,
+data relationships, and functional capabilities.
+
+============================================================
+2. PLANNING MODE
+============================================================
+
+FIRST, determine whether Replit Planning Mode would be
+beneficial for this assessment.
+
+If Planning Mode is available and appropriate, use it.
+
+Planning Mode is preferred if it allows:
+
+- Comprehensive codebase inspection
+- Application architecture analysis
+- Navigation and workflow mapping
+- Browser-based usability testing
+- Identification of redundant functionality
+- Development of a structured improvement plan
+- Discussion of proposed changes before implementation
+
+If Planning Mode limits access to tools needed for inspection
+or browser testing, use the appropriate read-only analysis
+capabilities instead.
+
+Do not enter an implementation workflow.
+
+Do not request approval to begin coding.
+
+This entire assignment is investigation and planning only.
+
+============================================================
+3. BUSINESS CONTEXT
+============================================================
+
+Matrix Imaging is a print, mail, and digital communications
+company with approximately 180 employees.
+
+Innovation Hub is intended to support users across:
+
+- Executive Leadership
+- Sales
+- Account Management / Customer Service
+- Operations
+- Project Management
+- Information Technology
+- Finance
+- Compliance
+- Human Resources
+
+Many users will have limited technical knowledge.
+
+The application must not require users to understand
+software development, APIs, databases, architecture,
+or complicated project governance simply to begin work.
+
+The intended business outcomes include:
+
+- Capture business ideas and opportunities
+- Evaluate potential improvements
+- Prioritize initiatives
+- Create and execute projects
+- Assign owners and resources
+- Track project progress
+- Provide executive portfolio visibility
+- Connect related clients, organizations, and programs
+- Integrate with Jira where appropriate
+
+Not every user needs access to or visibility into every
+capability.
+
+The application should be intuitive for occasional users,
+not just administrators and project managers.
+
+============================================================
+4. CURRENT USABILITY CONCERNS
+============================================================
+
+The following are known concerns requiring investigation.
+
+A. OVERLAPPING TERMINOLOGY
+
+Examples:
+
+- Ideas
+- Initiatives
+- Projects
+- Programs
+- Organizations
+- Clients
+- Portfolio
+- Dashboard
+- Product Backlog
+- Parking Lot
+- Kanban
+
+These terms may have valid technical or business meanings,
+but their distinctions are not obvious.
+
+Determine:
+
+- What each actually represents in the application
+- Whether users need to understand the distinction
+- Whether concepts overlap unnecessarily
+- Whether terminology is consistent across screens
+- Whether terminology reflects normal Matrix business usage
+- Whether some concepts should be hidden from general users
+- Whether simpler labels would improve understanding
+
+Specifically investigate:
+
+What is the difference between an Initiative and a Project?
+
+When should someone create an Initiative versus directly
+creating a Project?
+
+What is a Program, and when would Matrix use one?
+
+How does an Organization differ from a Client?
+
+What is the difference between Portfolio and Dashboard?
+
+What is the purpose of Kanban?
+
+What is the Product Backlog?
+
+Why should an ordinary business user see product-development
+backlog information?
+
+What does Parking Lot mean to a new user?
+
+Do not assume these concepts must remain visible simply
+because they already exist.
+
+B. NAVIGATION COMPLEXITY
+
+Evaluate the entire navigation structure.
+
+Determine whether navigation reflects:
+
+- How users naturally think about their work
+
+OR
+
+- How the underlying application/database was designed
+
+Identify:
+
+- Too many primary navigation items
+- Redundant destinations
+- Confusing groupings
+- Administrative functions exposed to general users
+- Screens that belong within other workflows
+- Inconsistent navigation behavior
+- Missing contextual navigation
+- Unclear next actions
+- Pages that duplicate information
+
+C. PROJECT CREATION
+
+This is a HIGH-PRIORITY area.
+
+Evaluate the complete process for creating a new Project.
+
+Questions to answer:
+
+- Where would a new user naturally begin?
+- Can a user create a Project directly?
+- Must they first create an Initiative?
+- When is Initiative promotion appropriate?
+- Are required fields understandable?
+- Are users asked for information too early?
+- Are relationships to Clients, Organizations, and Programs
+  clear?
+- Is the distinction between Project Owner, Sponsor,
+  Manager, and Resources understandable?
+- After saving, is the next action obvious?
+- Does the application guide users toward execution?
+- Are there unnecessary steps or screens?
+
+Identify the simplest reasonable project-creation workflow
+without removing necessary governance.
+
+D. INITIATIVE WORKFLOW
+
+Evaluate:
+
+Idea
+→ Guided Interview
+→ Initiative Brief
+→ Review
+→ Approval
+→ Initiative
+→ Project
+
+Determine whether this workflow is intuitive.
+
+Evaluate whether:
+
+- Users understand why an Initiative exists
+- Users understand when to promote an Initiative
+- Approval and review requirements are clear
+- Users know what to do after saving
+- The application provides useful next actions
+- Too many intermediate states are exposed
+
+Do not modify the existing Guided Idea Interview convergence
+logic or scoring during this assessment.
+
+E. RELATIONSHIPS
+
+Map the actual relationships between:
+
+- Organizations
+- Clients
+- Programs
+- Projects
+- Initiatives
+- Resources
+- Assignments
+- Jira projects/issues
+
+Identify:
+
+- Required relationships
+- Optional relationships
+- Parent/child structures
+- Unnecessary dependencies
+- Confusing selection screens
+- Places where users must understand the data model
+
+Recommend how these relationships should be presented
+in ordinary business language.
+
+============================================================
+5. COMPLETE APPLICATION INVENTORY
+============================================================
+
+Inspect the actual application codebase.
+
+Inventory all existing:
+
+- Routes
+- Pages
+- Navigation entries
+- Dashboards
+- Forms
+- Wizards
+- Modals
+- Detail screens
+- Creation workflows
+- Editing workflows
+- Reporting screens
+- Administrative screens
+- Documentation/help screens
+
+Include major functional areas such as:
+
+- Dashboard
+- Guided Idea Interview
+- Quick Submit
+- Initiatives
+- Kanban
+- Projects
+- Clients
+- Organizations
+- Resources
+- Approvals
+- Portfolio
+- Programs
+- Risks
+- Milestones
+- Reports
+- Validation
+- Documents
+- Product Backlog
+- Parking Lot
+- Administration
+
+This list may not be exhaustive.
+
+Discover the actual functionality rather than relying
+only on the names listed here.
+
+For each major screen identify:
+
+1. Purpose
+2. Intended user
+3. How users reach it
+4. Primary action
+5. Relationship to other screens
+6. Potential usability issues
+7. Whether it belongs in primary navigation
+
+Distinguish confirmed code behavior from assumptions.
+
+============================================================
+6. BROWSER-BASED UX ASSESSMENT
+============================================================
+
+Where Replit browser testing is available, inspect the
+actual rendered application.
+
+Do not rely exclusively on source-code analysis.
+
+Evaluate:
+
+- Screen layout
+- Navigation clarity
+- Button labels
+- Forms
+- Visual hierarchy
+- Empty states
+- Help text
+- Terminology
+- Workflow transitions
+- Save/Cancel behavior
+- Next-action guidance
+- Consistency across modules
+
+Attempt representative workflows:
+
+WORKFLOW A:
+General employee submits a new idea.
+
+WORKFLOW B:
+Manager reviews an Initiative and determines what to do next.
+
+WORKFLOW C:
+Project Manager creates a new Project directly.
+
+WORKFLOW D:
+Project Manager creates a Project from an approved Initiative.
+
+WORKFLOW E:
+Project Manager assigns an owner, sponsor, and resources.
+
+WORKFLOW F:
+Executive reviews current projects and organizational priorities.
+
+WORKFLOW G:
+Account Manager finds work associated with a Client.
+
+Do not create or modify production records.
+
+Use existing safe test data or non-destructive inspection.
+
+If authenticated browser testing is unavailable, clearly
+identify which observations were not visually verified.
+
+Do not invent successful browser test results.
+
+============================================================
+7. ROLE-BASED EXPERIENCE
+============================================================
+
+Evaluate the application from five perspectives.
+
+GENERAL EMPLOYEE:
+I have an idea or business problem.
+
+PROJECT MANAGER:
+I need to create and manage a project.
+
+DEPARTMENT MANAGER:
+I need to understand and prioritize my team's work.
+
+ACCOUNT MANAGER:
+I need to understand initiatives and projects affecting
+my clients.
+
+EXECUTIVE:
+I need to understand priorities, progress, risks,
+resources, and business value.
+
+Determine whether each role can quickly identify:
+
+- Where to begin
+- What information matters
+- What actions are available
+- What they are responsible for
+- What they should do next
+
+Do not assume everyone needs the same navigation.
+
+Do not implement new role permissions during this assessment.
+
+============================================================
+8. SIMPLIFICATION OPPORTUNITIES
+============================================================
+
+Evaluate whether Innovation Hub could be organized around
+a smaller number of understandable primary areas.
+
+One possible hypothesis:
+
+HOME
+- My work
+- Recent activity
+- Next actions
+
+IDEAS & INITIATIVES
+- Submit ideas
+- Guided Interview
+- Review initiatives
+
+PROJECTS
+- Create projects
+- Manage execution
+- Milestones and resources
+
+PORTFOLIO
+- Executive oversight
+- Programs
+- Reporting
+- Priorities
+
+ADMINISTRATION
+- Configuration
+- Integrations
+- Governance
+
+This is ONLY a hypothesis.
+
+Do not treat it as an approved navigation design.
+
+Evaluate alternatives based on the existing application.
+
+The objective is not simply to reduce menu items.
+
+The objective is to make the entire workflow understandable.
+
+Preserve existing functionality even if some screens become
+contextual, secondary, or role-specific.
+
+============================================================
+9. DOCUMENTATION AND GUIDANCE
+============================================================
+
+Evaluate the current documentation/help experience.
+
+Determine:
+
+- Whether documentation reflects actual application behavior
+- Whether users can find help when needed
+- Whether terminology is explained
+- Whether project creation is adequately documented
+- Whether contextual help would be more effective
+- Whether the current documentation is overly technical
+
+Consider the previously discussed future architecture:
+
+Documentation available as readable application web pages,
+with PDF downloads generated at runtime from the same
+current content.
+
+Do not implement this yet.
+
+Identify whether documentation changes should accompany
+the UX redesign.
+
+============================================================
+10. PRESERVE EXISTING ARCHITECTURE
+============================================================
+
+Do not recommend architectural changes merely to simplify
+the interface.
+
+Preserve:
+
+- Matrix Platform authentication
+- Platform-signed identity
+- Server-side authorization
+- Platform Shared AI Service
+- Microsoft Graph credential centralization
+- Jira integration
+- Existing Initiative and Project records
+- Historical relationships
+- Resource and assignment records
+- Private interview ownership
+- Deterministic scoring
+- Existing reporting capabilities
+- Existing application registration and gateway
+
+Innovation Hub is the surviving application.
+
+Do not resurrect legacy Matrix Compass.
+
+Avoid database changes unless there is a compelling,
+documented reason.
+
+Prefer simplifying the user experience over rebuilding
+the underlying application.
+
+============================================================
+11. REQUIRED UX ASSESSMENT
+============================================================
+
+Produce a structured assessment containing:
+
+A. EXECUTIVE SUMMARY
+
+Explain the five most significant usability problems.
+
+B. CURRENT APPLICATION MAP
+
+Summarize the existing navigation, screens, and
+relationships.
+
+C. TERMINOLOGY ASSESSMENT
+
+Provide a table:
+
+Current Term
+Actual Meaning
+Why It Is Confusing
+Recommended User-Facing Term
+Keep / Rename / Hide / Consolidate
+
+D. WORKFLOW ASSESSMENT
+
+Evaluate the major workflows, especially:
+
+- Creating an Initiative
+- Creating a Project directly
+- Promoting an Initiative to Project
+- Managing an existing Project
+- Finding related Client/Organization work
+- Executive portfolio review
+
+E. NAVIGATION RECOMMENDATIONS
+
+Recommend a simpler navigation structure.
+
+Show a proposed menu hierarchy.
+
+Explain where existing functionality would move.
+
+F. PROJECT CREATION REDESIGN
+
+Recommend a practical, simplified project-creation
+experience.
+
+Describe the proposed workflow step by step.
+
+Identify which fields should be required initially
+and which can be completed later.
+
+G. ROLE-BASED EXPERIENCE
+
+Identify meaningful differences between general users,
+project managers, managers, and executives.
+
+H. DOCUMENTATION IMPROVEMENTS
+
+Identify the most important documentation changes.
+
+I. PRIORITIZED IMPROVEMENT BACKLOG
+
+Classify findings:
+
+P0 — Critical usability blocker
+P1 — Required before broader pilot
+P2 — Important improvement
+P3 — Future enhancement
+
+For each recommendation include:
+
+- Problem
+- Proposed solution
+- User impact
+- Implementation complexity
+- Architectural/data risk
+- Recommended priority
+
+J. PROPOSED RELEASE PLAN
+
+Recommend a small number of bounded development releases.
+
+Do not assign version numbers beyond the existing
+development baseline unless necessary.
+
+Do not assume every improvement must be implemented
+before the initial pilot.
+
+Identify the minimum changes needed to make the application
+usable for a broader executive pilot.
+
+============================================================
+12. IMPORTANT EVALUATION PRINCIPLES
+============================================================
+
+Do not defend the existing application simply because
+the functionality already exists.
+
+Do not recommend removing capabilities simply because
+they are complicated.
+
+Distinguish between:
+
+- Business complexity that is genuinely necessary
+- Technical complexity exposed unnecessarily
+- Poor terminology
+- Poor navigation
+- Poor workflow design
+- Missing guidance
+- Redundant functionality
+
+Challenge the existing design where appropriate.
+
+Prioritize simplicity, clarity, and practical business use.
+
+The desired outcome is an application that a typical
+Matrix employee can understand without extensive training.
+
+============================================================
+13. SCOPE AND SAFETY
+============================================================
+
+THIS IS AN ASSESSMENT ONLY.
+
+DO NOT:
+
+- Modify application code
+- Modify database schema
+- Change application data
+- Change authentication
+- Change authorization
+- Change integrations
+- Change scoring
+- Change Guided Interview behavior
+- Publish
+- Deploy
+- Push
+- Create a new release
+- Begin implementation automatically
+
+Production v1.6.13 remains unchanged.
+
+Existing development work must also be preserved.
+
+============================================================
+14. REQUIRED COMPLETION REPORT
+============================================================
+
+TARGET PROJECT:
+Innovation Hub
+
+BRIAN RULE DATE:
+October 16, 2026 — US Central
+
+CURRENT VERSION:
+
+PLANNING MODE:
+- Used: YES / NO
+- Reason:
+
+ASSESSMENT COVERAGE:
+- Screens inspected:
+- Routes inspected:
+- Workflows inspected:
+- Browser testing completed:
+- Areas not verified:
+
+TOP FIVE UX PROBLEMS:
+
+TERMINOLOGY RECOMMENDATIONS:
+
+PROPOSED NAVIGATION:
+
+PROJECT CREATION RECOMMENDATIONS:
+
+ROLE-BASED UX RECOMMENDATIONS:
+
+DOCUMENTATION RECOMMENDATIONS:
+
+PRIORITIZED IMPROVEMENTS:
+
+PROPOSED RELEASE SEQUENCE:
+
+ARCHITECTURAL RISKS:
+
+RECOMMENDATIONS REQUIRING BRIAN'S DECISION:
+
+CODE CHANGED:
+NO
+
+DATABASE CHANGED:
+NO
+
+VERSION CHANGED:
+NO
+
+PUBLISHED:
+NO
+
+DEPLOYED:
+NO
+
+PUSHED:
+NO
+
+============================================================
+15. FINAL INSTRUCTION
+============================================================
+
+Perform the investigation thoroughly and independently.
+
+Do not ask Brian to manually capture screenshots or walk
+through every screen unless there is a genuine technical
+limitation that prevents inspection.
+
+Use the available source code, application structure,
+existing documentation, and browser testing capabilities.
+
+The goal is to minimize Brian's time while producing
+a meaningful, evidence-based UX assessment.
+
+Provide the findings and proposed improvement plan.
+
+STOP.
+
+Wait for Brian and ChatGPT to review the recommendations
+before implementing any changes.
