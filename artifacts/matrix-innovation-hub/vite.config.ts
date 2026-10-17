@@ -3,6 +3,8 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
+// @ts-expect-error Shared Node-only build utility (not shipped to the browser).
+import { checkVersions } from "../../scripts/application-version.mjs";
 
 const rawPort = process.env.PORT;
 
@@ -39,7 +41,9 @@ const gatewayBasePath =
 // Exposed to index.html (%VITE_GATEWAY_BASE_PATH%) and import.meta.env.
 process.env.VITE_GATEWAY_BASE_PATH = gatewayBasePath;
 
-export default defineConfig(async ({ command }) => ({
+export default defineConfig(async ({ command }) => {
+  checkVersions(command === "build");
+  return ({
   // Production builds emit relative asset URLs; a runtime <base> tag in
   // index.html anchors them to the detected public prefix, so one build
   // works both standalone (/) and beneath a gateway prefix.
@@ -88,4 +92,5 @@ export default defineConfig(async ({ command }) => ({
     host: "0.0.0.0",
     allowedHosts: true,
   },
-}));
+  });
+});

@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Api
  * API specification
- * OpenAPI spec version: 1.6.14-dev.2
+ * OpenAPI spec version: 1.6.14
  */
 
 export type ReportSectionRowsItem = {[key: string]: string};
